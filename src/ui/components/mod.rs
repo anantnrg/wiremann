@@ -1,5 +1,6 @@
 pub mod controlbar;
 pub mod navbar;
+pub mod slider;
 pub mod titlebar;
 
 #[derive(Clone, Copy, PartialEq)]

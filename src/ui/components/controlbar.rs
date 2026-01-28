@@ -1,10 +1,10 @@
 use crate::controller::player::Controller;
 use crate::ui::theme::Theme;
 
+use super::slider::{Slider, SliderState};
 use crate::ui::icons::Icons;
 use gpui::*;
 use gpui_component::Icon;
-use gpui_component::slider::{Slider, SliderState};
 
 #[derive(Clone)]
 pub struct ControlBar {
@@ -52,11 +52,11 @@ impl Render for ControlBar {
                         state.position % 60
                     )))
                     .child(
-                        div()
-                            .flex()
-                            .w_full()
-                            .flex_1()
-                            .child(Slider::new(&self.vol_slider_state)),
+                        div().flex().w_full().flex_1().child(
+                            Slider::new(&self.vol_slider_state)
+                                .bg(theme.highlighted)
+                                .text_color(theme.accent),
+                        ),
                     )
                     .child(div().flex().flex_shrink_0().child(format!(
                         "{:02}:{:02}",

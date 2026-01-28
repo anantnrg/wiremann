@@ -1,10 +1,14 @@
 use super::{
-    components::{controlbar::ControlBar, navbar::NavBar, titlebar::Titlebar},
+    components::{
+        controlbar::ControlBar,
+        navbar::NavBar,
+        slider::{SliderEvent, SliderState},
+        titlebar::Titlebar,
+    },
     theme::Theme,
 };
 use crate::{audio::engine::PlaybackState, controller::player::Controller, ui::components::Page};
 use gpui::*;
-use gpui_component::slider::{SliderEvent, SliderState};
 
 pub struct Wiremann {
     pub titlebar: Entity<Titlebar>,
