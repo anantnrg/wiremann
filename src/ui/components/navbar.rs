@@ -21,7 +21,7 @@ impl Render for NavBar {
 
         div()
             .h_full()
-            .w_20()
+            .w_16()
             .flex()
             .flex_col()
             .flex_shrink_0()
@@ -34,7 +34,7 @@ impl Render for NavBar {
             .child(
                 div()
                     .id("home")
-                    .size_16()
+                    .size_12()
                     .rounded_md()
                     .flex()
                     .flex_shrink_0()
@@ -53,12 +53,12 @@ impl Render for NavBar {
                         }
                     })
                     .on_click(|_, _, cx| *cx.global_mut::<Page>() = Page::Home)
-                    .child(Icon::new(Icons::Music).size_6().text_color(theme.text)),
+                    .child(Icon::new(Icons::Music).size_5().text_color(theme.text)),
             )
             .child(
                 div()
                     .id("playlist")
-                    .size_16()
+                    .size_12()
                     .rounded_md()
                     .flex()
                     .flex_shrink_0()
@@ -77,7 +77,7 @@ impl Render for NavBar {
                         }
                     })
                     .on_click(|_, _, cx| *cx.global_mut::<Page>() = Page::Playlists)
-                    .child(Icon::new(Icons::MusicList).size_6().text_color(theme.text)),
+                    .child(Icon::new(Icons::MusicList).size_5().text_color(theme.text)),
             )
             .child(
                 div()
@@ -89,7 +89,7 @@ impl Render for NavBar {
             .child(
                 div()
                     .id("settings")
-                    .size_16()
+                    .size_12()
                     .rounded_md()
                     .flex()
                     .flex_shrink_0()
@@ -108,7 +108,7 @@ impl Render for NavBar {
                         }
                     })
                     .on_click(|_, _, cx| *cx.global_mut::<Page>() = Page::Settings)
-                    .child(Icon::new(Icons::Settings).size_6().text_color(theme.text)),
+                    .child(Icon::new(Icons::Settings).size_5().text_color(theme.text)),
             )
     }
 }

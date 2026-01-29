@@ -602,11 +602,11 @@ impl RenderOnce for Slider {
                         div()
                             .id("slider-bar")
                             .relative()
-                            .when(axis.is_horizontal(), |this| this.w_full().h_1())
-                            .when(axis.is_vertical(), |this| this.h_full().w_2())
+                            .w_full()
+                            .h_6()
                             .bg(bar_color)
-                            .hover(|this| this.bg(bar_color).h_2())
-                            .active(|this| this.bg(bar_color).h_2())
+                            .hover(|this| this.bg(bar_color))
+                            .active(|this| this.bg(bar_color))
                             .rounded_full()
                             .child(
                                 div()
@@ -618,7 +618,7 @@ impl RenderOnce for Slider {
                                         this.w_full().bottom(bar_start).top(bar_end)
                                     })
                                     .bg(thumb_color)
-                                    .rounded_l_full(),
+                                    .rounded_full(),
                             )
                             .when(is_range, |this| {
                                 this.child(self.render_thumb(
