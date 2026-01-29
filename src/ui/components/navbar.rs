@@ -21,14 +21,14 @@ impl Render for NavBar {
 
         div()
             .h_full()
-            .w_16()
+            .w_20()
             .flex()
             .flex_col()
             .flex_shrink_0()
             .items_center()
             .bg(theme.panel)
             .py_2()
-            .gap_2()
+            .gap_3()
             .border_r_1()
             .border_color(theme.border)
             .child(
@@ -40,44 +40,54 @@ impl Render for NavBar {
                     .flex_shrink_0()
                     .items_center()
                     .justify_center()
-                    .bg(if page == &Page::Home {
+                    .text_color(if page == &Page::Home {
                         theme.accent
                     } else {
-                        theme.bg
+                        theme.text
                     })
-                    .hover(|this| {
-                        if page != &Page::Home {
-                            this.bg(theme.highlighted)
-                        } else {
-                            this.bg(theme.accent)
-                        }
-                    })
+                    .hover(|this| this.text_color(theme.accent))
                     .on_click(|_, _, cx| *cx.global_mut::<Page>() = Page::Home)
-                    .child(Icon::new(Icons::Music).size_5().text_color(theme.text)),
+                    .child(Icon::new(Icons::Music).size_6())
+                    .child(if page == &Page::Home {
+                        div()
+                            .h_full()
+                            .w_2()
+                            .bg(theme.accent)
+                            .absolute()
+                            .rounded_l_md()
+                            .right_neg_4()
+                    } else {
+                        div()
+                    }),
             )
             .child(
                 div()
-                    .id("playlist")
+                    .id("playlists")
                     .size_12()
                     .rounded_md()
                     .flex()
                     .flex_shrink_0()
                     .items_center()
                     .justify_center()
-                    .bg(if page == &Page::Playlists {
+                    .text_color(if page == &Page::Playlists {
                         theme.accent
                     } else {
-                        theme.bg
+                        theme.text
                     })
-                    .hover(|this| {
-                        if page != &Page::Playlists {
-                            this.bg(theme.highlighted)
-                        } else {
-                            this.bg(theme.accent)
-                        }
-                    })
+                    .hover(|this| this.text_color(theme.accent))
                     .on_click(|_, _, cx| *cx.global_mut::<Page>() = Page::Playlists)
-                    .child(Icon::new(Icons::MusicList).size_5().text_color(theme.text)),
+                    .child(Icon::new(Icons::MusicList).size_6())
+                    .child(if page == &Page::Playlists {
+                        div()
+                            .h_full()
+                            .w_2()
+                            .bg(theme.accent)
+                            .absolute()
+                            .rounded_l_md()
+                            .right_neg_4()
+                    } else {
+                        div()
+                    }),
             )
             .child(
                 div()
@@ -95,20 +105,25 @@ impl Render for NavBar {
                     .flex_shrink_0()
                     .items_center()
                     .justify_center()
-                    .bg(if page == &Page::Settings {
+                    .text_color(if page == &Page::Settings {
                         theme.accent
                     } else {
-                        theme.bg
+                        theme.text
                     })
-                    .hover(|this| {
-                        if page != &Page::Settings {
-                            this.bg(theme.highlighted)
-                        } else {
-                            this.bg(theme.accent)
-                        }
-                    })
+                    .hover(|this| this.text_color(theme.accent))
                     .on_click(|_, _, cx| *cx.global_mut::<Page>() = Page::Settings)
-                    .child(Icon::new(Icons::Settings).size_5().text_color(theme.text)),
+                    .child(Icon::new(Icons::Settings).size_6())
+                    .child(if page == &Page::Settings {
+                        div()
+                            .h_full()
+                            .w_2()
+                            .bg(theme.accent)
+                            .absolute()
+                            .rounded_l_md()
+                            .right_neg_4()
+                    } else {
+                        div()
+                    }),
             )
     }
 }
