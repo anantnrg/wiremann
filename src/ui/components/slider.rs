@@ -431,7 +431,7 @@ impl Slider {
             .id(id)
             .absolute()
             .when(axis.is_horizontal(), |this| {
-                this.top(px(-5.)).left(start).ml(-px(8.))
+                this.top(px(-5.)).left(start).ml(-px(12.))
             })
             .when(axis.is_vertical(), |this| {
                 this.bottom(start).left(px(-5.)).mb(-px(8.))
@@ -441,18 +441,10 @@ impl Slider {
             .justify_center()
             .flex_shrink_0()
             .corner_radii(radius)
-            .bg(bar_color.opacity(0.5))
             .when(cx.theme().shadow, |this| this.shadow_md())
-            .h_3()
-            .w_1()
-            .p(px(1.5))
-            .child(
-                div()
-                    .flex_shrink_0()
-                    .size_full()
-                    .corner_radii(radius)
-                    .bg(thumb_color),
-            )
+            .h_5()
+            .w_5()
+            .child(div().flex_shrink_0().size_full().corner_radii(radius))
             .on_mouse_down(MouseButton::Left, |_, _, cx| {
                 cx.stop_propagation();
             })
@@ -610,11 +602,12 @@ impl RenderOnce for Slider {
                         div()
                             .id("slider-bar")
                             .relative()
-                            .when(axis.is_horizontal(), |this| this.w_full().h_2())
+                            .when(axis.is_horizontal(), |this| this.w_full().h_1())
                             .when(axis.is_vertical(), |this| this.h_full().w_2())
                             .bg(bar_color)
-                            .active(|this| this.bg(bar_color))
-                            .corner_radii(radius)
+                            .hover(|this| this.bg(bar_color).h_2())
+                            .active(|this| this.bg(bar_color).h_2())
+                            .rounded_full()
                             .child(
                                 div()
                                     .absolute()
@@ -625,7 +618,7 @@ impl RenderOnce for Slider {
                                         this.w_full().bottom(bar_start).top(bar_end)
                                     })
                                     .bg(thumb_color)
-                                    .rounded_full(),
+                                    .rounded_l_full(),
                             )
                             .when(is_range, |this| {
                                 this.child(self.render_thumb(
