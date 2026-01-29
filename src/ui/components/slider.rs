@@ -431,7 +431,7 @@ impl Slider {
             .id(id)
             .absolute()
             .when(axis.is_horizontal(), |this| {
-                this.top(px(-5.)).left(start).ml(-px(12.))
+                this.top(px(-0.)).left(start).ml(-px(12.))
             })
             .when(axis.is_vertical(), |this| {
                 this.bottom(start).left(px(-5.)).mb(-px(8.))
@@ -440,11 +440,19 @@ impl Slider {
             .items_center()
             .justify_center()
             .flex_shrink_0()
-            .corner_radii(radius)
+            // .corner_radii(radius)
             .when(cx.theme().shadow, |this| this.shadow_md())
-            .h_5()
-            .w_5()
-            .child(div().flex_shrink_0().size_full().corner_radii(radius))
+            .size_3()
+            .rounded_full()
+            .p(px(1.0))
+            .bg(thumb_color)
+            .child(
+                div()
+                    .flex_shrink_0()
+                    .size_full()
+                    .rounded_full()
+                    .bg(bar_color),
+            )
             .on_mouse_down(MouseButton::Left, |_, _, cx| {
                 cx.stop_propagation();
             })
@@ -603,7 +611,7 @@ impl RenderOnce for Slider {
                             .id("slider-bar")
                             .relative()
                             .w_full()
-                            .h_6()
+                            .h_3()
                             .bg(bar_color)
                             .hover(|this| this.bg(bar_color))
                             .active(|this| this.bg(bar_color))
