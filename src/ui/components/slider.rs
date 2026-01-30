@@ -1,10 +1,10 @@
 use std::ops::Range;
 
 use gpui::{
-    Along, App, AppContext as _, Axis, Background, Bounds, Context, Corners, DefiniteLength,
-    DragMoveEvent, Empty, Entity, EntityId, EventEmitter, Hsla, InteractiveElement, IntoElement,
-    MouseButton, MouseDownEvent, ParentElement as _, Pixels, Point, Render, RenderOnce,
-    StatefulInteractiveElement as _, StyleRefinement, Styled, Window, div,
+    AbsoluteLength, Along, App, AppContext as _, Axis, Background, Bounds, Context, Corners,
+    DefiniteLength, DragMoveEvent, Empty, Entity, EntityId, EventEmitter, Hsla, InteractiveElement,
+    IntoElement, MouseButton, MouseDownEvent, ParentElement as _, Pixels, Point, Render,
+    RenderOnce, StatefulInteractiveElement as _, StyleRefinement, Styled, Window, div,
     prelude::FluentBuilder as _, px, relative,
 };
 use gpui_component::{ActiveTheme, AxisExt, ElementExt, StyledExt, h_flex};
@@ -430,20 +430,17 @@ impl Slider {
         div()
             .id(id)
             .absolute()
-            .when(axis.is_horizontal(), |this| {
-                this.top(px(-0.)).left(start).ml(-px(12.))
-            })
+            .when(axis.is_horizontal(), |this| this.left(start))
             .when(axis.is_vertical(), |this| {
-                this.bottom(start).left(px(-5.)).mb(-px(8.))
+                this.bottom(start).left(px(-5.0)).mb(-px(8.0))
             })
             .flex()
             .items_center()
             .justify_center()
             .flex_shrink_0()
-            // .corner_radii(radius)
             .when(cx.theme().shadow, |this| this.shadow_md())
             .size_3()
-            .rounded_full()
+            .rounded_r_full()
             .p(px(1.0))
             .bg(thumb_color)
             .child(
@@ -615,7 +612,8 @@ impl RenderOnce for Slider {
                             .bg(bar_color)
                             .hover(|this| this.bg(bar_color))
                             .active(|this| this.bg(bar_color))
-                            .rounded_full()
+                            .rounded_l_sm()
+                            .rounded_r_full()
                             .child(
                                 div()
                                     .absolute()
@@ -626,7 +624,7 @@ impl RenderOnce for Slider {
                                         this.w_full().bottom(bar_start).top(bar_end)
                                     })
                                     .bg(thumb_color)
-                                    .rounded_full(),
+                                    .rounded_l_sm(),
                             )
                             .when(is_range, |this| {
                                 this.child(self.render_thumb(
