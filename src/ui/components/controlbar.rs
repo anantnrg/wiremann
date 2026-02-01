@@ -42,15 +42,11 @@ impl Render for ControlBar {
                     .w_full()
                     .h_1_2()
                     .flex()
-                    .gap_4()
+                    .flex_col()
+                    .gap_2()
                     .px_16()
                     .items_center()
                     .justify_center()
-                    .child(div().flex().flex_shrink_0().child(format!(
-                        "{:02}:{:02}",
-                        state.position / 60,
-                        state.position % 60
-                    )))
                     .child(
                         div().flex().w_full().flex_1().child(
                             Slider::new(&self.vol_slider_state)
@@ -58,11 +54,23 @@ impl Render for ControlBar {
                                 .text_color(theme.accent),
                         ),
                     )
-                    .child(div().flex().flex_shrink_0().child(format!(
-                        "{:02}:{:02}",
-                        state.duration / 60,
-                        state.duration % 60
-                    ))),
+                    .child(
+                        div()
+                            .flex()
+                            .w_full()
+                            .items_center()
+                            .justify_between()
+                            .child(div().flex().flex_shrink_0().child(format!(
+                                "{:02}:{:02}",
+                                state.position / 60,
+                                state.position % 60
+                            )))
+                            .child(div().flex().flex_shrink_0().child(format!(
+                                "{:02}:{:02}",
+                                state.duration / 60,
+                                state.duration % 60
+                            ))),
+                    ),
             )
     }
 }

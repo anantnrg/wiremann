@@ -20,11 +20,10 @@ impl Render for NavBar {
         let page = cx.global::<Page>();
 
         div()
+            .w_full()
             .h_full()
-            .w_20()
             .flex()
-            .flex_col()
-            .flex_shrink_0()
+            .flex_1()
             .items_center()
             .bg(theme.panel)
             .py_2()
