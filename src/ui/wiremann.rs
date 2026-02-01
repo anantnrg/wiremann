@@ -61,7 +61,7 @@ impl Wiremann {
         .detach();
 
         cx.set_global(Theme::default());
-        cx.set_global(Page::Home);
+        cx.set_global(Page::Library);
 
         let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
@@ -79,6 +79,7 @@ impl Render for Wiremann {
         div()
             .id("main_container")
             .size_full()
+            .font_family("Space Grotesk")
             .flex()
             .flex_col()
             .justify_center()

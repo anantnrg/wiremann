@@ -6,7 +6,6 @@ use crate::audio::engine::{AudioEngine, PlaybackState};
 use crate::controller::metadata::Metadata;
 use crate::controller::player::{AudioCommand, AudioEvent, Controller, PlayerState, ResHandler};
 use crate::ui::assets::Assets;
-use crate::ui::components::slider::*;
 use crate::ui::wiremann::Wiremann;
 use gpui::*;
 use gpui_component::*;
@@ -21,11 +20,13 @@ pub fn run() {
 
     let controller = Controller::new(audio_tx, event_rx, PlayerState::default());
 
-    let app = Application::new().with_assets(Assets);
+    let assets = Assets {};
+    let app = Application::new().with_assets(assets.clone());
 
     app.run(move |cx| {
         gpui_component::init(cx);
         let bounds = Bounds::centered(None, size(px(1280.0), px(760.0)), cx);
+        assets.load_fonts(cx).expect("Could not load fonts");
 
         cx.spawn(async move |cx| {
             cx.open_window(

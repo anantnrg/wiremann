@@ -2,6 +2,7 @@ use super::Page;
 use crate::ui::theme::Theme;
 
 use crate::ui::icons::Icons;
+use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::Icon;
 
@@ -26,5 +27,30 @@ impl Render for NavBar {
             .border_b_1()
             .border_color(theme.white_05)
             .gap_12()
+            .px_8()
+            .child(
+                div()
+                    .w_auto()
+                    .h_full()
+                    .flex_col()
+                    .items_center()
+                    .justify_center()
+                    .child("Library")
+                    .text_color(if page == &Page::Library {
+                        theme.text_primary
+                    } else {
+                        theme.text_muted
+                    })
+                    .when(page == &Page::Library, |this| {
+                        this.child(
+                            div()
+                                .w_full()
+                                .h_1()
+                                .absolute()
+                                .bottom_neg_4()
+                                .bg(theme.accent),
+                        )
+                    }),
+            )
     }
 }

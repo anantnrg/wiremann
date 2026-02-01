@@ -5,7 +5,8 @@ pub mod titlebar;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Page {
-    Home,
+    Library,
+    Player,
     Playlists,
     Settings,
 }
