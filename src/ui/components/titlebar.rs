@@ -19,6 +19,7 @@ impl Render for Titlebar {
             .items_center()
             .justify_between()
             .border_b_1()
+            .border_color(theme.white_05)
             .bg(theme.bg_titlebar)
             .child(
                 div()

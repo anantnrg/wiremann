@@ -4,7 +4,7 @@ use crate::ui::theme::Theme;
 use crate::ui::icons::Icons;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
-use gpui_component::Icon;
+use gpui_component::{Icon, StyledExt};
 
 #[derive(Clone)]
 pub struct NavBar;
@@ -24,32 +24,90 @@ impl Render for NavBar {
             .h_full()
             .w_auto()
             .flex()
-            .border_b_1()
-            .border_color(theme.white_05)
-            .gap_12()
-            .px_8()
+            .gap_2()
+            // .px_8()
             .child(
                 div()
+                    .id("library")
                     .w_auto()
                     .h_full()
                     .flex_col()
                     .items_center()
                     .justify_center()
+                    .pt_1()
+                    .px_6()
                     .child("Library")
-                    .text_color(if page == &Page::Library {
-                        theme.text_primary
-                    } else {
-                        theme.text_muted
-                    })
+                    .text_color(theme.text_muted)
+                    .on_click(|_, _, cx| *cx.global_mut::<Page>() = Page::Library)
                     .when(page == &Page::Library, |this| {
                         this.child(
                             div()
                                 .w_full()
-                                .h_1()
+                                .h(px(2.0))
                                 .absolute()
-                                .bottom_neg_4()
+                                .bottom_0()
+                                .left_0()
                                 .bg(theme.accent),
                         )
+                        .bg(theme.white_10)
+                        .font_black()
+                        .text_color(theme.text_primary)
+                    }),
+            )
+            .child(
+                div()
+                    .id("player")
+                    .w_auto()
+                    .h_full()
+                    .flex_col()
+                    .items_center()
+                    .justify_center()
+                    .pt_1()
+                    .px_6()
+                    .child("Player")
+                    .text_color(theme.text_muted)
+                    .on_click(|_, _, cx| *cx.global_mut::<Page>() = Page::Player)
+                    .when(page == &Page::Player, |this| {
+                        this.child(
+                            div()
+                                .w_full()
+                                .h(px(2.0))
+                                .absolute()
+                                .bottom_0()
+                                .left_0()
+                                .bg(theme.accent),
+                        )
+                        .bg(theme.white_10)
+                        .font_black()
+                        .text_color(theme.text_primary)
+                    }),
+            )
+            .child(
+                div()
+                    .id("playlists")
+                    .w_auto()
+                    .h_full()
+                    .flex_col()
+                    .items_center()
+                    .justify_center()
+                    .pt_1()
+                    .px_6()
+                    .child("Playlists")
+                    .text_color(theme.text_muted)
+                    .on_click(|_, _, cx| *cx.global_mut::<Page>() = Page::Playlists)
+                    .when(page == &Page::Playlists, |this| {
+                        this.child(
+                            div()
+                                .w_full()
+                                .h(px(2.0))
+                                .absolute()
+                                .bottom_0()
+                                .left_0()
+                                .bg(theme.accent),
+                        )
+                        .bg(theme.white_10)
+                        .font_black()
+                        .text_color(theme.text_primary)
                     }),
             )
     }

@@ -61,7 +61,7 @@ impl Wiremann {
         .detach();
 
         cx.set_global(Theme::default());
-        cx.set_global(Page::Library);
+        cx.set_global(Page::Player);
 
         let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
