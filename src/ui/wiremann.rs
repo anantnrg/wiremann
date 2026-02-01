@@ -1,7 +1,6 @@
 use super::{
     components::{
         controlbar::ControlBar,
-        navbar::NavBar,
         slider::{SliderEvent, SliderState},
         titlebar::Titlebar,
     },
@@ -12,7 +11,6 @@ use gpui::*;
 
 pub struct Wiremann {
     pub titlebar: Entity<Titlebar>,
-    pub navbar: Entity<NavBar>,
     pub controlbar: Entity<ControlBar>,
 }
 
@@ -66,7 +64,6 @@ impl Wiremann {
         cx.set_global(Page::Home);
 
         let titlebar = cx.new(|_| Titlebar::new());
-        let navbar = cx.new(|_| NavBar::new());
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
 
         Self {
@@ -87,23 +84,14 @@ impl Render for Wiremann {
             .flex_col()
             .justify_center()
             .items_center()
-            .bg(theme.bg)
+            .bg(theme.bg_main)
             .child(self.titlebar.clone())
             .child(
                 div()
                     .w_full()
                     .h_full()
                     .flex()
-                    .child(self.navbar.clone())
-                    .child(
-                        div()
-                            .h_full()
-                            .w_full()
-                            .flex()
-                            .flex_col()
-                            .child(div().w_full().h_full().flex())
-                            .child(self.controlbar.clone()),
-                    ),
+
             )
     }
 }

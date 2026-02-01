@@ -4,7 +4,9 @@ use crate::ui::icons::Icons;
 use gpui::*;
 
 #[derive(Clone)]
-pub struct Titlebar;
+pub struct Titlebar {
+    pub navbar: Entity<NavBar>,
+}
 
 impl Render for Titlebar {
     fn render(&mut self, win: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -17,9 +19,8 @@ impl Render for Titlebar {
             .items_center()
             .justify_between()
             .border_b_1()
-            .border_color(theme.border)
-            .bg(theme.panel)
-            .child(div().flex().flex_shrink_0().h_full().w_auto().flex())
+            .bg(theme.bg_titlebar)
+            .child(div().flex().flex_shrink_0().h_full().w_auto().self.navbar.clone())
             .child(
                 div()
                     .flex()
@@ -78,6 +79,10 @@ impl Render for Titlebar {
 
 impl Titlebar {
     pub fn new() -> Titlebar {
-        Titlebar {}
+        let navbar = cx.new(|_| NavBar::new());
+
+        Titlebar {
+            navbar,
+        }
     }
 }
