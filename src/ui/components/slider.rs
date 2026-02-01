@@ -1,10 +1,10 @@
 use std::ops::Range;
 
 use gpui::{
-    AbsoluteLength, Along, App, AppContext as _, Axis, Background, Bounds, Context, Corners,
-    DefiniteLength, DragMoveEvent, Empty, Entity, EntityId, EventEmitter, Hsla, InteractiveElement,
-    IntoElement, MouseButton, MouseDownEvent, ParentElement as _, Pixels, Point, Render,
-    RenderOnce, StatefulInteractiveElement as _, StyleRefinement, Styled, Window, div,
+    Along, App, AppContext as _, Axis, Background, Bounds, Context, Corners, DefiniteLength,
+    DragMoveEvent, Empty, Entity, EntityId, EventEmitter, Hsla, InteractiveElement, IntoElement,
+    MouseButton, MouseDownEvent, ParentElement as _, Pixels, Point, Render, RenderOnce,
+    StatefulInteractiveElement as _, StyleRefinement, Styled, Window, div,
     prelude::FluentBuilder as _, px, relative,
 };
 use gpui_component::{ActiveTheme, AxisExt, ElementExt, StyledExt, h_flex};
@@ -415,7 +415,6 @@ impl Slider {
         is_start: bool,
         bar_color: Background,
         thumb_color: Hsla,
-        radius: Corners<Pixels>,
         window: &mut Window,
         cx: &mut App,
     ) -> impl gpui::IntoElement {

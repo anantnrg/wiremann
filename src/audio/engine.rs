@@ -3,8 +3,8 @@ use crate::controller::{
     player::{AudioCommand, AudioEvent, PlayerState},
 };
 use crossbeam_channel::{Receiver, Sender, select, tick};
-use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source, decoder::DecoderBuilder};
-use std::{fs::File, io::BufReader, path::PathBuf, time::Duration};
+use rodio::{OutputStream, OutputStreamBuilder, Sink, decoder::DecoderBuilder};
+use std::{fs::File, path::PathBuf, time::Duration};
 
 pub struct AudioEngine {
     sink: Sink,

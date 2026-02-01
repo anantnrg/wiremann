@@ -2,9 +2,9 @@ use crate::controller::player::Controller;
 use crate::ui::theme::Theme;
 
 use super::slider::{Slider, SliderState};
-use crate::ui::icons::Icons;
+// use crate::ui::icons::Icons;
 use gpui::*;
-use gpui_component::Icon;
+// use gpui_component::Icon;
 
 #[derive(Clone)]
 pub struct ControlBar {

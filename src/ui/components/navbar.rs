@@ -1,10 +1,9 @@
 use super::Page;
 use crate::ui::theme::Theme;
 
-use crate::ui::icons::Icons;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
-use gpui_component::{Icon, StyledExt};
+use gpui_component::StyledExt;
 
 #[derive(Clone)]
 pub struct NavBar;
