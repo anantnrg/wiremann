@@ -1,6 +1,6 @@
-use crate::ui::theme::Theme;
-
+use super::navbar::NavBar;
 use crate::ui::icons::Icons;
+use crate::ui::theme::Theme;
 use gpui::*;
 
 #[derive(Clone)]
@@ -20,7 +20,14 @@ impl Render for Titlebar {
             .justify_between()
             .border_b_1()
             .bg(theme.bg_titlebar)
-            .child(div().flex().flex_shrink_0().h_full().w_auto().self.navbar.clone())
+            .child(
+                div()
+                    .flex()
+                    .flex_shrink_0()
+                    .h_full()
+                    .w_auto()
+                    .child(self.navbar.clone()),
+            )
             .child(
                 div()
                     .flex()
@@ -43,7 +50,7 @@ impl Render for Titlebar {
                             .items_center()
                             .justify_center()
                             .child(Icons::WinMin)
-                            .hover(|this| this.bg(theme.highlighted))
+                            .hover(|this| this.bg(theme.white_08))
                             .window_control_area(WindowControlArea::Min),
                     )
                     .child(
@@ -54,7 +61,7 @@ impl Render for Titlebar {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .hover(|this| this.bg(theme.highlighted))
+                            .hover(|this| this.bg(theme.white_08))
                             .child(if win.is_maximized() {
                                 Icons::WinRes
                             } else {
@@ -78,11 +85,9 @@ impl Render for Titlebar {
 }
 
 impl Titlebar {
-    pub fn new() -> Titlebar {
+    pub fn new(cx: &mut App) -> Titlebar {
         let navbar = cx.new(|_| NavBar::new());
 
-        Titlebar {
-            navbar,
-        }
+        Titlebar { navbar }
     }
 }

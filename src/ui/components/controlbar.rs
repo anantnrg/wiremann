@@ -34,9 +34,9 @@ impl Render for ControlBar {
             .h_32()
             .flex()
             .flex_col()
-            .bg(theme.panel)
+            // .bg(theme.panel)
             .border_t_1()
-            .border_color(theme.border)
+            // .border_color(theme.border)
             .child(
                 div()
                     .w_full()
@@ -50,7 +50,7 @@ impl Render for ControlBar {
                     .child(
                         div().flex().w_full().flex_1().child(
                             Slider::new(&self.vol_slider_state)
-                                .bg(theme.highlighted)
+                                // .bg(theme.highlighted)
                                 .text_color(theme.accent),
                         ),
                     )

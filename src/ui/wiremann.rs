@@ -63,12 +63,11 @@ impl Wiremann {
         cx.set_global(Theme::default());
         cx.set_global(Page::Home);
 
-        let titlebar = cx.new(|_| Titlebar::new());
+        let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
 
         Self {
             titlebar,
-            navbar,
             controlbar,
         }
     }
@@ -86,13 +85,7 @@ impl Render for Wiremann {
             .items_center()
             .bg(theme.bg_main)
             .child(self.titlebar.clone())
-            .child(
-                div()
-                    .w_full()
-                    .h_full()
-                    .flex()
-
-            )
+            .child(div().w_full().h_full().flex())
     }
 }
 
