@@ -1,6 +1,7 @@
 use super::{
     components::{
         controlbar::ControlBar,
+        pages::player::PlayerPage,
         slider::{SliderEvent, SliderState},
         titlebar::Titlebar,
     },
@@ -12,6 +13,7 @@ use gpui::*;
 pub struct Wiremann {
     pub titlebar: Entity<Titlebar>,
     pub controlbar: Entity<ControlBar>,
+    pub player_page: Entity<PlayerPage>,
 }
 
 impl Wiremann {
@@ -65,10 +67,12 @@ impl Wiremann {
 
         let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
+        let player_page = cx.new(|_| PlayerPage::new());
 
         Self {
             titlebar,
             controlbar,
+            player_page,
         }
     }
 }
@@ -86,7 +90,10 @@ impl Render for Wiremann {
             .items_center()
             .bg(theme.bg_main)
             .child(self.titlebar.clone())
-            .child(div().w_full().h_full().flex())
+            .child(match cx.global::<Page>() {
+                Page::Player => div().w_full().h_full().child(self.player_page.clone()),
+                _ => div(),
+            })
     }
 }
 

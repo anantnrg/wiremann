@@ -2,7 +2,7 @@ use anyhow::Result;
 use image::{ImageReader, Rgba, RgbaImage};
 use lofty::{prelude::*, probe::Probe};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{io::Cursor, path::PathBuf};
 
 #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Metadata {
@@ -15,6 +15,7 @@ pub struct Metadata {
     pub producer: String,
     pub publisher: String,
     pub label: String,
+    pub thumbnail: Option<Thumbnail>
 }
 
 #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
@@ -35,17 +36,17 @@ impl Metadata {
                 .expect("ERROR: could not find any tags!"),
         };
 
-        let image_data = match tag.pictures().get(0) {
+        let thumbnail = match tag.pictures().get(0) {
             Some(data) => {
                 let bytes = data.data();
-                let image = ImageReader::new(Cursor::new(bytes.clone()))
+                let image = ImageReader::new(Cursor::new(bytes))
                     .with_guessed_format()?
                     .decode()?
                     .into_rgba8();
-                let (width, height) = img.dimensions();
+                let (width, height) = image.dimensions();
 
                 Some(Thumbnail {
-                    image,
+                    image: image.as_raw().clone(),
                     width,
                     height,
                 })
@@ -98,6 +99,7 @@ impl Metadata {
             producer,
             publisher,
             label,
+            thumbnail
         })
     }
 }

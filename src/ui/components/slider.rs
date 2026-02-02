@@ -495,7 +495,6 @@ impl RenderOnce for Slider {
         let percentage = state.percentage.clone();
         let bar_start = relative(percentage.start);
         let bar_end = relative(1. - percentage.end);
-        let rem_size = window.rem_size();
 
         let bar_color = self
             .style
@@ -508,26 +507,6 @@ impl RenderOnce for Slider {
             .text
             .color
             .unwrap_or_else(|| cx.theme().slider_thumb);
-        let corner_radii = self.style.corner_radii.clone();
-        let default_radius = px(2.0);
-        let radius = Corners {
-            top_left: corner_radii
-                .top_left
-                .map(|v| v.to_pixels(rem_size))
-                .unwrap_or(default_radius),
-            top_right: corner_radii
-                .top_right
-                .map(|v| v.to_pixels(rem_size))
-                .unwrap_or(default_radius),
-            bottom_left: corner_radii
-                .bottom_left
-                .map(|v| v.to_pixels(rem_size))
-                .unwrap_or(default_radius),
-            bottom_right: corner_radii
-                .bottom_right
-                .map(|v| v.to_pixels(rem_size))
-                .unwrap_or(default_radius),
-        };
 
         div()
             .id(("slider", self.state.entity_id()))

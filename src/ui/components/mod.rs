@@ -1,5 +1,6 @@
 pub mod controlbar;
 pub mod navbar;
+pub mod pages;
 pub mod slider;
 pub mod titlebar;
 
