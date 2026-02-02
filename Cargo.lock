@@ -7289,6 +7289,7 @@ dependencies = [
  "gpui",
  "gpui-component",
  "gpui-component-assets",
+ "image",
  "lofty",
  "rodio",
  "rust-embed",

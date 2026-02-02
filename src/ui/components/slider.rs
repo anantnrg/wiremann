@@ -631,7 +631,6 @@ impl RenderOnce for Slider {
                                     true,
                                     bar_color,
                                     thumb_color,
-                                    radius,
                                     window,
                                     cx,
                                 ))
@@ -641,7 +640,6 @@ impl RenderOnce for Slider {
                                 false,
                                 bar_color,
                                 thumb_color,
-                                radius,
                                 window,
                                 cx,
                             ))

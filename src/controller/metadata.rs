@@ -1,4 +1,5 @@
 use anyhow::Result;
+use image::{ImageReader, Rgba, RgbaImage};
 use lofty::{prelude::*, probe::Probe};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -16,6 +17,13 @@ pub struct Metadata {
     pub label: String,
 }
 
+#[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
+pub struct Thumbnail {
+    pub image: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
+}
+
 impl Metadata {
     pub fn read(path: PathBuf) -> Result<Self> {
         let tagged_file = Probe::open(path.clone())?.guess_file_type()?.read()?;
@@ -25,6 +33,24 @@ impl Metadata {
             None => tagged_file
                 .first_tag()
                 .expect("ERROR: could not find any tags!"),
+        };
+
+        let image_data = match tag.pictures().get(0) {
+            Some(data) => {
+                let bytes = data.data();
+                let image = ImageReader::new(Cursor::new(bytes.clone()))
+                    .with_guessed_format()?
+                    .decode()?
+                    .into_rgba8();
+                let (width, height) = img.dimensions();
+
+                Some(Thumbnail {
+                    image,
+                    width,
+                    height,
+                })
+            }
+            None => None,
         };
 
         let title = tag
