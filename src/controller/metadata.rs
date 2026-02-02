@@ -1,5 +1,6 @@
 use anyhow::Result;
-use image::{ImageReader, Rgba, RgbaImage};
+use gpui::ImageFormat;
+use image::{Frame, ImageReader, Rgba, RgbaImage};
 use lofty::{prelude::*, probe::Probe};
 use serde::{Deserialize, Serialize};
 use std::{io::Cursor, path::PathBuf};
@@ -15,12 +16,13 @@ pub struct Metadata {
     pub producer: String,
     pub publisher: String,
     pub label: String,
-    pub thumbnail: Option<Thumbnail>
+    pub thumbnail: Option<Thumbnail>,
 }
 
 #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Thumbnail {
     pub image: Vec<u8>,
+    pub format: String,
     pub width: u32,
     pub height: u32,
 }
@@ -38,17 +40,23 @@ impl Metadata {
 
         let thumbnail = match tag.pictures().get(0) {
             Some(data) => {
-                let bytes = data.data();
-                let image = ImageReader::new(Cursor::new(bytes))
+                let bytes = data.data().to_vec();
+
+                let image = ImageReader::new(Cursor::new(bytes.clone()))
                     .with_guessed_format()?
                     .decode()?
                     .into_rgba8();
                 let (width, height) = image.dimensions();
 
+                let format_parts: Vec<&str> =
+                    data.mime_type().unwrap().as_str().split("/").collect();
+                let format = format_parts[1].to_string();
+
                 Some(Thumbnail {
-                    image: image.as_raw().clone(),
+                    image: bytes,
                     width,
                     height,
+                    format,
                 })
             }
             None => None,
@@ -99,7 +107,7 @@ impl Metadata {
             producer,
             publisher,
             label,
-            thumbnail
+            thumbnail,
         })
     }
 }
