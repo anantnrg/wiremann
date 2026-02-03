@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::{
     components::{
         controlbar::ControlBar,
@@ -7,7 +9,11 @@ use super::{
     },
     theme::Theme,
 };
-use crate::{audio::engine::PlaybackState, controller::player::Controller, ui::components::Page};
+use crate::{
+    audio::engine::PlaybackState,
+    controller::{player::Controller, playlist::Playlist},
+    ui::components::Page,
+};
 use gpui::*;
 
 pub struct Wiremann {
@@ -71,6 +77,8 @@ impl Wiremann {
 
         cx.global::<Controller>()
             .load("E:\\music\\violence ft. doomguy\\468 - GIVE ME A REASON.mp3".to_string());
+
+        Playlist::open_path(PathBuf::from("E:\\music\\violence ft. doomguy"));
 
         Self {
             titlebar,

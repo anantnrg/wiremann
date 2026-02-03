@@ -38,29 +38,30 @@ impl Metadata {
                 .expect("ERROR: could not find any tags!"),
         };
 
-        let thumbnail = match tag.pictures().get(0) {
-            Some(data) => {
-                let bytes = data.data().to_vec();
+        // let thumbnail = match tag.pictures().get(0) {
+        //     Some(data) => {
+        //         let bytes = data.data().to_vec();
 
-                let image = ImageReader::new(Cursor::new(bytes.clone()))
-                    .with_guessed_format()?
-                    .decode()?
-                    .into_rgba8();
-                let (width, height) = image.dimensions();
+        //         let image = ImageReader::new(Cursor::new(bytes.clone()))
+        //             .with_guessed_format()?
+        //             .decode()?
+        //             .into_rgba8();
+        //         let (width, height) = image.dimensions();
 
-                let format_parts: Vec<&str> =
-                    data.mime_type().unwrap().as_str().split("/").collect();
-                let format = format_parts[1].to_string();
+        //         let format_parts: Vec<&str> =
+        //             data.mime_type().unwrap().as_str().split("/").collect();
+        //         let format = format_parts[1].to_string();
 
-                Some(Thumbnail {
-                    image: bytes,
-                    width,
-                    height,
-                    format,
-                })
-            }
-            None => None,
-        };
+        //         Some(Thumbnail {
+        //             image: bytes,
+        //             width,
+        //             height,
+        //             format,
+        //         })
+        //     }
+        //     None => None,
+        // };
+        let thumbnail = None;
 
         let title = tag
             .get_string(&ItemKey::TrackTitle)
