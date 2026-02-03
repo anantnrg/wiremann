@@ -7291,10 +7291,12 @@ dependencies = [
  "gpui-component-assets",
  "image",
  "lofty",
+ "rayon",
  "rodio",
  "rust-embed",
  "serde",
  "smallvec",
+ "walkdir",
 ]
 
 [[package]]

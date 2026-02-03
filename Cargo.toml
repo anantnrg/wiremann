@@ -12,7 +12,9 @@ gpui-component = { git = "https://github.com/anantnrg/gpui-component" }
 gpui-component-assets = { git = "https://github.com/anantnrg/gpui-component" }
 image = "0.25.9"
 lofty = "0.22.4"
+rayon = "1.11.0"
 rodio = { version = "0.21.1", features = ["symphonia-all"] }
 rust-embed = "8.11.0"
 serde = "1.0.228"
 smallvec = "1.15.1"
+walkdir = "2.5.0"

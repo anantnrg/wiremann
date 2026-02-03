@@ -105,5 +105,11 @@ pub enum PlayerStateEvent {
     Position(u64),
 }
 
+#[derive(Clone)]
+pub struct Track {
+    pub path: PathBuf,
+    pub meta: Metadata,
+}
+
 impl EventEmitter<AudioEvent> for ResHandler {}
 impl EventEmitter<PlayerStateEvent> for PlayerState {}

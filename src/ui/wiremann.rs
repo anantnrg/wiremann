@@ -69,6 +69,9 @@ impl Wiremann {
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
         let player_page = cx.new(|_| PlayerPage::new());
 
+        cx.global::<Controller>()
+            .load("E:\\music\\violence ft. doomguy\\468 - GIVE ME A REASON.mp3".to_string());
+
         Self {
             titlebar,
             controlbar,

@@ -25,23 +25,23 @@ impl Render for PlayerPage {
             .flex()
             .items_center()
             .justify_center()
-            .child(
-                div()
-                    .id("load")
-                    .w_40()
-                    .h_8()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .bg(theme.bg_queue)
-                    .rounded_md()
-                    .child("Load")
-                    .on_click(|_, _, cx| {
-                        cx.global::<Controller>().load(
-                            "E:\\music\\violence ft. doomguy\\454 - Bad and Boujee.mp3".to_string(),
-                        )
-                    }),
-            )
+            // .child(
+            //     div()
+            //         .id("load")
+            //         .w_40()
+            //         .h_8()
+            //         .flex()
+            //         .items_center()
+            //         .justify_center()
+            //         .bg(theme.bg_queue)
+            //         .rounded_md()
+            //         .child("Load")
+            //         .on_click(|_, _, cx| {
+            //             cx.global::<Controller>().load(
+            //                 "E:\\music\\violence ft. doomguy\\454 - Bad and Boujee.mp3".to_string(),
+            //             )
+            //         }),
+            // )
             .child(
                 if let Some(meta) = cx.global::<Controller>().state.meta.clone() {
                     if let Some(thumbnail) = meta.thumbnail {
