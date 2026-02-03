@@ -1,9 +1,7 @@
 use anyhow::Result;
-use gpui::ImageFormat;
-use image::{Frame, ImageReader, Rgba, RgbaImage};
 use lofty::{prelude::*, probe::Probe};
 use serde::{Deserialize, Serialize};
-use std::{io::Cursor, path::PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
 pub struct Metadata {
@@ -23,8 +21,6 @@ pub struct Metadata {
 pub struct Thumbnail {
     pub image: Vec<u8>,
     pub format: String,
-    pub width: u32,
-    pub height: u32,
 }
 
 impl Metadata {
@@ -38,30 +34,21 @@ impl Metadata {
                 .expect("ERROR: could not find any tags!"),
         };
 
-        // let thumbnail = match tag.pictures().get(0) {
-        //     Some(data) => {
-        //         let bytes = data.data().to_vec();
+        let thumbnail = match tag.pictures().get(0) {
+            Some(data) => {
+                let bytes = data.data().to_vec();
 
-        //         let image = ImageReader::new(Cursor::new(bytes.clone()))
-        //             .with_guessed_format()?
-        //             .decode()?
-        //             .into_rgba8();
-        //         let (width, height) = image.dimensions();
+                let format_parts: Vec<&str> =
+                    data.mime_type().unwrap().as_str().split("/").collect();
+                let format = format_parts[1].to_string();
 
-        //         let format_parts: Vec<&str> =
-        //             data.mime_type().unwrap().as_str().split("/").collect();
-        //         let format = format_parts[1].to_string();
-
-        //         Some(Thumbnail {
-        //             image: bytes,
-        //             width,
-        //             height,
-        //             format,
-        //         })
-        //     }
-        //     None => None,
-        // };
-        let thumbnail = None;
+                Some(Thumbnail {
+                    image: bytes,
+                    format,
+                })
+            }
+            None => None,
+        };
 
         let title = tag
             .get_string(&ItemKey::TrackTitle)

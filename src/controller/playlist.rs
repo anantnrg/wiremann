@@ -10,9 +10,9 @@ pub struct Playlist {
 }
 
 impl Playlist {
-    pub fn open_path(path: PathBuf) {
+    pub fn open_path(path: PathBuf) -> Playlist {
         let supported = ["mp3", "flac", "wav", "ogg", "m4a"];
-        let files: Vec<PathBuf> = WalkDir::new(path)
+        let tracks: Vec<Track> = WalkDir::new(path.clone())
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_file())
@@ -24,15 +24,28 @@ impl Playlist {
                     .unwrap_or(false)
             })
             .map(|e| e.path().to_path_buf())
-            .collect();
-
-        let metadatas: Vec<Metadata> = files
+            .collect::<Vec<_>>()
             .par_iter()
-            .filter_map(|file| Metadata::read(file.clone()).ok())
+            .filter_map(|file| {
+                Metadata::read(file.clone()).ok().map(|meta| Track {
+                    path: file.clone(),
+                    meta,
+                })
+            })
             .collect();
 
-        for m in metadatas {
-            println!("{:#?}", m.title);
+        let name = path
+            .file_name()
+            .and_then(|os_str| os_str.to_str())
+            .map(|s| s.to_string())
+            .unwrap();
+
+        Playlist {
+            name,
+            path: Some(path),
+            tracks,
         }
     }
 }
+
+impl gpui::Global for Playlist {}
