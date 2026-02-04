@@ -78,7 +78,10 @@ impl Wiremann {
         cx.global::<Controller>()
             .load("E:\\music\\violence ft. doomguy\\468 - GIVE ME A REASON.mp3".to_string());
 
-        Playlist::open_path(PathBuf::from("E:\\music\\violence ft. doomguy"));
+        cx.background_executor().spawn(async move {
+            Playlist::open_path(PathBuf::from("E:\\music\\violence ft. doomguy"));
+        }).detach();
+
 
         Self {
             titlebar,
