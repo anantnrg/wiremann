@@ -1,13 +1,14 @@
 use super::metadata::Metadata;
 use crate::audio::engine::PlaybackState;
+use crate::scanner::Playlist;
 use crossbeam_channel::{Receiver, Sender};
 use gpui::*;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct Controller {
-    pub audio_tx: Sender<AudioCommand>,
-    pub event_rx: Receiver<AudioEvent>,
+    pub audio_cmd_tx: Sender<AudioCommand>,
+    pub audio_events_rx: Receiver<AudioEvent>,
     pub state: PlayerState,
 }
 
@@ -38,41 +39,50 @@ pub enum AudioEvent {
     TrackEnded,
 }
 
+pub enum ScannerCommand {
+    Load(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ScannerEvent {
+    Playlist(Playlist)
+}
+
 impl Controller {
     pub fn new(
-        audio_tx: Sender<AudioCommand>,
-        event_rx: Receiver<AudioEvent>,
+        audio_cmd_tx: Sender<AudioCommand>,
+        audio_events_rx: Receiver<AudioEvent>,
         state: PlayerState,
     ) -> Controller {
         Controller {
-            audio_tx,
-            event_rx,
+            audio_cmd_tx,
+            audio_events_rx,
             state,
         }
     }
 
     pub fn play(&self) {
-        let _ = self.audio_tx.send(AudioCommand::Play);
+        let _ = self.audio_cmd_tx.send(AudioCommand::Play);
     }
 
     pub fn pause(&self) {
-        let _ = self.audio_tx.send(AudioCommand::Pause);
+        let _ = self.audio_cmd_tx.send(AudioCommand::Pause);
     }
 
     pub fn load(&self, path: String) {
-        let _ = self.audio_tx.send(AudioCommand::Load(path));
+        let _ = self.audio_cmd_tx.send(AudioCommand::Load(path));
     }
 
     pub fn volume(&self, volume: f32) {
-        let _ = self.audio_tx.send(AudioCommand::Volume(volume / 100.0));
+        let _ = self.audio_cmd_tx.send(AudioCommand::Volume(volume / 100.0));
     }
 
     pub fn seek(&self, secs: u64) {
-        let _ = self.audio_tx.send(AudioCommand::Seek(secs));
+        let _ = self.audio_cmd_tx.send(AudioCommand::Seek(secs));
     }
 
     pub fn set_meta_in_engine(&self, meta: Metadata) {
-        let _ = self.audio_tx.send(AudioCommand::Meta(meta));
+        let _ = self.audio_cmd_tx.send(AudioCommand::Meta(meta));
     }
 }
 
@@ -105,7 +115,7 @@ pub enum PlayerStateEvent {
     Position(u64),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Track {
     pub path: PathBuf,
     pub meta: Metadata,

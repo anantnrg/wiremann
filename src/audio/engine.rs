@@ -2,16 +2,16 @@ use crate::controller::{
     metadata::Metadata,
     player::{AudioCommand, AudioEvent, PlayerState},
 };
-use crossbeam_channel::{Receiver, Sender, select, tick};
-use rodio::{OutputStream, OutputStreamBuilder, Sink, decoder::DecoderBuilder};
+use crossbeam_channel::{select, tick, Receiver, Sender};
+use rodio::{decoder::DecoderBuilder, OutputStream, OutputStreamBuilder, Sink};
 use std::{fs::File, path::PathBuf, time::Duration};
 
 pub struct AudioEngine {
     sink: Sink,
     stream_handle: OutputStream,
     player_state: PlayerState,
-    audio_rx: Receiver<AudioCommand>,
-    event_tx: Sender<AudioEvent>,
+    audio_cmd_rx: Receiver<AudioCommand>,
+    audio_event_tx: Sender<AudioEvent>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -23,7 +23,7 @@ pub enum PlaybackState {
 }
 
 impl AudioEngine {
-    pub fn run(audio_rx: Receiver<AudioCommand>, event_tx: Sender<AudioEvent>) {
+    pub fn run(audio_cmd_rx: Receiver<AudioCommand>, audio_event_tx: Sender<AudioEvent>) {
         let stream_handle = OutputStreamBuilder::open_default_stream().unwrap();
         let sink = Sink::connect_new(&stream_handle.mixer());
 
@@ -31,8 +31,8 @@ impl AudioEngine {
             sink,
             stream_handle,
             player_state: PlayerState::default(),
-            audio_rx,
-            event_tx,
+            audio_cmd_rx,
+            audio_event_tx,
         };
 
         engine.event_loop();
@@ -43,7 +43,7 @@ impl AudioEngine {
 
         loop {
             select! {
-                recv(self.audio_rx) -> msg => {
+                recv(self.audio_cmd_rx) -> msg => {
                     let cmd = match msg {
                         Ok(c) => c,
                         Err(_) => break,
@@ -84,12 +84,12 @@ impl AudioEngine {
         self.sink.set_volume(self.player_state.volume);
         self.sink.append(source);
 
-        let _ = self.event_tx.send(AudioEvent::TrackLoaded(path));
+        let _ = self.audio_event_tx.send(AudioEvent::TrackLoaded(path));
 
         self.player_state.state = PlaybackState::Playing;
 
         let _ = self
-            .event_tx
+            .audio_event_tx
             .send(AudioEvent::StateChanged(self.player_state.clone()));
     }
 
@@ -103,7 +103,7 @@ impl AudioEngine {
             self.sink.play();
             self.player_state.state = PlaybackState::Playing;
             let _ = self
-                .event_tx
+                .audio_event_tx
                 .send(AudioEvent::StateChanged(self.player_state.clone()));
         }
     }
@@ -113,7 +113,7 @@ impl AudioEngine {
             self.sink.pause();
             self.player_state.state = PlaybackState::Paused;
             let _ = self
-                .event_tx
+                .audio_event_tx
                 .send(AudioEvent::StateChanged(self.player_state.clone()));
         }
     }
@@ -122,7 +122,7 @@ impl AudioEngine {
         self.sink.stop();
         self.player_state.state = PlaybackState::Stopped;
         let _ = self
-            .event_tx
+            .audio_event_tx
             .send(AudioEvent::StateChanged(self.player_state.clone()));
     }
 
@@ -130,13 +130,13 @@ impl AudioEngine {
         self.player_state.volume = volume.clamp(0.0, 1.0);
         self.sink.set_volume(self.player_state.volume);
         let _ = self
-            .event_tx
+            .audio_event_tx
             .send(AudioEvent::StateChanged(self.player_state.clone()));
     }
 
     fn send_player_state(&mut self) {
         let _ = self
-            .event_tx
+            .audio_event_tx
             .send(AudioEvent::StateChanged(self.player_state.clone()));
     }
 

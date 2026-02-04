@@ -11,14 +11,14 @@ use gpui::*;
 use gpui_component::*;
 
 pub fn run() {
-    let (audio_tx, audio_rx) = unbounded::<AudioCommand>();
-    let (events_tx, event_rx) = unbounded::<AudioEvent>();
+    let (audio_cmd_tx, audio_cmd_rx) = unbounded::<AudioCommand>();
+    let (audio_events_tx, audio_events_rx) = unbounded::<AudioEvent>();
 
     thread::spawn(move || {
-        AudioEngine::run(audio_rx, events_tx);
+        AudioEngine::run(audio_cmd_rx, audio_events_tx);
     });
 
-    let controller = Controller::new(audio_tx, event_rx, PlayerState::default());
+    let controller = Controller::new(audio_cmd_tx, audio_events_rx, PlayerState::default());
 
     let assets = Assets {};
     let app = Application::new().with_assets(assets.clone());
@@ -58,7 +58,7 @@ pub fn run() {
                         cx.spawn(async move |_, cx| {
                             let res_handler = arc_res.clone();
                             loop {
-                                while let Ok(event) = controller_evt_clone.event_rx.try_recv() {
+                                while let Ok(event) = controller_evt_clone.audio_events_rx.try_recv() {
                                     res_handler.update(&mut cx.clone(), |res_handler, cx| {
                                         res_handler.handle(cx, event);
                                     });
