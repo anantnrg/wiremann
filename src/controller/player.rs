@@ -9,6 +9,8 @@ use std::path::PathBuf;
 pub struct Controller {
     pub audio_cmd_tx: Sender<AudioCommand>,
     pub audio_events_rx: Receiver<AudioEvent>,
+    pub scanner_cmd_tx: Sender<ScannerCommand>,
+    pub scanner_events_rx: Receiver<ScannerEvent>,
     pub state: PlayerState,
 }
 
@@ -52,11 +54,15 @@ impl Controller {
     pub fn new(
         audio_cmd_tx: Sender<AudioCommand>,
         audio_events_rx: Receiver<AudioEvent>,
+        scanner_cmd_tx: Sender<ScannerCommand>,
+        scanner_events_rx: Receiver<ScannerEvent>,
         state: PlayerState,
     ) -> Controller {
         Controller {
             audio_cmd_tx,
             audio_events_rx,
+            scanner_cmd_tx,
+            scanner_events_rx,
             state,
         }
     }

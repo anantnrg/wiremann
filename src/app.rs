@@ -4,7 +4,8 @@ use std::{thread, time::Duration};
 
 use crate::audio::engine::{AudioEngine, PlaybackState};
 use crate::controller::metadata::Metadata;
-use crate::controller::player::{AudioCommand, AudioEvent, Controller, PlayerState, ResHandler};
+use crate::controller::player::{AudioCommand, AudioEvent, Controller, PlayerState, ResHandler, ScannerCommand, ScannerEvent};
+use crate::scanner::Scanner;
 use crate::ui::assets::Assets;
 use crate::ui::wiremann::Wiremann;
 use gpui::*;
@@ -13,12 +14,19 @@ use gpui_component::*;
 pub fn run() {
     let (audio_cmd_tx, audio_cmd_rx) = unbounded::<AudioCommand>();
     let (audio_events_tx, audio_events_rx) = unbounded::<AudioEvent>();
+    let (scanner_cmd_tx, scanner_cmd_rx) = unbounded::<ScannerCommand>();
+    let (scanner_events_tx, scanner_events_rx) = unbounded::<ScannerEvent>();
 
     thread::spawn(move || {
         AudioEngine::run(audio_cmd_rx, audio_events_tx);
     });
 
-    let controller = Controller::new(audio_cmd_tx, audio_events_rx, PlayerState::default());
+    thread::spawn(move || {
+        Scanner::run(scanner_cmd_rx, scanner_events_tx);
+    });
+
+
+    let controller = Controller::new(audio_cmd_tx, audio_events_rx, scanner_cmd_tx, scanner_events_rx, PlayerState::default());
 
     let assets = Assets {};
     let app = Application::new().with_assets(assets.clone());

@@ -55,7 +55,22 @@ impl Scanner {
     fn load(&mut self, path: &String) {
         // TODO: Check if playlist has already been cached
 
-        let tracks = self.scan(PathBuf::from(path));
+        let path = PathBuf::from(path);
+        let tracks = self.scan(path.clone());
+
+        let name = path
+            .file_name()
+            .and_then(|os_str| os_str.to_str())
+            .map(|s| s.to_string())
+            .unwrap();
+
+        let playlist = Playlist {
+            name,
+            path: Some(path),
+            tracks,
+        };
+
+        let _ = self.scanner_event_tx.send(ScannerEvent::Playlist(playlist));
     }
 
     fn scan(&mut self, path: PathBuf) -> Vec<Track> {
