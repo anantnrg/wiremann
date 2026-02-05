@@ -1,13 +1,13 @@
 use std::ops::Range;
 
 use gpui::{
-    Along, App, AppContext as _, Axis, Background, Bounds, Context, Corners, DefiniteLength,
-    DragMoveEvent, Empty, Entity, EntityId, EventEmitter, Hsla, InteractiveElement, IntoElement,
-    MouseButton, MouseDownEvent, ParentElement as _, Pixels, Point, Render, RenderOnce,
-    StatefulInteractiveElement as _, StyleRefinement, Styled, Window, div,
-    prelude::FluentBuilder as _, px, relative,
+    div, prelude::FluentBuilder as _, px, relative, Along, App, AppContext as _, Axis,
+    Background, Bounds, Context, DefiniteLength, DragMoveEvent, Empty, Entity, EntityId,
+    EventEmitter, Hsla, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement as _,
+    Pixels, Point, Render, RenderOnce, StatefulInteractiveElement as _,
+    StyleRefinement, Styled, Window,
 };
-use gpui_component::{ActiveTheme, AxisExt, ElementExt, StyledExt, h_flex};
+use gpui_component::{h_flex, ActiveTheme, AxisExt, ElementExt, StyledExt};
 
 #[derive(Clone)]
 struct DragThumb((EntityId, bool));

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::controller::player::Controller;
 use crate::ui::theme::Theme;
 
+use crate::controller::player::Controller;
 use gpui::*;
 
 #[derive(Clone)]
@@ -18,36 +18,79 @@ impl Render for PlayerPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
 
+        let player_state = cx.global::<Controller>().player_state.clone();
+        let scanner_state = cx.global::<Controller>().scanner_state.clone();
+
         div()
             .size_full()
             .flex()
             .items_center()
             .justify_center()
+            .child(
+                div()
+                    .h_full()
+                    .w_full()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .px_16()
+                    .py_12()
+                    .child(if let Some(meta) = player_state.meta {
+                        div()
+                            .w_auto()
+                            .h_auto()
+                            .flex()
+                            .flex_col()
+                            .items_center()
+                            .justify_center()
+                            .gap_y_8()
+                            .child(if let Some(thumbnail) = meta.thumbnail {
+                                div().size_96().child(
+                                    img(ImageSource::Image(Arc::new(Image::from_bytes(
+                                        get_img_format(thumbnail.format),
+                                        thumbnail.image,
+                                    ))))
+                                        .object_fit(ObjectFit::Contain)
+                                        .size_full().rounded_xl(),
+                                )
+                            } else {
+                                div().size_full()
+                            })
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_y_2()
+                                    .items_center()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .text_2xl()
+                                            .text_color(theme.text_primary)
+                                            .font_weight(FontWeight(500.0))
+                                            .child(meta.title.clone()),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_base()
+                                            .text_color(theme.text_muted)
+                                            .font_weight(FontWeight(400.0))
+                                            .child(meta.artists.join(", ").clone()),
+                                    ),
+                            )
+                    } else {
+                        div()
+                    }),
+            )
+            .child(div().w(px(1.0)).h_full().bg(theme.white_05))
+            .child(div().h_full().w_80().flex_shrink_0().flex().flex_col())
     }
 }
 
-fn thumbnail_display(cx: &mut App) -> impl IntoElement {
-    let theme = cx.global::<Theme>();
-
-    if let Some(meta) = cx.global::<Controller>().player_state.meta.clone() {
-        if let Some(thumbnail) = meta.thumbnail {
-            let format = match thumbnail.format.as_str() {
-                "png" => ImageFormat::Png,
-                "jpeg" | "jpg" => ImageFormat::Jpeg,
-                _ => ImageFormat::Bmp,
-            };
-            div().bg(theme.white_10).size_56().child(
-                img(ImageSource::Image(Arc::new(Image::from_bytes(
-                    format,
-                    thumbnail.image,
-                ))))
-                    .object_fit(ObjectFit::Contain)
-                    .size_full(),
-            )
-        } else {
-            div()
-        }
-    } else {
-        div()
+fn get_img_format(format: String) -> ImageFormat {
+    match format.as_str() {
+        "png" => ImageFormat::Png,
+        "jpeg" | "jpg" => ImageFormat::Jpeg,
+        _ => ImageFormat::Bmp,
     }
 }
