@@ -70,7 +70,9 @@ impl Scanner {
             tracks,
         };
 
-        let _ = self.scanner_event_tx.send(ScannerEvent::Playlist(playlist));
+        self.state.current_playlist = Some(playlist);
+
+        let _ = self.scanner_event_tx.send(ScannerEvent::State(self.state.clone()));
     }
 
     fn scan(&mut self, path: PathBuf) -> Vec<Track> {

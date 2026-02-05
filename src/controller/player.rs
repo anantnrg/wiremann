@@ -1,6 +1,6 @@
 use super::metadata::Metadata;
 use crate::audio::engine::PlaybackState;
-use crate::scanner::Playlist;
+use crate::scanner::ScannerState;
 use crossbeam_channel::{Receiver, Sender};
 use gpui::*;
 use std::path::PathBuf;
@@ -11,7 +11,8 @@ pub struct Controller {
     pub audio_events_rx: Receiver<AudioEvent>,
     pub scanner_cmd_tx: Sender<ScannerCommand>,
     pub scanner_events_rx: Receiver<ScannerEvent>,
-    pub state: PlayerState,
+    pub player_state: PlayerState,
+    pub scanner_state: ScannerState,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -47,7 +48,13 @@ pub enum ScannerCommand {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScannerEvent {
-    Playlist(Playlist)
+    State(ScannerState)
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Event {
+    Audio(AudioEvent),
+    Scanner(ScannerEvent),
 }
 
 impl Controller {
@@ -56,14 +63,16 @@ impl Controller {
         audio_events_rx: Receiver<AudioEvent>,
         scanner_cmd_tx: Sender<ScannerCommand>,
         scanner_events_rx: Receiver<ScannerEvent>,
-        state: PlayerState,
+        player_state: PlayerState,
+        scanner_state: ScannerState,
     ) -> Controller {
         Controller {
             audio_cmd_tx,
             audio_events_rx,
             scanner_cmd_tx,
             scanner_events_rx,
-            state,
+            player_state,
+            scanner_state
         }
     }
 
@@ -90,6 +99,10 @@ impl Controller {
     pub fn set_meta_in_engine(&self, meta: Metadata) {
         let _ = self.audio_cmd_tx.send(AudioCommand::Meta(meta));
     }
+
+    pub fn load_playlist(&self, path: String) {
+        let _ = self.scanner_cmd_tx.send(ScannerCommand::Load(path));
+    }
 }
 
 impl gpui::Global for Controller {}
@@ -111,7 +124,7 @@ impl Default for PlayerState {
 pub struct ResHandler {}
 
 impl ResHandler {
-    pub fn handle(&mut self, cx: &mut Context<Self>, event: AudioEvent) {
+    pub fn handle(&mut self, cx: &mut Context<Self>, event: Event) {
         cx.emit(event);
         cx.notify();
     }
@@ -127,5 +140,5 @@ pub struct Track {
     pub meta: Metadata,
 }
 
-impl EventEmitter<AudioEvent> for ResHandler {}
+impl EventEmitter<Event> for ResHandler {}
 impl EventEmitter<PlayerStateEvent> for PlayerState {}

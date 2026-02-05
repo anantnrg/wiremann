@@ -54,8 +54,8 @@ impl Wiremann {
             |_, _, event: &SliderEvent, cx| match event {
                 SliderEvent::Change(value) => {
                     let controller = cx.global::<Controller>();
-                    if controller.state.state == PlaybackState::Playing {
-                        if let Some(meta) = controller.state.clone().meta {
+                    if controller.player_state.state == PlaybackState::Playing {
+                        if let Some(meta) = controller.player_state.clone().meta {
                             controller.seek(slider_to_secs(value.start(), meta.duration));
                         }
                     }
@@ -73,6 +73,8 @@ impl Wiremann {
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
         let player_page = cx.new(|_| PlayerPage::new());
 
+        cx.global::<Controller>()
+            .load_playlist("E:\\music\\violence ft. doomguy".to_string());
         cx.global::<Controller>()
             .load("E:\\music\\violence ft. doomguy\\468 - GIVE ME A REASON.mp3".to_string());
 

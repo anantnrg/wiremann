@@ -4,8 +4,8 @@ use std::{thread, time::Duration};
 
 use crate::audio::engine::{AudioEngine, PlaybackState};
 use crate::controller::metadata::Metadata;
-use crate::controller::player::{AudioCommand, AudioEvent, Controller, PlayerState, ResHandler, ScannerCommand, ScannerEvent};
-use crate::scanner::Scanner;
+use crate::controller::player::{AudioCommand, AudioEvent, Controller, Event, PlayerState, ResHandler, ScannerCommand, ScannerEvent};
+use crate::scanner::{Scanner, ScannerState};
 use crate::ui::assets::Assets;
 use crate::ui::wiremann::Wiremann;
 use gpui::*;
@@ -26,7 +26,7 @@ pub fn run() {
     });
 
 
-    let controller = Controller::new(audio_cmd_tx, audio_events_rx, scanner_cmd_tx, scanner_events_rx, PlayerState::default());
+    let controller = Controller::new(audio_cmd_tx, audio_events_rx, scanner_cmd_tx, scanner_events_rx, PlayerState::default(), ScannerState::default());
 
     let assets = Assets {};
     let app = Application::new().with_assets(assets.clone());
@@ -68,7 +68,12 @@ pub fn run() {
                             loop {
                                 while let Ok(event) = controller_evt_clone.audio_events_rx.try_recv() {
                                     res_handler.update(&mut cx.clone(), |res_handler, cx| {
-                                        res_handler.handle(cx, event);
+                                        res_handler.handle(cx, Event::Audio(event));
+                                    });
+                                }
+                                while let Ok(event) = controller_evt_clone.scanner_events_rx.try_recv() {
+                                    res_handler.update(&mut cx.clone(), |res_handler, cx| {
+                                        res_handler.handle(cx, Event::Scanner(event));
                                     });
                                 }
                                 cx.background_executor()
@@ -82,9 +87,12 @@ pub fn run() {
 
                         cx.subscribe(
                             &res_handler,
-                            move |_, _, event: &AudioEvent, cx| match event {
+                            move |_, _, event: &Event, cx| match event
+                            {
+                                Event::Audio(audio_event) => match audio_event
+                                {
                                 AudioEvent::StateChanged(state) => {
-                                    cx.global_mut::<Controller>().state = state.clone();
+                                    cx.global_mut::<Controller>().player_state = state.clone();
 
                                     if state.state == PlaybackState::Playing {
                                         playbar_view.update(cx, |this, cx| {
@@ -94,7 +102,7 @@ pub fn run() {
                                                     |this, cx| {
                                                         if let Some(meta) = cx
                                                             .global::<Controller>()
-                                                            .state
+                                                            .player_state
                                                             .meta
                                                             .clone()
                                                         {
@@ -120,6 +128,10 @@ pub fn run() {
                                     cx.notify();
                                 }
                                 _ => (),
+                                }
+                                Event::Scanner(scanner_event) => match scanner_event {
+                                    ScannerEvent::State(state) => { cx.global_mut::<Controller>().scanner_state = state.clone() }
+                                }
                             },
                         )
                         .detach();

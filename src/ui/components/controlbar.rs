@@ -27,7 +27,7 @@ impl ControlBar {
 impl Render for ControlBar {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
-        let state = cx.global::<Controller>().state.clone();
+        let state = cx.global::<Controller>().player_state.clone();
 
         div()
             .w_full()

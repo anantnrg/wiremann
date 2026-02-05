@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
-use crate::controller::player::{Controller, PlayerState};
+use crate::controller::player::Controller;
 use crate::ui::theme::Theme;
 
-use gpui::prelude::FluentBuilder;
 use gpui::*;
-use gpui_component::StyledExt;
 
 #[derive(Clone)]
 pub struct PlayerPage;
@@ -43,7 +41,7 @@ impl Render for PlayerPage {
             //         }),
             // )
             .child(
-                if let Some(meta) = cx.global::<Controller>().state.meta.clone() {
+                if let Some(meta) = cx.global::<Controller>().player_state.meta.clone() {
                     if let Some(thumbnail) = meta.thumbnail {
                         let format = match thumbnail.format.as_str() {
                             "png" => ImageFormat::Png,
