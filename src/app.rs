@@ -81,7 +81,7 @@ pub fn run() {
                                     .await;
                             }
                         })
-                        .detach();
+                            .detach();
 
                         let playbar_view = view.clone();
 
@@ -91,50 +91,61 @@ pub fn run() {
                             {
                                 Event::Audio(audio_event) => match audio_event
                                 {
-                                AudioEvent::StateChanged(state) => {
-                                    cx.global_mut::<Controller>().player_state = state.clone();
+                                    AudioEvent::StateChanged(state) => {
+                                        cx.global_mut::<Controller>().player_state = state.clone();
 
-                                    if state.state == PlaybackState::Playing {
-                                        playbar_view.update(cx, |this, cx| {
-                                            this.controlbar.update(cx, |this, cx| {
-                                                this.playback_slider_state.update(
-                                                    cx,
-                                                    |this, cx| {
-                                                        if let Some(meta) = cx
-                                                            .global::<Controller>()
-                                                            .player_state
-                                                            .meta
-                                                            .clone()
-                                                        {
-                                                            this.set_value(
-                                                                secs_to_slider(
-                                                                    state.position,
-                                                                    meta.duration,
-                                                                ),
-                                                                cx,
-                                                            );
-                                                        }
-                                                        cx.notify();
-                                                    },
-                                                );
+                                        if state.state == PlaybackState::Playing {
+                                            playbar_view.update(cx, |this, cx| {
+                                                this.controlbar.update(cx, |this, cx| {
+                                                    this.playback_slider_state.update(
+                                                        cx,
+                                                        |this, cx| {
+                                                            if let Some(meta) = cx
+                                                                .global::<Controller>()
+                                                                .player_state
+                                                                .meta
+                                                                .clone()
+                                                            {
+                                                                this.set_value(
+                                                                    secs_to_slider(
+                                                                        state.position,
+                                                                        meta.duration,
+                                                                    ),
+                                                                    cx,
+                                                                );
+                                                            }
+                                                            cx.notify();
+                                                        },
+                                                    );
+                                                })
                                             })
-                                        })
+                                        }
+                                        cx.notify();
                                     }
-                                    cx.notify();
-                                }
-                                AudioEvent::TrackLoaded(path) => {
-                                    let meta = Metadata::read(path.clone()).expect("No metadata");
-                                    cx.global_mut::<Controller>().set_meta_in_engine(meta);
-                                    cx.notify();
-                                }
-                                _ => (),
+                                    AudioEvent::TrackLoaded(path) => {
+                                        let meta = Metadata::read(path.clone()).expect("No metadata");
+                                        cx.global_mut::<Controller>().set_meta_in_engine(meta);
+                                        cx.notify();
+                                    }
+                                    _ => (),
                                 }
                                 Event::Scanner(scanner_event) => match scanner_event {
-                                    ScannerEvent::State(state) => { cx.global_mut::<Controller>().scanner_state = state.clone() }
+                                    ScannerEvent::State(state) => {
+                                        cx.global_mut::<Controller>().scanner_state = state.clone();
+                                        if let Some(playlist) = cx.global::<Controller>().scanner_state.current_playlist.clone() {
+                                            playbar_view.update(cx, |this, cx| {
+                                                this.player_page.update(cx, |this, cx| {
+                                                    this.queue.update(cx, |this, cx| {
+                                                        this.update_items(playlist.tracks)
+                                                    });
+                                                })
+                                            })
+                                        }
+                                    }
                                 }
                             },
                         )
-                        .detach();
+                            .detach();
 
                         Root::new(view, window, cx)
                     })
@@ -143,7 +154,7 @@ pub fn run() {
 
             Ok::<_, anyhow::Error>(())
         })
-        .detach();
+            .detach();
     });
 }
 

@@ -3,14 +3,19 @@ use std::sync::Arc;
 use crate::ui::theme::Theme;
 
 use crate::controller::player::Controller;
+use crate::ui::components::queue::Queue;
 use gpui::*;
 
 #[derive(Clone)]
-pub struct PlayerPage;
+pub struct PlayerPage {
+    pub queue: Entity<Queue>,
+}
 
 impl PlayerPage {
-    pub fn new() -> Self {
-        PlayerPage {}
+    pub fn new(cx: &mut App) -> Self {
+        PlayerPage {
+            queue: cx.new(|_| Queue::new()),
+        }
     }
 }
 
@@ -51,7 +56,8 @@ impl Render for PlayerPage {
                                         thumbnail.image,
                                     ))))
                                         .object_fit(ObjectFit::Contain)
-                                        .size_full().rounded_xl(),
+                                        .size_full()
+                                        .rounded_xl(),
                                 )
                             } else {
                                 div().size_full()
@@ -83,7 +89,32 @@ impl Render for PlayerPage {
                     }),
             )
             .child(div().w(px(1.0)).h_full().bg(theme.white_05))
-            .child(div().h_full().w_80().flex_shrink_0().flex().flex_col())
+            .child(
+                div()
+                    .h_full()
+                    .w_80()
+                    .flex_shrink_0()
+                    .flex()
+                    .flex_col()
+                    .bg(theme.bg_queue)
+                    .child(
+                        div()
+                            .w_full()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .px_4()
+                            .child(
+                                div()
+                                    .text_base()
+                                    .text_color(theme.text_primary)
+                                    .font_weight(FontWeight(500.0))
+                                    .child("Queue"),
+                            )
+                            .child(div().text_sm().font_weight(FontWeight(400.0)).text_color(theme.text_muted).child("Hide")),
+                    )
+                    .child(self.queue.clone()),
+            )
     }
 }
 

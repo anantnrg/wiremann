@@ -47,7 +47,7 @@ impl Wiremann {
                 }
             },
         )
-        .detach();
+            .detach();
 
         cx.subscribe(
             &playback_slider_state,
@@ -64,14 +64,14 @@ impl Wiremann {
                 }
             },
         )
-        .detach();
+            .detach();
 
         cx.set_global(Theme::default());
         cx.set_global(Page::Player);
 
         let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
-        let player_page = cx.new(|_| PlayerPage::new());
+        let player_page = cx.new(|cx| PlayerPage::new(cx));
 
         cx.global::<Controller>()
             .load_playlist("E:\\music\\violence ft. doomguy".to_string());
