@@ -96,6 +96,7 @@ impl Render for PlayerPage {
                     .flex_shrink_0()
                     .flex()
                     .flex_col()
+                    .p_4()
                     .bg(theme.bg_queue)
                     .child(
                         div()
@@ -103,7 +104,6 @@ impl Render for PlayerPage {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .px_4()
                             .child(
                                 div()
                                     .text_base()
@@ -118,7 +118,7 @@ impl Render for PlayerPage {
     }
 }
 
-fn get_img_format(format: String) -> ImageFormat {
+pub fn get_img_format(format: String) -> ImageFormat {
     match format.as_str() {
         "png" => ImageFormat::Png,
         "jpeg" | "jpg" => ImageFormat::Jpeg,
