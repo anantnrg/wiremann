@@ -119,7 +119,7 @@ impl Render for PlayerPage {
                             )
                             .child(div().text_sm().font_weight(FontWeight(400.0)).text_color(theme.text_muted).child("Hide")),
                     )
-                // .child(self.queue.clone()),
+                    .child(self.queue.clone()),
             )
     }
 }

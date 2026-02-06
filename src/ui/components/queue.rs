@@ -13,12 +13,12 @@ struct ItemData {
     path: PathBuf,
     title: String,
     artists: String,
+    thumbnail_bytes: Option<Arc<Vec<u8>>>,
     thumbnail: Option<Arc<RenderImage>>,
 }
 
 struct Item {
     data: ItemData,
-    current: Option<PathBuf>,
     idx: usize,
 }
 
@@ -27,16 +27,8 @@ impl Item {
         cx.new(move |cx| {
             let path = track.path.clone();
             let meta = track.meta.clone();
-            let thumbnail = meta.thumbnail.as_ref().map(|thumbnail| {
-                Arc::new(RenderImage::new(SmallVec::from_vec(vec![Frame::new(image::load_from_memory(&thumbnail).unwrap()
-                    .as_rgba8()
-                    .map(|image| image.to_owned())
-                    .unwrap_or_else(|| {
-                        let mut image = RgbaImage::new(1, 1);
-                        image.put_pixel(0, 0, image::Rgba([0, 0, 0, 0]));
-                        image
-                    }))])))
-            });
+            let thumbnail_bytes = meta.thumbnail.clone().map(Arc::new);
+
             let title = meta.title.clone();
             let artists = meta.artists.clone().join(", ");
 
@@ -44,7 +36,8 @@ impl Item {
                 path,
                 title,
                 artists,
-                thumbnail,
+                thumbnail_bytes,
+                thumbnail: None,
             };
 
             cx.on_release(|this: &mut Item, cx| {
@@ -54,11 +47,8 @@ impl Item {
             })
                 .detach();
 
-            let current = cx.global::<Controller>().player_state.current.clone();
-
             Self {
                 data,
-                current,
                 idx,
             }
         })
@@ -72,6 +62,23 @@ impl Render for Item {
 
         let is_current = Some(&self.data.path) == current.as_ref();
 
+        if self.data.thumbnail.is_none() {
+            if let Some(bytes) = &self.data.thumbnail_bytes {
+                let image = image::load_from_memory(bytes)
+                    .ok()
+                    .and_then(|i| i.as_rgba8().map(|i| i.to_owned()))
+                    .unwrap_or_else(|| {
+                        let mut img = RgbaImage::new(1, 1);
+                        img.put_pixel(0, 0, image::Rgba([0, 0, 0, 0]));
+                        img
+                    });
+
+                self.data.thumbnail = Some(Arc::new(RenderImage::new(
+                    SmallVec::from_vec(vec![Frame::new(image)]),
+                )));
+            }
+        }
+
         div()
             .h(px(64.))
             .w_full()
@@ -84,8 +91,8 @@ impl Render for Item {
             .when(is_current, |d| d.bg(theme.accent_15))
             .child(
                 match &self.data.thumbnail {
-                    Some(img) => div().size_12().child(
-                        img(img.clone())
+                    Some(image) => div().size_12().child(
+                        img(image.clone())
                             .object_fit(ObjectFit::Contain)
                             .size_full()
                             .rounded_md(),
@@ -113,7 +120,7 @@ impl Render for Item {
                             .text_sm()
                             .truncate()
                             .text_color(theme.text_muted)
-                            .child(self.data.artists),
+                            .child(self.data.artists.clone()),
                     ),
             )
     }
@@ -162,79 +169,44 @@ pub fn drop_image_from_app(cx: &mut App, image: Arc<RenderImage>) {
     }
 }
 
-// impl Render for Queue {
-//     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-//         v_virtual_list(
-//             cx.entity().clone(),
-//             "queue_list",
-//             self.item_sizes.clone(),
-//             move |view, visible_range, _, cx| {
-//                 let images: Vec<Option<Arc<Image>>> = visible_range
-//                     .clone()
-//                     .map(|ix| {
-//                         let track = &view.items[ix];
-//                         get_or_create_image(cx, track)
-//                     })
-//                     .collect();
-//
-//                 let theme = cx.global::<Theme>();
-//                 let current = cx.global::<Controller>().player_state.current.clone();
-//
-//                 visible_range
-//                     .zip(images.into_iter())
-//                     .map(|(ix, image)| {
-//                         let track = &view.items[ix];
-//                         let meta = &track.meta;
-//                         div()
-//                             .id(ix)
-//                             .h(px(64.))
-//                             .w_full()
-//                             .flex()
-//                             .items_center()
-//                             .justify_start()
-//                             .p_3()
-//                             .gap_4()
-//                             .rounded_lg()
-//                             .mb_2()
-//                             .hover(|this| this.bg(theme.white_05))
-//                             .when(Some(&track.path) == current.as_ref(), |this| {
-//                                 this.bg(theme.accent_15)
-//                             })
-//                             .child({
-//                                 match image {
-//                                     Some(image) => {
-//                                         div().size_12().child(
-//                                             img(image)
-//                                                 .object_fit(ObjectFit::Contain)
-//                                                 .size_full()
-//                                                 .rounded_md(),
-//                                         )
-//                                     }
-//                                     None => div().size_12(),
-//                                 }
-//                             })
-//                             .child(
-//                                 div()
-//                                     .w_auto()
-//                                     .h_12()
-//                                     .flex()
-//                                     .flex_col()
-//                                     .flex_1()
-//                                     .gap_y_2()
-//                                     .child(div().text_base().truncate().text_color(
-//                                         if Some(&track.path) == current.as_ref() {
-//                                             theme.accent
-//                                         } else {
-//                                             theme.text_primary
-//                                         }
-//                                         ,
-//                                     ).child(meta.title.clone()))
-//                                     .child(div().text_sm().truncate().text_color(theme.text_muted).child(meta.artists.join(", "))),
-//                             )
-//                     })
-//                     .collect()
-//             },
-//         )
-//             .track_scroll(&self.scroll_handle)
-//     }
-// }
+impl Render for Queue {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let views = self.views.clone();
+        let playlist = cx
+            .global::<Controller>()
+            .scanner_state
+            .current_playlist
+            .as_ref();
+
+        let tracks: &[Track] = match playlist {
+            Some(p) => &p.tracks,
+            None => &[],
+        };
+
+        let len = tracks.len();
+
+        uniform_list("queue", len, move |range, _, cx| {
+            views.update(cx, |map, cx| {
+                map.retain(|idx, _| range.contains(idx));
+            });
+
+            range
+                .map(|i| {
+                    let track = Arc::new(tracks[i].clone());
+                    div().child(Queue::get_or_create_item(
+                        &views,
+                        i,
+                        track,
+                        cx,
+                    ))
+                })
+                .collect()
+        })
+            .w_full()
+            .h_full()
+            .flex()
+            .flex_col()
+            .track_scroll(&self.scroll_handle)
+    }
+}
+
