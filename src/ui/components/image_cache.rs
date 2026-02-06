@@ -12,6 +12,14 @@ pub struct ImageCache {
     map: HashMap<u64, Arc<Image>>,
 }
 
+impl ImageCache {
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::default(),
+        }
+    }
+}
+
 fn image_key(path: &PathBuf) -> u64 {
     let mut h = AHasher::default();
     path.hash(&mut h);
@@ -19,7 +27,7 @@ fn image_key(path: &PathBuf) -> u64 {
 }
 
 pub fn get_or_create_image(
-    cx: &mut Context<impl ?Sized>,
+    cx: &mut App,
     track: &Track,
 ) -> Option<Arc<Image>> {
     let thumbnail = track.meta.thumbnail.as_ref()?;

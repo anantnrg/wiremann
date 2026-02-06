@@ -1,5 +1,5 @@
 use crate::controller::player::{Controller, Track};
-use crate::ui::components::pages::player::get_img_format;
+use crate::ui::components::image_cache::get_or_create_image;
 use crate::ui::theme::Theme;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
@@ -36,11 +36,20 @@ impl Render for Queue {
             "queue_list",
             self.item_sizes.clone(),
             move |view, visible_range, _, cx| {
+                let images: Vec<Option<Arc<Image>>> = visible_range
+                    .clone()
+                    .map(|ix| {
+                        let track = &view.items[ix];
+                        get_or_create_image(cx, track)
+                    })
+                    .collect();
+
                 let theme = cx.global::<Theme>();
                 let current = cx.global::<Controller>().player_state.current.clone();
 
                 visible_range
-                    .map(|ix| {
+                    .zip(images.into_iter())
+                    .map(|(ix, image)| {
                         let track = &view.items[ix];
                         let meta = &track.meta;
                         div()
@@ -58,18 +67,18 @@ impl Render for Queue {
                             .when(Some(&track.path) == current.as_ref(), |this| {
                                 this.bg(theme.accent_15)
                             })
-                            .child(if let Some(thumbnail) = &meta.thumbnail {
-                                div().size_12().child(
-                                    img(ImageSource::Image(Arc::new(Image::from_bytes(
-                                        get_img_format(thumbnail.format.clone()),
-                                        thumbnail.image.clone(),
-                                    ))))
-                                        .object_fit(ObjectFit::Contain)
-                                        .size_full()
-                                        .rounded_md(),
-                                )
-                            } else {
-                                div().size_12()
+                            .child({
+                                match image {
+                                    Some(image) => {
+                                        div().size_12().child(
+                                            img(image)
+                                                .object_fit(ObjectFit::Contain)
+                                                .size_full()
+                                                .rounded_md(),
+                                        )
+                                    }
+                                    None => div().size_12(),
+                                }
                             })
                             .child(
                                 div()
