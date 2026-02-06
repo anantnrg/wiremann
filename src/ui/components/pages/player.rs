@@ -5,6 +5,8 @@ use crate::ui::theme::Theme;
 use crate::controller::player::Controller;
 use crate::ui::components::queue::Queue;
 use gpui::*;
+use image::{Frame, RgbaImage};
+use smallvec::SmallVec;
 
 #[derive(Clone)]
 pub struct PlayerPage {
@@ -51,10 +53,14 @@ impl Render for PlayerPage {
                             .gap_y_8()
                             .child(if let Some(thumbnail) = meta.thumbnail {
                                 div().size_96().child(
-                                    img(ImageSource::Image(Arc::new(Image::from_bytes(
-                                        get_img_format(thumbnail.format),
-                                        thumbnail.image,
-                                    ))))
+                                    img(Arc::new(RenderImage::new(SmallVec::from_vec(vec![Frame::new(image::load_from_memory(&thumbnail).unwrap()
+                                        .as_rgba8()
+                                        .map(|image| image.to_owned())
+                                        .unwrap_or_else(|| {
+                                            let mut image = RgbaImage::new(1, 1);
+                                            image.put_pixel(0, 0, image::Rgba([0, 0, 0, 0]));
+                                            image
+                                        }))]))))
                                         .object_fit(ObjectFit::Contain)
                                         .size_full()
                                         .rounded_xl(),
@@ -113,7 +119,7 @@ impl Render for PlayerPage {
                             )
                             .child(div().text_sm().font_weight(FontWeight(400.0)).text_color(theme.text_muted).child("Hide")),
                     )
-                    .child(self.queue.clone()),
+                // .child(self.queue.clone()),
             )
     }
 }

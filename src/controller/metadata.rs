@@ -14,7 +14,7 @@ pub struct Metadata {
     pub producer: String,
     pub publisher: String,
     pub label: String,
-    pub thumbnail: Option<Thumbnail>,
+    pub thumbnail: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Default, PartialEq, Clone, Deserialize, Serialize)]
@@ -36,16 +36,7 @@ impl Metadata {
 
         let thumbnail = match tag.pictures().get(0) {
             Some(data) => {
-                let bytes = data.data().to_vec();
-
-                let format_parts: Vec<&str> =
-                    data.mime_type().unwrap().as_str().split("/").collect();
-                let format = format_parts[1].to_string();
-
-                Some(Thumbnail {
-                    image: bytes,
-                    format,
-                })
+                Some(data.data().to_vec())
             }
             None => None,
         };
