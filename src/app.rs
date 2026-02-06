@@ -132,15 +132,15 @@ pub fn run() {
                                 Event::Scanner(scanner_event) => match scanner_event {
                                     ScannerEvent::State(state) => {
                                         cx.global_mut::<Controller>().scanner_state = state.clone();
-                                        if let Some(playlist) = cx.global::<Controller>().scanner_state.current_playlist.clone() {
-                                            playbar_view.update(cx, |this, cx| {
-                                                this.player_page.update(cx, |this, cx| {
-                                                    this.queue.update(cx, |this, cx| {
-                                                        this.update_items(playlist.tracks)
-                                                    });
-                                                })
-                                            })
-                                        }
+                                        // if let Some(playlist) = cx.global::<Controller>().scanner_state.current_playlist.clone() {
+                                        //     playbar_view.update(cx, |this, cx| {
+                                        //         this.player_page.update(cx, |this, cx| {
+                                        //             this.queue.update(cx, |this, cx| {
+                                        //                 this.update_items(playlist.tracks)
+                                        //             });
+                                        //         })
+                                        //     })
+                                        // }
                                     }
                                 }
                             },

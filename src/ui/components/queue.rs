@@ -178,11 +178,10 @@ impl Render for Queue {
             .current_playlist
             .as_ref();
 
-        let tracks: &[Track] = match playlist {
-            Some(p) => &p.tracks,
-            None => &[],
-        };
-
+        let tracks: Arc<Vec<Track>> = Arc::new(match playlist {
+            Some(p) => p.tracks.clone(),
+            None => Vec::new(),
+        }).clone();
         let len = tracks.len();
 
         uniform_list("queue", len, move |range, _, cx| {

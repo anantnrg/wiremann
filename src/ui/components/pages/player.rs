@@ -1,3 +1,4 @@
+use std::io::Cursor;
 use std::sync::Arc;
 
 use crate::ui::theme::Theme;
@@ -5,8 +6,8 @@ use crate::ui::theme::Theme;
 use crate::controller::player::Controller;
 use crate::ui::components::queue::Queue;
 use gpui::*;
-use image::{Frame, RgbaImage};
-use smallvec::SmallVec;
+use image::{Frame, ImageReader};
+use smallvec::smallvec;
 
 #[derive(Clone)]
 pub struct PlayerPage {
@@ -16,7 +17,7 @@ pub struct PlayerPage {
 impl PlayerPage {
     pub fn new(cx: &mut App) -> Self {
         PlayerPage {
-            queue: cx.new(|_| Queue::new()),
+            queue: Queue::new(cx),
         }
     }
 }
@@ -53,14 +54,12 @@ impl Render for PlayerPage {
                             .gap_y_8()
                             .child(if let Some(thumbnail) = meta.thumbnail {
                                 div().size_96().child(
-                                    img(Arc::new(RenderImage::new(SmallVec::from_vec(vec![Frame::new(image::load_from_memory(&thumbnail).unwrap()
-                                        .as_rgba8()
-                                        .map(|image| image.to_owned())
-                                        .unwrap_or_else(|| {
-                                            let mut image = RgbaImage::new(1, 1);
-                                            image.put_pixel(0, 0, image::Rgba([0, 0, 0, 0]));
-                                            image
-                                        }))]))))
+                                    img(Arc::new(RenderImage::new(smallvec![Frame::new(
+                                        ImageReader::new(Cursor::new(thumbnail.into_boxed_slice()))
+                                            .with_guessed_format().unwrap()
+                                            .decode().unwrap()
+                                            .into_rgba8()
+                                    )])))
                                         .object_fit(ObjectFit::Contain)
                                         .size_full()
                                         .rounded_xl(),
@@ -117,9 +116,14 @@ impl Render for PlayerPage {
                                     .font_weight(FontWeight(500.0))
                                     .child("Queue"),
                             )
-                            .child(div().text_sm().font_weight(FontWeight(400.0)).text_color(theme.text_muted).child("Hide")),
-                    )
-                    .child(self.queue.clone()),
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(FontWeight(400.0))
+                                    .text_color(theme.text_muted)
+                                    .child("Hide"),
+                            ),
+                    ), // .child(self.queue.clone()),
             )
     }
 }
