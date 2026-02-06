@@ -1,3 +1,5 @@
+// Ref: https://github.com/longbridge/gpui-component/blob/main/crates/ui/src/slider.rs
+
 use std::ops::Range;
 
 use gpui::{
@@ -554,25 +556,25 @@ impl RenderOnce for Slider {
                             cx.stop_propagation();
                             cx.new(|_| drag.clone())
                         })
-                        .on_drag_move(window.listener_for(
-                            &self.state,
-                            move |view, e: &DragMoveEvent<DragSlider>, window, cx| match e.drag(cx)
-                            {
-                                DragSlider(id) => {
-                                    if *id != entity_id {
-                                        return;
-                                    }
+                            .on_drag_move(window.listener_for(
+                                &self.state,
+                                move |view, e: &DragMoveEvent<DragSlider>, window, cx| match e.drag(cx)
+                                {
+                                    DragSlider(id) => {
+                                        if *id != entity_id {
+                                            return;
+                                        }
 
-                                    view.update_value_by_position(
-                                        axis,
-                                        e.event.position,
-                                        false,
-                                        window,
-                                        cx,
-                                    )
-                                }
-                            },
-                        ))
+                                        view.update_value_by_position(
+                                            axis,
+                                            e.event.position,
+                                            false,
+                                            window,
+                                            cx,
+                                        )
+                                    }
+                                },
+                            ))
                     })
                     .when(axis.is_horizontal(), |this| {
                         this.items_center().h_6().w_full()
