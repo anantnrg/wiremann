@@ -2,17 +2,21 @@ use crate::ui::theme::Theme;
 
 use crate::controller::player::Controller;
 use crate::ui::components::queue::Queue;
+use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use gpui::*;
 
 #[derive(Clone)]
 pub struct PlayerPage {
     pub queue: Entity<Queue>,
+    queue_scroll_handle: UniformListScrollHandle,
 }
 
 impl PlayerPage {
     pub fn new(cx: &mut App) -> Self {
+        let queue_scroll_handle = UniformListScrollHandle::new();
         PlayerPage {
-            queue: Queue::new(cx),
+            queue: Queue::new(cx, queue_scroll_handle.clone()),
+            queue_scroll_handle,
         }
     }
 }
@@ -24,6 +28,7 @@ impl Render for PlayerPage {
         let player_state = cx.global::<Controller>().player_state.clone();
         let thumbnail = player_state.thumbnail;
         let scanner_state = cx.global::<Controller>().scanner_state.clone();
+        let scroll_handle = self.queue_scroll_handle.clone();
 
         div()
             .size_full()
@@ -92,7 +97,6 @@ impl Render for PlayerPage {
                     .flex_shrink_0()
                     .flex()
                     .flex_col()
-                    .p_4()
                     .bg(theme.bg_queue)
                     .child(
                         div()
@@ -100,7 +104,7 @@ impl Render for PlayerPage {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .px_3()
+                            .p_4()
                             .child(
                                 div()
                                     .text_base()
@@ -116,7 +120,20 @@ impl Render for PlayerPage {
                                     .child("Hide"),
                             ),
                     )
-                    .child(self.queue.clone()),
+                    .child(div()
+                        .id("queue_container")
+                        .w_full()
+                        .h_full()
+                        .p_4()
+                        .flex()
+                        .relative()
+                        .child(self.queue.clone())
+                        .child(floating_scrollbar(
+                            "queue_scrollbar",
+                            scroll_handle,
+                            RightPad::None,
+                        )))
+                ,
             )
     }
 }

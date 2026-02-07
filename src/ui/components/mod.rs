@@ -4,6 +4,7 @@ pub mod pages;
 pub mod slider;
 pub mod titlebar;
 mod queue;
+mod scrollbar;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Page {

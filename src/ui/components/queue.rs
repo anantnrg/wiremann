@@ -7,7 +7,6 @@ use gpui::*;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-// Ref: https://github.com/hummingbird-player/hummingbird/blob/master/src/ui/queue.rs
 struct ItemData {
     path: PathBuf,
     title: String,
@@ -21,7 +20,7 @@ struct Item {
 
 impl Item {
     pub fn new(cx: &mut App, track: Arc<Track>, idx: usize) -> Entity<Self> {
-        cx.new(move |cx| {
+        cx.new(move |_| {
             let path = track.path.clone();
             let meta = track.meta.clone();
 
@@ -34,10 +33,7 @@ impl Item {
                 artists,
             };
 
-            Self {
-                data,
-                idx,
-            }
+            Self { data, idx }
         })
     }
 }
@@ -60,19 +56,16 @@ impl Render for Item {
             .mb_2()
             .rounded_lg()
             .hover(|d| d.bg(theme.white_05))
-
             .when(is_current, |d| d.bg(theme.accent_15))
-            .child(
-                match thumbnail {
-                    Some(image) => div().size_12().flex_shrink_0().child(
-                        img(image.clone())
-                            .object_fit(ObjectFit::Contain)
-                            .size_full()
-                            .rounded_md(),
-                    ),
-                    None => div().size_12().flex_shrink_0(),
-                }
-            )
+            .child(match thumbnail {
+                Some(image) => div().size_12().flex_shrink_0().child(
+                    img(image.clone())
+                        .object_fit(ObjectFit::Contain)
+                        .size_full()
+                        .rounded_md(),
+                ),
+                None => div().size_12().flex_shrink_0(),
+            })
             .child(
                 div()
                     .flex_col()
@@ -99,7 +92,6 @@ impl Render for Item {
     }
 }
 
-
 #[derive(Clone)]
 pub struct Queue {
     views: Entity<AHashMap<usize, Entity<Item>>>,
@@ -107,12 +99,10 @@ pub struct Queue {
 }
 
 impl Queue {
-    pub fn new(cx: &mut App) -> Entity<Self> {
-        cx.new(|cx| {
-            Self {
-                views: cx.new(|_| AHashMap::new()),
-                scroll_handle: UniformListScrollHandle::new(),
-            }
+    pub fn new(cx: &mut App, scroll_handle: UniformListScrollHandle) -> Entity<Self> {
+        cx.new(|cx| Self {
+            views: cx.new(|_| AHashMap::new()),
+            scroll_handle,
         })
     }
 
@@ -142,11 +132,13 @@ impl Render for Queue {
         let tracks: Arc<Vec<Track>> = Arc::new(match playlist {
             Some(p) => p.tracks.clone(),
             None => Vec::new(),
-        }).clone();
+        })
+            .clone();
         let len = tracks.len();
+        let scroll_handle = self.scroll_handle.clone();
 
         uniform_list("queue", len, move |range, _, cx| {
-            views.update(cx, |map, cx| {
+            views.update(cx, |map, _| {
                 map.retain(|idx, _| range.contains(idx));
             });
 
@@ -157,17 +149,11 @@ impl Render for Queue {
 
                     div()
                         .id(format!("track_{}", path.to_string_lossy().to_string()))
-                        .child(Queue::get_or_create_item(
-                            &views,
-                            i,
-                            track,
-                            cx,
-                        ))
-                        .on_click(move |_, _, cx|
-                            {
-                                cx.global::<Controller>().load(path.to_string_lossy().to_string())
-                            }
-                        )
+                        .child(Queue::get_or_create_item(&views, i, track, cx))
+                        .on_click(move |_, _, cx| {
+                            cx.global::<Controller>()
+                                .load(path.to_string_lossy().to_string())
+                        })
                 })
                 .collect()
         })
@@ -175,7 +161,6 @@ impl Render for Queue {
             .h_full()
             .flex()
             .flex_col()
-            .track_scroll(&self.scroll_handle)
+            .track_scroll(&scroll_handle)
     }
 }
-

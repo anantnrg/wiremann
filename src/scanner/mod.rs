@@ -92,7 +92,7 @@ impl Scanner {
         let tx = self.scanner_event_tx.clone();
 
         std::thread::spawn(move || {
-            let threads = std::cmp::max(1, num_cpus::get() / 2);
+            let threads = std::cmp::max(1, num_cpus::get() - 2);
 
             let pool = ThreadPoolBuilder::new()
                 .num_threads(threads)
@@ -119,7 +119,7 @@ impl Scanner {
 
     fn scan(&mut self, path: PathBuf) -> Vec<Track> {
         let supported = ["mp3", "flac", "wav", "ogg", "m4a"];
-        let threads = std::cmp::max(1, num_cpus::get() / 2);
+        let threads = std::cmp::max(1, num_cpus::get() - 1);
 
         let pool = ThreadPoolBuilder::new()
             .num_threads(threads)
