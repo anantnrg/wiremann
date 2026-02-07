@@ -100,6 +100,7 @@ impl Render for PlayerPage {
                             .flex()
                             .items_center()
                             .justify_between()
+                            .px_3()
                             .child(
                                 div()
                                     .text_base()

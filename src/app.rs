@@ -136,6 +136,7 @@ pub fn run() {
                                     ScannerEvent::Thumbnail { path, image } => {
                                         cx.global_mut::<ImageCache>().add(path.clone(), image.clone());
                                     }
+                                    ScannerEvent::ClearImageCache => cx.global_mut::<ImageCache>().clear()
                                 }
                             },
                         )

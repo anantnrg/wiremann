@@ -65,6 +65,8 @@ impl Scanner {
             flag.store(true, Ordering::Relaxed);
         }
 
+        let _ = self.scanner_event_tx.send(ScannerEvent::ClearImageCache);
+
         let cancel = Arc::new(AtomicBool::new(false));
         self.cancel_thumbs = Some(cancel.clone());
 
@@ -117,26 +119,34 @@ impl Scanner {
 
     fn scan(&mut self, path: PathBuf) -> Vec<Track> {
         let supported = ["mp3", "flac", "wav", "ogg", "m4a"];
-        WalkDir::new(path)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_file())
-            .filter(|e| {
-                e.path()
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .map(|ext| supported.contains(&ext.to_lowercase().as_str()))
-                    .unwrap_or(false)
-            })
-            .map(|e| e.path().to_path_buf())
-            .collect::<Vec<_>>()
-            .par_iter()
-            .filter_map(|file| {
-                Metadata::read(file.clone()).ok().map(|meta| Track {
-                    path: file.clone(),
-                    meta,
+        let threads = std::cmp::max(1, num_cpus::get() / 2);
+
+        let pool = ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        pool.install(|| {
+            WalkDir::new(path)
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().is_file())
+                .filter(|e| {
+                    e.path()
+                        .extension()
+                        .and_then(|ext| ext.to_str())
+                        .map(|ext| supported.contains(&ext.to_lowercase().as_str()))
+                        .unwrap_or(false)
                 })
-            })
-            .collect()
+                .map(|e| e.path().to_path_buf())
+                .collect::<Vec<_>>()
+                .par_iter()
+                .filter_map(|file| {
+                    Metadata::read(file.clone()).ok().map(|meta| Track {
+                        path: file.clone(),
+                        meta,
+                    })
+                })
+                .collect()
+        })
     }
 }

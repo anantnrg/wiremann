@@ -50,7 +50,6 @@ impl Render for Item {
         let is_current = Some(&self.data.path) == current.as_ref();
 
         let thumbnail = cx.global::<ImageCache>().get(&self.data.path);
-
         div()
             .h(px(64.))
             .w_full()
@@ -58,18 +57,20 @@ impl Render for Item {
             .items_center()
             .p_3()
             .gap_4()
+            .mb_2()
             .rounded_lg()
             .hover(|d| d.bg(theme.white_05))
+
             .when(is_current, |d| d.bg(theme.accent_15))
             .child(
                 match thumbnail {
-                    Some(image) => div().size_12().child(
+                    Some(image) => div().size_12().flex_shrink_0().child(
                         img(image.clone())
                             .object_fit(ObjectFit::Contain)
                             .size_full()
                             .rounded_md(),
                     ),
-                    None => div().size_12(),
+                    None => div().size_12().flex_shrink_0(),
                 }
             )
             .child(
@@ -152,12 +153,21 @@ impl Render for Queue {
             range
                 .map(|i| {
                     let track = Arc::new(tracks[i].clone());
-                    div().child(Queue::get_or_create_item(
-                        &views,
-                        i,
-                        track,
-                        cx,
-                    ))
+                    let path = track.path.clone();
+
+                    div()
+                        .id(format!("track_{}", path.to_string_lossy().to_string()))
+                        .child(Queue::get_or_create_item(
+                            &views,
+                            i,
+                            track,
+                            cx,
+                        ))
+                        .on_click(move |_, _, cx|
+                            {
+                                cx.global::<Controller>().load(path.to_string_lossy().to_string())
+                            }
+                        )
                 })
                 .collect()
         })

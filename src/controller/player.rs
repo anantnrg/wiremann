@@ -55,6 +55,7 @@ pub enum ScannerEvent {
         path: PathBuf,
         image: Arc<RenderImage>,
     },
+    ClearImageCache,
 }
 
 #[derive(Debug, Clone, PartialEq)]
