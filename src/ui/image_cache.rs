@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 pub struct ImageCache {
-    thumbs: AHashMap<PathBuf, Arc<RenderImage>>,
+    pub(crate) thumbs: AHashMap<PathBuf, Arc<RenderImage>>,
 }
 
 impl Default for ImageCache {
@@ -22,6 +22,14 @@ impl ImageCache {
         } else {
             None
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.thumbs.clear();
+    }
+
+    pub fn add(&mut self, path: PathBuf, thumbnail: Arc<RenderImage>) {
+        self.thumbs.insert(path, thumbnail);
     }
 }
 

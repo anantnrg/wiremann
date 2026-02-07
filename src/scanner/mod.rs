@@ -1,8 +1,11 @@
 use crate::controller::metadata::Metadata;
 use crate::controller::player::{ScannerCommand, ScannerEvent, Track};
+use crate::utils::decode_thumbnail;
 use crossbeam_channel::{select, Receiver, Sender};
 use rayon::prelude::*;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,6 +19,7 @@ pub struct Scanner {
     pub scanner_cmd_rx: Receiver<ScannerCommand>,
     pub scanner_event_tx: Sender<ScannerEvent>,
     pub state: ScannerState,
+    cancel_thumbs: Option<Arc<AtomicBool>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -31,6 +35,7 @@ impl Scanner {
             scanner_cmd_rx,
             scanner_event_tx,
             state,
+            cancel_thumbs: None,
         };
 
         scanner.event_loop();
@@ -55,6 +60,13 @@ impl Scanner {
     fn load(&mut self, path: &String) {
         // TODO: Check if playlist has already been cached
 
+        if let Some(flag) = &self.cancel_thumbs {
+            flag.store(true, Ordering::Relaxed);
+        }
+
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.cancel_thumbs = Some(cancel.clone());
+
         let path = PathBuf::from(path);
         let tracks = self.scan(path.clone());
 
@@ -67,12 +79,31 @@ impl Scanner {
         let playlist = Playlist {
             name,
             path: Some(path),
-            tracks,
+            tracks: tracks.clone(),
         };
 
         self.state.current_playlist = Some(playlist);
 
         let _ = self.scanner_event_tx.send(ScannerEvent::State(self.state.clone()));
+
+        let tx = self.scanner_event_tx.clone();
+
+        std::thread::spawn(move || {
+            tracks.par_iter().for_each(|track| {
+                if cancel.load(Ordering::Relaxed) {
+                    return;
+                }
+
+                if let Some(bytes) = track.meta.thumbnail.clone() {
+                    if let Ok(image) = decode_thumbnail(bytes.into_boxed_slice(), true) {
+                        let _ = tx.send(ScannerEvent::Thumbnail {
+                            path: track.path.clone(),
+                            image,
+                        });
+                    }
+                }
+            });
+        });
     }
 
     fn scan(&mut self, path: PathBuf) -> Vec<Track> {

@@ -50,7 +50,11 @@ pub enum ScannerCommand {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScannerEvent {
-    State(ScannerState)
+    State(ScannerState),
+    Thumbnail {
+        path: PathBuf,
+        image: Arc<RenderImage>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

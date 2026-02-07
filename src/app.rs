@@ -7,7 +7,7 @@ use crate::controller::metadata::Metadata;
 use crate::controller::player::{AudioCommand, AudioEvent, Controller, Event, PlayerState, ResHandler, ScannerCommand, ScannerEvent};
 use crate::scanner::{Scanner, ScannerState};
 use crate::ui::assets::Assets;
-use crate::ui::wiremann::Wiremann;
+use crate::ui::{image_cache::ImageCache, wiremann::Wiremann};
 use gpui::*;
 use gpui_component::*;
 
@@ -132,15 +132,9 @@ pub fn run() {
                                 Event::Scanner(scanner_event) => match scanner_event {
                                     ScannerEvent::State(state) => {
                                         cx.global_mut::<Controller>().scanner_state = state.clone();
-                                        // if let Some(playlist) = cx.global::<Controller>().scanner_state.current_playlist.clone() {
-                                        //     playbar_view.update(cx, |this, cx| {
-                                        //         this.player_page.update(cx, |this, cx| {
-                                        //             this.queue.update(cx, |this, cx| {
-                                        //                 this.update_items(playlist.tracks)
-                                        //             });
-                                        //         })
-                                        //     })
-                                        // }
+                                    }
+                                    ScannerEvent::Thumbnail { path, image } => {
+                                        cx.global_mut::<ImageCache>().add(path.clone(), image.clone());
                                     }
                                 }
                             },
