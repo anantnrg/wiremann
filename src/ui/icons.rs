@@ -10,6 +10,16 @@ pub enum Icons {
     WinRes,
     WinMin,
     Settings,
+    Next,
+    Prev,
+    Shuffle,
+    Repeat,
+    Volume0,
+    Volume1,
+    Volume2,
+    VolumeMute,
+    Menu,
+    Search,
 }
 
 impl IconNamed for Icons {
@@ -22,8 +32,18 @@ impl IconNamed for Icons {
             Icons::WinRes => "icons/window-restore.svg",
             Icons::WinMin => "icons/window-minimize.svg",
             Icons::Settings => "icons/settings.svg",
+            Icons::Next => "icons/next.svg",
+            Icons::Prev => "icons/prev.svg",
+            Icons::Shuffle => "icons/shuffle.svg",
+            Icons::Repeat => "icons/repeat.svg",
+            Icons::Volume0 => "icons/volume-0.svg",
+            Icons::Volume1 => "icons/volume-1.svg",
+            Icons::Volume2 => "icons/volume-2.svg",
+            Icons::VolumeMute => "icons/volume-mute.svg",
+            Icons::Menu => "icons/menu.svg",
+            Icons::Search => "icons/search.svg",
         }
-        .into()
+            .into()
     }
 }
 

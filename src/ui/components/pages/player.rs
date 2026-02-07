@@ -43,7 +43,7 @@ impl Render for PlayerPage {
                     .flex_col()
                     .flex_1()
                     .px_16()
-                    .py_12()
+                    .py_8()
                     .child(if let Some(meta) = player_state.meta {
                         div()
                             .w_auto()
@@ -52,7 +52,8 @@ impl Render for PlayerPage {
                             .flex_col()
                             .items_center()
                             .justify_center()
-                            .gap_y_8()
+                            .gap_y_6()
+                            .flex_shrink_0()
                             .child(if let Some(thumbnail) = thumbnail {
                                 div().size_96().child(
                                     img(thumbnail)
@@ -67,7 +68,7 @@ impl Render for PlayerPage {
                                 div()
                                     .flex()
                                     .flex_col()
-                                    .gap_y_2()
+                                    .gap_y_1()
                                     .items_center()
                                     .justify_center()
                                     .child(
@@ -75,6 +76,8 @@ impl Render for PlayerPage {
                                             .text_2xl()
                                             .text_color(theme.text_primary)
                                             .font_weight(FontWeight(500.0))
+                                            .max_w_96()
+                                            .truncate()
                                             .child(meta.title.clone()),
                                     )
                                     .child(
@@ -82,12 +85,15 @@ impl Render for PlayerPage {
                                             .text_base()
                                             .text_color(theme.text_muted)
                                             .font_weight(FontWeight(400.0))
+                                            .max_w_96()
+                                            .truncate()
                                             .child(meta.artists.join(", ").clone()),
                                     ),
                             )
                     } else {
                         div()
-                    }),
+                    })
+                    .child(div().w_full().h_auto().flex().flex_shrink_0().gap_x_6().items_center().justify_center()),
             )
             .child(div().w(px(1.0)).h_full().bg(theme.white_05))
             .child(
