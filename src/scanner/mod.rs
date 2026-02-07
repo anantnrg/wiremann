@@ -3,6 +3,7 @@ use crate::controller::player::{ScannerCommand, ScannerEvent, Track};
 use crate::utils::decode_thumbnail;
 use crossbeam_channel::{select, Receiver, Sender};
 use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -89,19 +90,27 @@ impl Scanner {
         let tx = self.scanner_event_tx.clone();
 
         std::thread::spawn(move || {
-            tracks.par_iter().for_each(|track| {
-                if cancel.load(Ordering::Relaxed) {
-                    return;
-                }
+            let threads = std::cmp::max(1, num_cpus::get() / 2);
 
-                if let Some(bytes) = track.meta.thumbnail.clone() {
-                    if let Ok(image) = decode_thumbnail(bytes.into_boxed_slice(), true) {
-                        let _ = tx.send(ScannerEvent::Thumbnail {
-                            path: track.path.clone(),
-                            image,
-                        });
+            let pool = ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            pool.install(|| {
+                tracks.par_iter().for_each(|track| {
+                    if cancel.load(Ordering::Relaxed) {
+                        return;
                     }
-                }
+
+                    if let Some(bytes) = track.meta.thumbnail.clone() {
+                        if let Ok(image) = decode_thumbnail(bytes.into_boxed_slice(), true) {
+                            let _ = tx.send(ScannerEvent::Thumbnail {
+                                path: track.path.clone(),
+                                image,
+                            });
+                        }
+                    }
+                });
             });
         });
     }
