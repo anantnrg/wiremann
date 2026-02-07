@@ -1,9 +1,12 @@
 use crate::ui::theme::Theme;
 
+use crate::audio::engine::PlaybackState;
 use crate::controller::player::Controller;
 use crate::ui::components::queue::Queue;
 use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
+use crate::ui::icons::Icons;
 use gpui::*;
+use gpui_component::Icon;
 
 #[derive(Clone)]
 pub struct PlayerPage {
@@ -55,7 +58,7 @@ impl Render for PlayerPage {
                             .gap_y_6()
                             .flex_shrink_0()
                             .child(if let Some(thumbnail) = thumbnail {
-                                div().size_96().child(
+                                div().size_80().child(
                                     img(thumbnail)
                                         .object_fit(ObjectFit::Contain)
                                         .size_full()
@@ -93,7 +96,92 @@ impl Render for PlayerPage {
                     } else {
                         div()
                     })
-                    .child(div().w_full().h_auto().flex().flex_shrink_0().gap_x_6().items_center().justify_center()),
+                    .child(
+                        div()
+                            .w_full()
+                            .h_auto()
+                            .flex()
+                            .flex_shrink_0()
+                            .gap_x_6()
+                            .items_center()
+                            .justify_center()
+                            .mt_4()
+                            .child(
+                                div()
+                                    .id("shuffle")
+                                    .p_4()
+                                    .rounded_full()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .hover(|this| this.bg(theme.white_05))
+                                    .child(Icon::new(Icons::Shuffle).size_4()),
+                            )
+                            .child(
+                                div()
+                                    .id("previous")
+                                    .p_4()
+                                    .rounded_full()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .hover(|this| this.bg(theme.white_05))
+                                    .child(Icon::new(Icons::Prev).size_4()),
+                            )
+                            .child(
+                                div()
+                                    .id("play_pause")
+                                    .p_5()
+                                    .rounded_full()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .bg(theme.accent)
+                                    .hover(|this| this.bg(theme.accent_30))
+                                    .on_click(|_, _, cx| {
+                                        match cx.global::<Controller>().player_state.state {
+                                            PlaybackState::Paused | PlaybackState::Stopped => {
+                                                cx.global::<Controller>().play()
+                                            }
+                                            PlaybackState::Playing => {
+                                                cx.global::<Controller>().pause()
+                                            }
+                                        }
+                                    })
+
+                                    .child(
+                                        if cx.global::<Controller>().player_state.state
+                                            == PlaybackState::Playing
+                                        {
+                                            Icon::new(Icons::Pause).size_5()
+                                        } else {
+                                            Icon::new(Icons::Play).size_5()
+                                        },
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .id("next")
+                                    .p_4()
+                                    .rounded_full()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .hover(|this| this.bg(theme.white_05))
+                                    .child(Icon::new(Icons::Next).size_4()),
+                            )
+                            .child(
+                                div()
+                                    .id("repeat")
+                                    .p_4()
+                                    .rounded_full()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .hover(|this| this.bg(theme.white_05))
+                                    .child(Icon::new(Icons::Repeat).size_4()),
+                            ),
+                    ),
             )
             .child(div().w(px(1.0)).h_full().bg(theme.white_05))
             .child(
@@ -126,20 +214,21 @@ impl Render for PlayerPage {
                                     .child("Hide"),
                             ),
                     )
-                    .child(div()
-                        .id("queue_container")
-                        .w_full()
-                        .h_full()
-                        .p_4()
-                        .flex()
-                        .relative()
-                        .child(self.queue.clone())
-                        .child(floating_scrollbar(
-                            "queue_scrollbar",
-                            scroll_handle,
-                            RightPad::None,
-                        )))
-                ,
+                    .child(
+                        div()
+                            .id("queue_container")
+                            .w_full()
+                            .h_full()
+                            .p_4()
+                            .flex()
+                            .relative()
+                            .child(self.queue.clone())
+                            .child(floating_scrollbar(
+                                "queue_scrollbar",
+                                scroll_handle,
+                                RightPad::None,
+                            )),
+                    ),
             )
     }
 }
