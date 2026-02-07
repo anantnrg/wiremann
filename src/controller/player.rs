@@ -4,6 +4,7 @@ use crate::scanner::ScannerState;
 use crossbeam_channel::{Receiver, Sender};
 use gpui::*;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct Controller {
@@ -23,6 +24,7 @@ pub struct PlayerState {
     pub volume: f32,
     pub duration: u64,
     pub meta: Option<Metadata>,
+    pub thumbnail: Option<Arc<RenderImage>>,
 }
 
 pub enum AudioCommand {
@@ -72,7 +74,7 @@ impl Controller {
             scanner_cmd_tx,
             scanner_events_rx,
             player_state,
-            scanner_state
+            scanner_state,
         }
     }
 
@@ -116,6 +118,7 @@ impl Default for PlayerState {
             volume: 1.0,
             duration: 0,
             meta: None,
+            thumbnail: None,
         }
     }
 }

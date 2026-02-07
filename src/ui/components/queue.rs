@@ -1,5 +1,6 @@
 use crate::controller::player::{Controller, Track};
 use crate::ui::theme::Theme;
+use crate::utils::drop_image_from_app;
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
@@ -154,18 +155,6 @@ impl Queue {
                 .or_insert_with(|| Item::new(cx, track, index))
                 .clone()
         })
-    }
-}
-
-pub fn drop_image_from_app(cx: &mut App, image: Arc<RenderImage>) {
-    for window in cx.windows() {
-        let image = image.clone();
-
-        window
-            .update(cx, move |_, window, _| {
-                window.drop_image(image).expect("Could not drop image");
-            })
-            .expect("Couldn't get window");
     }
 }
 
