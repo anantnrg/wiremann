@@ -1,11 +1,9 @@
 use crate::controller::player::{Controller, Track};
+use crate::ui::image_cache::ImageCache;
 use crate::ui::theme::Theme;
-use crate::utils::drop_image_from_app;
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
-use image::{Frame, RgbaImage};
-use smallvec::SmallVec;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -14,8 +12,6 @@ struct ItemData {
     path: PathBuf,
     title: String,
     artists: String,
-    thumbnail_bytes: Option<Arc<Vec<u8>>>,
-    thumbnail: Option<Arc<RenderImage>>,
 }
 
 struct Item {
@@ -28,7 +24,6 @@ impl Item {
         cx.new(move |cx| {
             let path = track.path.clone();
             let meta = track.meta.clone();
-            let thumbnail_bytes = meta.thumbnail.clone().map(Arc::new);
 
             let title = meta.title.clone();
             let artists = meta.artists.clone().join(", ");
@@ -37,16 +32,7 @@ impl Item {
                 path,
                 title,
                 artists,
-                thumbnail_bytes,
-                thumbnail: None,
             };
-
-            cx.on_release(|this: &mut Item, cx| {
-                if let Some(img) = this.data.thumbnail.take() {
-                    drop_image_from_app(cx, img);
-                }
-            })
-                .detach();
 
             Self {
                 data,
@@ -63,22 +49,7 @@ impl Render for Item {
 
         let is_current = Some(&self.data.path) == current.as_ref();
 
-        if self.data.thumbnail.is_none() {
-            if let Some(bytes) = &self.data.thumbnail_bytes {
-                let image = image::load_from_memory(bytes)
-                    .ok()
-                    .and_then(|i| i.as_rgba8().map(|i| i.to_owned()))
-                    .unwrap_or_else(|| {
-                        let mut img = RgbaImage::new(1, 1);
-                        img.put_pixel(0, 0, image::Rgba([0, 0, 0, 0]));
-                        img
-                    });
-
-                self.data.thumbnail = Some(Arc::new(RenderImage::new(
-                    SmallVec::from_vec(vec![Frame::new(image)]),
-                )));
-            }
-        }
+        let thumbnail = cx.global::<ImageCache>().get(&self.data.path);
 
         div()
             .h(px(64.))
@@ -91,7 +62,7 @@ impl Render for Item {
             .hover(|d| d.bg(theme.white_05))
             .when(is_current, |d| d.bg(theme.accent_15))
             .child(
-                match &self.data.thumbnail {
+                match thumbnail {
                     Some(image) => div().size_12().child(
                         img(image.clone())
                             .object_fit(ObjectFit::Contain)

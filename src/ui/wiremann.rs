@@ -5,6 +5,7 @@ use super::{
         slider::{SliderEvent, SliderState},
         titlebar::Titlebar,
     },
+    image_cache::ImageCache,
     theme::Theme,
 };
 use crate::{
@@ -68,6 +69,7 @@ impl Wiremann {
 
         cx.set_global(Theme::default());
         cx.set_global(Page::Player);
+        cx.set_global(ImageCache::default());
 
         let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));

@@ -114,7 +114,8 @@ impl Render for PlayerPage {
                                     .text_color(theme.text_muted)
                                     .child("Hide"),
                             ),
-                    ), // .child(self.queue.clone()),
+                    )
+                    .child(self.queue.clone()),
             )
     }
 }
