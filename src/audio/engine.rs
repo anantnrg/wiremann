@@ -2,6 +2,7 @@ use crate::controller::{
     metadata::Metadata,
     player::{AudioCommand, AudioEvent, PlayerState},
 };
+use crate::utils::decode_thumbnail;
 use crossbeam_channel::{select, tick, Receiver, Sender};
 use rodio::{decoder::DecoderBuilder, OutputStream, OutputStreamBuilder, Sink};
 use std::{fs::File, path::PathBuf, time::Duration};
@@ -94,6 +95,14 @@ impl AudioEngine {
     }
 
     fn meta(&mut self, meta: Metadata) {
+        if let Some(data) = meta.thumbnail.clone() {
+            match decode_thumbnail(data.into_boxed_slice(), false) {
+                Ok(thumbnail) => {
+                    self.player_state.thumbnail = Some(thumbnail)
+                }
+                Err(_) => {}
+            }
+        }
         self.player_state.meta = Some(meta);
         self.send_player_state();
     }

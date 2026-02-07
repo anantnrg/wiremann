@@ -1,13 +1,8 @@
-use std::io::Cursor;
-use std::sync::Arc;
-
 use crate::ui::theme::Theme;
 
 use crate::controller::player::Controller;
 use crate::ui::components::queue::Queue;
 use gpui::*;
-use image::{Frame, ImageReader};
-use smallvec::smallvec;
 
 #[derive(Clone)]
 pub struct PlayerPage {
@@ -27,6 +22,7 @@ impl Render for PlayerPage {
         let theme = cx.global::<Theme>();
 
         let player_state = cx.global::<Controller>().player_state.clone();
+        let thumbnail = player_state.thumbnail;
         let scanner_state = cx.global::<Controller>().scanner_state.clone();
 
         div()
@@ -52,14 +48,9 @@ impl Render for PlayerPage {
                             .items_center()
                             .justify_center()
                             .gap_y_8()
-                            .child(if let Some(thumbnail) = meta.thumbnail {
+                            .child(if let Some(thumbnail) = thumbnail {
                                 div().size_96().child(
-                                    img(Arc::new(RenderImage::new(smallvec![Frame::new(
-                                        ImageReader::new(Cursor::new(thumbnail.into_boxed_slice()))
-                                            .with_guessed_format().unwrap()
-                                            .decode().unwrap()
-                                            .into_rgba8()
-                                    )])))
+                                    img(thumbnail)
                                         .object_fit(ObjectFit::Contain)
                                         .size_full()
                                         .rounded_xl(),
