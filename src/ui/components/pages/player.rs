@@ -2,6 +2,7 @@ use crate::ui::theme::Theme;
 
 use crate::audio::engine::PlaybackState;
 use crate::controller::player::Controller;
+use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::queue::Queue;
 use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::icons::Icons;
@@ -12,14 +13,16 @@ use gpui_component::Icon;
 pub struct PlayerPage {
     pub queue: Entity<Queue>,
     queue_scroll_handle: UniformListScrollHandle,
+    pub(crate) controlbar: Entity<ControlBar>,
 }
 
 impl PlayerPage {
-    pub fn new(cx: &mut App) -> Self {
+    pub fn new(cx: &mut App, controlbar: Entity<ControlBar>) -> Self {
         let queue_scroll_handle = UniformListScrollHandle::new();
         PlayerPage {
             queue: Queue::new(cx, queue_scroll_handle.clone()),
             queue_scroll_handle,
+            controlbar,
         }
     }
 }
@@ -181,7 +184,8 @@ impl Render for PlayerPage {
                                     .hover(|this| this.bg(theme.white_05))
                                     .child(Icon::new(Icons::Repeat).size_4()),
                             ),
-                    ),
+                    )
+                    .child(self.controlbar.clone()),
             )
             .child(div().w(px(1.0)).h_full().bg(theme.white_05))
             .child(

@@ -22,7 +22,6 @@ pub struct PlayerState {
     pub state: PlaybackState,
     pub position: u64,
     pub volume: f32,
-    pub duration: u64,
     pub meta: Option<Metadata>,
     pub thumbnail: Option<Arc<RenderImage>>,
 }
@@ -121,7 +120,6 @@ impl Default for PlayerState {
             state: PlaybackState::Stopped,
             position: 0,
             volume: 1.0,
-            duration: 0,
             meta: None,
             thumbnail: None,
         }

@@ -77,7 +77,7 @@ pub fn run() {
                                     });
                                 }
                                 cx.background_executor()
-                                    .timer(Duration::from_millis(100))
+                                    .timer(Duration::from_millis(50))
                                     .await;
                             }
                         })
@@ -96,27 +96,29 @@ pub fn run() {
 
                                         if state.state == PlaybackState::Playing {
                                             playbar_view.update(cx, |this, cx| {
-                                                this.controlbar.update(cx, |this, cx| {
-                                                    this.playback_slider_state.update(
-                                                        cx,
-                                                        |this, cx| {
-                                                            if let Some(meta) = cx
-                                                                .global::<Controller>()
-                                                                .player_state
-                                                                .meta
-                                                                .clone()
-                                                            {
-                                                                this.set_value(
-                                                                    secs_to_slider(
-                                                                        state.position,
-                                                                        meta.duration,
-                                                                    ),
-                                                                    cx,
-                                                                );
-                                                            }
-                                                            cx.notify();
-                                                        },
-                                                    );
+                                                this.player_page.update(cx, |this, cx| {
+                                                    this.controlbar.update(cx, |this, cx| {
+                                                        this.playback_slider_state.update(
+                                                            cx,
+                                                            |this, cx| {
+                                                                if let Some(meta) = cx
+                                                                    .global::<Controller>()
+                                                                    .player_state
+                                                                    .meta
+                                                                    .clone()
+                                                                {
+                                                                    this.set_value(
+                                                                        secs_to_slider(
+                                                                            state.position,
+                                                                            meta.duration,
+                                                                        ),
+                                                                        cx,
+                                                                    );
+                                                                }
+                                                                cx.notify();
+                                                            },
+                                                        );
+                                                    })
                                                 })
                                             })
                                         }
@@ -124,6 +126,7 @@ pub fn run() {
                                     }
                                     AudioEvent::TrackLoaded(path) => {
                                         let meta = Metadata::read(path.clone()).expect("No metadata");
+                                        println!("Meta duration: {:#?}", meta.duration);
                                         cx.global_mut::<Controller>().set_meta_in_engine(meta);
                                         cx.notify();
                                     }

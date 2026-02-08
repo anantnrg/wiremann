@@ -17,7 +17,6 @@ use gpui::*;
 
 pub struct Wiremann {
     pub titlebar: Entity<Titlebar>,
-    pub controlbar: Entity<ControlBar>,
     pub player_page: Entity<PlayerPage>,
 }
 
@@ -73,7 +72,7 @@ impl Wiremann {
 
         let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
-        let player_page = cx.new(|cx| PlayerPage::new(cx));
+        let player_page = cx.new(|cx| PlayerPage::new(cx, controlbar));
 
         cx.global::<Controller>()
             .load_playlist("E:\\music\\violence ft. doomguy".to_string());
@@ -83,7 +82,6 @@ impl Wiremann {
 
         Self {
             titlebar,
-            controlbar,
             player_page,
         }
     }

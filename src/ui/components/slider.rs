@@ -1,10 +1,8 @@
-// Ref: https://github.com/longbridge/gpui-component/blob/main/crates/ui/src/slider.rs
-
 use std::ops::Range;
 
 use gpui::{
-    div, prelude::FluentBuilder as _, px, relative, Along, App, AppContext as _, Axis,
-    Background, Bounds, Context, DefiniteLength, DragMoveEvent, Empty, Entity, EntityId,
+    div, prelude::FluentBuilder as _, px, relative, Along, App, AppContext as _, Axis, Background,
+    Bounds, Context, DefiniteLength, DragMoveEvent, Empty, Entity, EntityId,
     EventEmitter, Hsla, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement as _,
     Pixels, Point, Render, RenderOnce, StatefulInteractiveElement as _,
     StyleRefinement, Styled, Window,
@@ -431,9 +429,11 @@ impl Slider {
         div()
             .id(id)
             .absolute()
-            .when(axis.is_horizontal(), |this| this.left(start))
+            .when(axis.is_horizontal(), |this| {
+                this.top(px(-5.)).left(start).ml(-px(12.))
+            })
             .when(axis.is_vertical(), |this| {
-                this.bottom(start).left(px(-5.0)).mb(-px(8.0))
+                this.bottom(start).left(px(-5.)).mb(-px(8.))
             })
             .flex()
             .items_center()
@@ -441,16 +441,7 @@ impl Slider {
             .flex_shrink_0()
             .when(cx.theme().shadow, |this| this.shadow_md())
             .size_3()
-            .rounded_r_full()
-            .p(px(1.0))
-            .bg(thumb_color)
-            .child(
-                div()
-                    .flex_shrink_0()
-                    .size_full()
-                    .rounded_full()
-                    .bg(bar_color),
-            )
+            .child(div().flex_shrink_0().size_full())
             .on_mouse_down(MouseButton::Left, |_, _, cx| {
                 cx.stop_propagation();
             })
@@ -497,6 +488,7 @@ impl RenderOnce for Slider {
         let percentage = state.percentage.clone();
         let bar_start = relative(percentage.start);
         let bar_end = relative(1. - percentage.end);
+        let rem_size = window.rem_size();
 
         let bar_color = self
             .style
@@ -587,13 +579,12 @@ impl RenderOnce for Slider {
                         div()
                             .id("slider-bar")
                             .relative()
-                            .w_full()
-                            .h_3()
+                            .when(axis.is_horizontal(), |this| this.w_full().h_1())
+                            .when(axis.is_vertical(), |this| this.h_full().w_2())
                             .bg(bar_color)
-                            .hover(|this| this.bg(bar_color))
-                            .active(|this| this.bg(bar_color))
-                            .rounded_l_sm()
-                            .rounded_r_full()
+                            .hover(|this| this.bg(bar_color).h_1())
+                            .active(|this| this.bg(bar_color).h_1())
+                            .rounded_full()
                             .child(
                                 div()
                                     .absolute()
@@ -604,7 +595,7 @@ impl RenderOnce for Slider {
                                         this.w_full().bottom(bar_start).top(bar_end)
                                     })
                                     .bg(thumb_color)
-                                    .rounded_l_sm(),
+                                    .rounded_full(),
                             )
                             .when(is_range, |this| {
                                 this.child(self.render_thumb(
