@@ -13,16 +13,19 @@ use gpui_component::Icon;
 pub struct PlayerPage {
     pub queue: Entity<Queue>,
     queue_scroll_handle: UniformListScrollHandle,
-    pub(crate) controlbar: Entity<ControlBar>,
+    pub controlbar: Entity<ControlBar>,
+    show_queue: Entity<bool>,
 }
 
 impl PlayerPage {
     pub fn new(cx: &mut App, controlbar: Entity<ControlBar>) -> Self {
         let queue_scroll_handle = UniformListScrollHandle::new();
+        let show_queue = cx.new(|_| true);
         PlayerPage {
             queue: Queue::new(cx, queue_scroll_handle.clone()),
             queue_scroll_handle,
             controlbar,
+            show_queue,
         }
     }
 }
@@ -35,6 +38,7 @@ impl Render for PlayerPage {
         let thumbnail = player_state.thumbnail;
         let scanner_state = cx.global::<Controller>().scanner_state.clone();
         let scroll_handle = self.queue_scroll_handle.clone();
+        let show_queue = self.show_queue.clone();
 
         div()
             .size_full()
@@ -191,50 +195,62 @@ impl Render for PlayerPage {
             )
             .child(div().w(px(1.0)).h_full().bg(theme.white_05))
             .child(
+                if *show_queue.read(cx) {
+                    div()
+                        .h_full()
+                        .w_80()
+                        .flex_shrink_0()
+                        .flex()
+                        .flex_col()
+                        .bg(theme.bg_queue)
+                        .child(
+                            div()
+                                .w_full()
+                                .flex()
+                                .items_center()
+                                .justify_start()
+                                .p_4()
+                                .child(
+                                    div()
+                                        .text_base()
+                                        .text_color(theme.text_primary)
+                                        .font_weight(FontWeight(500.0))
+                                        .child("Queue"),
+                                )
+                        )
+                        .child(
+                            div()
+                                .id("queue_container")
+                                .w_full()
+                                .h_full()
+                                .px_4()
+                                .pb_4()
+                                .flex()
+                                .relative()
+                                .child(self.queue.clone())
+                                .child(floating_scrollbar(
+                                    "queue_scrollbar",
+                                    scroll_handle,
+                                    RightPad::None,
+                                )),
+                        )
+                } else { div() }
+            )
+            .child(
                 div()
-                    .h_full()
-                    .w_80()
-                    .flex_shrink_0()
-                    .flex()
-                    .flex_col()
-                    .bg(theme.bg_queue)
-                    .child(
-                        div()
-                            .w_full()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .p_4()
-                            .child(
-                                div()
-                                    .text_base()
-                                    .text_color(theme.text_primary)
-                                    .font_weight(FontWeight(500.0))
-                                    .child("Queue"),
-                            )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .font_weight(FontWeight(400.0))
-                                    .text_color(theme.text_muted)
-                                    .child("Hide"),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .id("queue_container")
-                            .w_full()
-                            .h_full()
-                            .p_4()
-                            .flex()
-                            .relative()
-                            .child(self.queue.clone())
-                            .child(floating_scrollbar(
-                                "queue_scrollbar",
-                                scroll_handle,
-                                RightPad::None,
-                            )),
-                    ),
+                    .id("show_hide_queue")
+                    .px_3().py_1().absolute().top_4().right_3().text_center()
+                    .rounded_md()
+                    .text_sm()
+                    .font_weight(FontWeight(400.0))
+                    .text_color(theme.text_muted)
+                    .hover(|this| this.bg(theme.white_05).text_color(theme.text_primary))
+                    .on_click(move |_, _, cx| {
+                        show_queue.update(cx, |this, cx| {
+                            *this = !*this
+                        })
+                    })
+                    .child(if *self.show_queue.read(cx) { "Hide" } else { "Show Queue" }),
             )
     }
 }
