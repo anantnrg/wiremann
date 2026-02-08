@@ -48,8 +48,8 @@ pub fn run() {
                         ..Default::default()
                     }),
                     window_min_size: Some(gpui::Size {
-                        width: px(600.0),
-                        height: px(400.0),
+                        width: px(800.0),
+                        height: px(740.0),
                     }),
                     ..Default::default()
                 },

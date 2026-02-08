@@ -49,7 +49,8 @@ impl Render for PlayerPage {
                     .flex_col()
                     .flex_1()
                     .px_16()
-                    .py_8()
+                    .pt_8()
+                    .pb_2()
                     .child(if let Some(meta) = player_state.meta {
                         div()
                             .w_auto()
@@ -60,8 +61,9 @@ impl Render for PlayerPage {
                             .justify_center()
                             .gap_y_6()
                             .flex_shrink_0()
+                            .flex_1()
                             .child(if let Some(thumbnail) = thumbnail {
-                                div().size_80().child(
+                                div().flex().flex_1().child(
                                     img(thumbnail)
                                         .object_fit(ObjectFit::Contain)
                                         .size_full()
