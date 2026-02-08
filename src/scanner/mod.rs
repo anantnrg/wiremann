@@ -71,7 +71,7 @@ impl Scanner {
         self.cancel_thumbs = Some(cancel.clone());
 
         let path = PathBuf::from(path);
-        let tracks = self.scan(path.clone());
+        let mut tracks = self.scan(path.clone());
 
         let name = path
             .file_name()
@@ -99,7 +99,7 @@ impl Scanner {
                 .build()
                 .unwrap();
             pool.install(|| {
-                tracks.par_iter().for_each(|track| {
+                tracks.par_iter_mut().for_each(|track| {
                     if cancel.load(Ordering::Relaxed) {
                         return;
                     }
@@ -112,9 +112,12 @@ impl Scanner {
                             });
                         }
                     }
+
+                    track.meta.thumbnail = None;
                 });
             });
         });
+        let _ = self.scanner_event_tx.send(ScannerEvent::State(self.state.clone()));
     }
 
     fn scan(&mut self, path: PathBuf) -> Vec<Track> {

@@ -135,6 +135,7 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .hover(|this| this.bg(theme.white_05))
+                                    .on_click(|_, _, cx| cx.global::<Controller>().prev())
                                     .child(Icon::new(Icons::Prev).size_4()),
                             )
                             .child(
@@ -177,6 +178,7 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .hover(|this| this.bg(theme.white_05))
+                                    .on_click(|_, _, cx| cx.global::<Controller>().next())
                                     .child(Icon::new(Icons::Next).size_4()),
                             )
                             .child(

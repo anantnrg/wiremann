@@ -91,7 +91,7 @@ pub fn run() {
                             {
                                 Event::Audio(audio_event) => match audio_event
                                 {
-                                    AudioEvent::StateChanged(state) => {
+                                    AudioEvent::PlayerStateChanged(state) => {
                                         cx.global_mut::<Controller>().player_state = state.clone();
 
                                         if state.state == PlaybackState::Playing {
@@ -124,6 +124,9 @@ pub fn run() {
                                         }
                                         cx.notify();
                                     }
+                                    AudioEvent::ScannerStateChanged(state) => {
+                                        cx.global_mut::<Controller>().scanner_state = state.clone();
+                                    }
                                     AudioEvent::TrackLoaded(path) => {
                                         let meta = Metadata::read(path.clone()).expect("No metadata");
                                         println!("Meta duration: {:#?}", meta.duration);
@@ -134,7 +137,9 @@ pub fn run() {
                                 }
                                 Event::Scanner(scanner_event) => match scanner_event {
                                     ScannerEvent::State(state) => {
-                                        cx.global_mut::<Controller>().scanner_state = state.clone();
+                                        if state.current_playlist.is_some() {
+                                            cx.global_mut::<Controller>().set_playlist_in_engine(state.current_playlist.clone().unwrap().clone());
+                                        }
                                     }
                                     ScannerEvent::Thumbnail { path, image } => {
                                         cx.global_mut::<ImageCache>().add(path.clone(), image.clone());

@@ -1,6 +1,6 @@
 use super::metadata::Metadata;
 use crate::audio::engine::PlaybackState;
-use crate::scanner::ScannerState;
+use crate::scanner::{Playlist, ScannerState};
 use crossbeam_channel::{Receiver, Sender};
 use gpui::*;
 use std::path::PathBuf;
@@ -23,6 +23,8 @@ pub struct PlayerState {
     pub position: u64,
     pub volume: f32,
     pub mute: bool,
+    pub shuffling: bool,
+    pub index: usize,
     pub meta: Option<Metadata>,
     pub thumbnail: Option<Arc<RenderImage>>,
 }
@@ -35,12 +37,16 @@ pub enum AudioCommand {
     Mute,
     Seek(u64),
     Stop,
+    Next,
+    Prev,
     Meta(Metadata),
+    Playlist(Playlist),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AudioEvent {
-    StateChanged(PlayerState),
+    PlayerStateChanged(PlayerState),
+    ScannerStateChanged(ScannerState),
     TrackLoaded(PathBuf),
     TrackEnded,
 }
@@ -108,8 +114,20 @@ impl Controller {
         let _ = self.audio_cmd_tx.send(AudioCommand::Seek(secs));
     }
 
+    pub fn next(&self) {
+        let _ = self.audio_cmd_tx.send(AudioCommand::Next);
+    }
+
+    pub fn prev(&self) {
+        let _ = self.audio_cmd_tx.send(AudioCommand::Prev);
+    }
+
     pub fn set_meta_in_engine(&self, meta: Metadata) {
         let _ = self.audio_cmd_tx.send(AudioCommand::Meta(meta));
+    }
+
+    pub fn set_playlist_in_engine(&self, playlist: Playlist) {
+        let _ = self.audio_cmd_tx.send(AudioCommand::Playlist(playlist));
     }
 
     pub fn load_playlist(&self, path: String) {
@@ -128,6 +146,8 @@ impl Default for PlayerState {
             volume: 1.0,
             meta: None,
             mute: false,
+            shuffling: false,
+            index: 0,
             thumbnail: None,
         }
     }

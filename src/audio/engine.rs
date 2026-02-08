@@ -2,6 +2,7 @@ use crate::controller::{
     metadata::Metadata,
     player::{AudioCommand, AudioEvent, PlayerState},
 };
+use crate::scanner::{Playlist, ScannerState};
 use crate::utils::decode_thumbnail;
 use crossbeam_channel::{select, tick, Receiver, Sender};
 use rodio::{decoder::DecoderBuilder, OutputStream, OutputStreamBuilder, Sink};
@@ -12,6 +13,7 @@ pub struct AudioEngine {
     stream_handle: OutputStream,
     player_state: PlayerState,
     audio_cmd_rx: Receiver<AudioCommand>,
+    scanner_state: ScannerState,
     audio_event_tx: Sender<AudioEvent>,
 }
 
@@ -32,6 +34,7 @@ impl AudioEngine {
             sink,
             stream_handle,
             player_state: PlayerState::default(),
+            scanner_state: ScannerState::default(),
             audio_cmd_rx,
             audio_event_tx,
         };
@@ -58,7 +61,10 @@ impl AudioEngine {
                         AudioCommand::Volume(vol) => self.set_volume(vol),
                         AudioCommand::Seek(pos) => self.seek(pos),
                         AudioCommand::Meta(meta) => self.meta(meta),
-                        AudioCommand::Mute => self.set_mute()
+                        AudioCommand::Mute => self.set_mute(),
+                        AudioCommand::Playlist(playlist) => self.playlist(playlist),
+                        AudioCommand::Next => self.next(),
+                        AudioCommand::Prev => self.prev(),
                     }
                 }
 
@@ -72,6 +78,20 @@ impl AudioEngine {
     fn load(&mut self, path: PathBuf) {
         self.sink.stop();
         self.sink = Sink::connect_new(self.stream_handle.mixer());
+
+        if self.scanner_state.current_playlist.is_some() {
+            if let Some(i) = self
+                .scanner_state
+                .current_playlist
+                .clone()
+                .unwrap()
+                .tracks
+                .iter()
+                .position(|p| *p.path == path)
+            {
+                self.player_state.index = i;
+            }
+        }
         self.player_state.current = Some(path.clone());
 
         let file = File::open(path.clone()).unwrap();
@@ -92,20 +112,23 @@ impl AudioEngine {
 
         let _ = self
             .audio_event_tx
-            .send(AudioEvent::StateChanged(self.player_state.clone()));
+            .send(AudioEvent::PlayerStateChanged(self.player_state.clone()));
     }
 
     fn meta(&mut self, meta: Metadata) {
         if let Some(data) = meta.thumbnail.clone() {
             match decode_thumbnail(data.into_boxed_slice(), false) {
-                Ok(thumbnail) => {
-                    self.player_state.thumbnail = Some(thumbnail)
-                }
+                Ok(thumbnail) => self.player_state.thumbnail = Some(thumbnail),
                 Err(_) => {}
             }
         }
         self.player_state.meta = Some(meta);
         self.send_player_state();
+    }
+
+    fn playlist(&mut self, playlist: Playlist) {
+        self.scanner_state.current_playlist = Some(playlist);
+        self.send_scanner_state();
     }
 
     fn play(&mut self) {
@@ -114,7 +137,7 @@ impl AudioEngine {
             self.player_state.state = PlaybackState::Playing;
             let _ = self
                 .audio_event_tx
-                .send(AudioEvent::StateChanged(self.player_state.clone()));
+                .send(AudioEvent::PlayerStateChanged(self.player_state.clone()));
         }
     }
 
@@ -124,7 +147,7 @@ impl AudioEngine {
             self.player_state.state = PlaybackState::Paused;
             let _ = self
                 .audio_event_tx
-                .send(AudioEvent::StateChanged(self.player_state.clone()));
+                .send(AudioEvent::PlayerStateChanged(self.player_state.clone()));
         }
     }
 
@@ -133,7 +156,7 @@ impl AudioEngine {
         self.player_state.state = PlaybackState::Stopped;
         let _ = self
             .audio_event_tx
-            .send(AudioEvent::StateChanged(self.player_state.clone()));
+            .send(AudioEvent::PlayerStateChanged(self.player_state.clone()));
     }
 
     fn set_volume(&mut self, volume: f32) {
@@ -142,7 +165,7 @@ impl AudioEngine {
 
         let _ = self
             .audio_event_tx
-            .send(AudioEvent::StateChanged(self.player_state.clone()));
+            .send(AudioEvent::PlayerStateChanged(self.player_state.clone()));
     }
 
     fn set_mute(&mut self) {
@@ -152,13 +175,21 @@ impl AudioEngine {
         } else {
             self.sink.set_volume(self.player_state.volume);
         }
-        let _ = self.audio_event_tx.send(AudioEvent::StateChanged(self.player_state.clone()));
+        let _ = self
+            .audio_event_tx
+            .send(AudioEvent::PlayerStateChanged(self.player_state.clone()));
     }
 
     fn send_player_state(&mut self) {
         let _ = self
             .audio_event_tx
-            .send(AudioEvent::StateChanged(self.player_state.clone()));
+            .send(AudioEvent::PlayerStateChanged(self.player_state.clone()));
+    }
+
+    fn send_scanner_state(&mut self) {
+        let _ = self
+            .audio_event_tx
+            .send(AudioEvent::ScannerStateChanged(self.scanner_state.clone()));
     }
 
     fn emit_position(&mut self) {
@@ -170,5 +201,38 @@ impl AudioEngine {
 
     fn seek(&mut self, pos: u64) {
         self.sink.try_seek(Duration::from_secs(pos)).unwrap();
+    }
+
+    fn next(&mut self) {
+        if self.scanner_state.current_playlist.is_none() {
+            return;
+        }
+
+        self.player_state.index = self.player_state.index + 1;
+
+        let track = self.scanner_state.current_playlist.clone().unwrap().tracks
+            [self.player_state.index]
+            .clone();
+        self.load(track.path);
+    }
+
+    fn prev(&mut self) {
+        let playlist = match &self.scanner_state.current_playlist {
+            Some(p) => p,
+            None => return,
+        };
+
+        if playlist.tracks.is_empty() {
+            return;
+        }
+
+        if self.player_state.index == 0 {
+            self.player_state.index = playlist.tracks.len() - 1;
+        } else {
+            self.player_state.index -= 1;
+        }
+
+        let track = playlist.tracks[self.player_state.index].clone();
+        self.load(track.path.clone());
     }
 }
