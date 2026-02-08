@@ -57,7 +57,8 @@ impl AudioEngine {
                         AudioCommand::Stop => self.stop(),
                         AudioCommand::Volume(vol) => self.set_volume(vol),
                         AudioCommand::Seek(pos) => self.seek(pos),
-                        AudioCommand::Meta(meta) => self.meta(meta)
+                        AudioCommand::Meta(meta) => self.meta(meta),
+                        AudioCommand::Mute => self.set_mute()
                     }
                 }
 
@@ -138,9 +139,20 @@ impl AudioEngine {
     fn set_volume(&mut self, volume: f32) {
         self.player_state.volume = volume.clamp(0.0, 1.0);
         self.sink.set_volume(self.player_state.volume);
+
         let _ = self
             .audio_event_tx
             .send(AudioEvent::StateChanged(self.player_state.clone()));
+    }
+
+    fn set_mute(&mut self) {
+        self.player_state.mute = !self.player_state.mute;
+        if self.player_state.mute {
+            self.sink.set_volume(0.0);
+        } else {
+            self.sink.set_volume(self.player_state.volume);
+        }
+        let _ = self.audio_event_tx.send(AudioEvent::StateChanged(self.player_state.clone()));
     }
 
     fn send_player_state(&mut self) {

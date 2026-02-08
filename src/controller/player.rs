@@ -22,6 +22,7 @@ pub struct PlayerState {
     pub state: PlaybackState,
     pub position: u64,
     pub volume: f32,
+    pub mute: bool,
     pub meta: Option<Metadata>,
     pub thumbnail: Option<Arc<RenderImage>>,
 }
@@ -31,6 +32,7 @@ pub enum AudioCommand {
     Play,
     Pause,
     Volume(f32),
+    Mute,
     Seek(u64),
     Stop,
     Meta(Metadata),
@@ -98,6 +100,10 @@ impl Controller {
         let _ = self.audio_cmd_tx.send(AudioCommand::Volume(volume / 100.0));
     }
 
+    pub fn mute(&self) {
+        let _ = self.audio_cmd_tx.send(AudioCommand::Mute);
+    }
+
     pub fn seek(&self, secs: u64) {
         let _ = self.audio_cmd_tx.send(AudioCommand::Seek(secs));
     }
@@ -121,6 +127,7 @@ impl Default for PlayerState {
             position: 0,
             volume: 1.0,
             meta: None,
+            mute: false,
             thumbnail: None,
         }
     }
