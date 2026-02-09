@@ -118,7 +118,7 @@ pub fn run() {
                                                                 cx.notify();
                                                             },
                                                         );
-                                                    })
+                                                    });
                                                 })
                                             })
                                         }
@@ -131,6 +131,14 @@ pub fn run() {
                                         let meta = Metadata::read(path.clone()).expect("No metadata");
                                         println!("Meta duration: {:#?}", meta.duration);
                                         cx.global_mut::<Controller>().set_meta_in_engine(meta);
+                                        playbar_view.update(cx, |this, cx| {
+                                            this.player_page.update(cx, |this, cx| {
+                                                this.queue.update(cx, |this, cx| {
+                                                    let state = &cx.global::<Controller>().player_state;
+                                                    this.scroll_to_item(state.index, cx);
+                                                });
+                                            })
+                                        });
                                         cx.notify();
                                     }
                                     _ => (),

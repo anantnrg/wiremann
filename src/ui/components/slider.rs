@@ -1,9 +1,9 @@
 use std::ops::Range;
 
 use gpui::{
-    div, prelude::FluentBuilder as _, px, relative, Along, App, AppContext as _, Axis, Background,
+    div, prelude::FluentBuilder as _, px, relative, Along, App, AppContext as _, Axis,
     Bounds, Context, DefiniteLength, DragMoveEvent, Empty, Entity, EntityId,
-    EventEmitter, Hsla, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement as _,
+    EventEmitter, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement as _,
     Pixels, Point, Render, RenderOnce, StatefulInteractiveElement as _,
     StyleRefinement, Styled, Window,
 };
@@ -413,8 +413,6 @@ impl Slider {
         &self,
         start: DefiniteLength,
         is_start: bool,
-        bar_color: Background,
-        thumb_color: Hsla,
         window: &mut Window,
         cx: &mut App,
     ) -> impl gpui::IntoElement {
@@ -488,7 +486,6 @@ impl RenderOnce for Slider {
         let percentage = state.percentage.clone();
         let bar_start = relative(percentage.start);
         let bar_end = relative(1. - percentage.end);
-        let rem_size = window.rem_size();
 
         let bar_color = self
             .style
@@ -601,8 +598,6 @@ impl RenderOnce for Slider {
                                 this.child(self.render_thumb(
                                     relative(percentage.start),
                                     true,
-                                    bar_color,
-                                    thumb_color,
                                     window,
                                     cx,
                                 ))
@@ -610,8 +605,6 @@ impl RenderOnce for Slider {
                             .child(self.render_thumb(
                                 relative(percentage.end),
                                 false,
-                                bar_color,
-                                thumb_color,
                                 window,
                                 cx,
                             ))

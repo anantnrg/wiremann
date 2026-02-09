@@ -96,6 +96,7 @@ impl Render for Item {
 pub struct Queue {
     views: Entity<AHashMap<usize, Entity<Item>>>,
     scroll_handle: UniformListScrollHandle,
+    stop_auto_scroll: Entity<bool>,
 }
 
 impl Queue {
@@ -103,6 +104,7 @@ impl Queue {
         cx.new(|cx| Self {
             views: cx.new(|_| AHashMap::new()),
             scroll_handle,
+            stop_auto_scroll: cx.new(|_| false),
         })
     }
 
@@ -118,6 +120,12 @@ impl Queue {
                 .clone()
         })
     }
+
+    pub fn scroll_to_item(&self, idx: usize, cx: &mut App) {
+        if !self.stop_auto_scroll.read(cx) {
+            self.scroll_handle.scroll_to_item(idx, ScrollStrategy::Nearest);
+        }
+    }
 }
 
 impl Render for Queue {
@@ -128,6 +136,7 @@ impl Render for Queue {
             .scanner_state
             .current_playlist
             .as_ref();
+        let stop_auto_scroll = self.stop_auto_scroll.clone();
 
         let tracks: Arc<Vec<Track>> = Arc::new(match playlist {
             Some(p) => p.tracks.clone(),
@@ -137,30 +146,31 @@ impl Render for Queue {
         let len = tracks.len();
         let scroll_handle = self.scroll_handle.clone();
 
-        uniform_list("queue", len, move |range, _, cx| {
-            views.update(cx, |map, _| {
-                map.retain(|idx, _| range.contains(idx));
-            });
+        div().id("queue_container").on_hover(move |state, _, cx| stop_auto_scroll.update(cx, |this, _| *this = *state)).size_full().child(
+            uniform_list("queue", len, move |range, _, cx| {
+                views.update(cx, |map, _| {
+                    map.retain(|idx, _| range.contains(idx));
+                });
 
-            range
-                .map(|i| {
-                    let track = Arc::new(tracks[i].clone());
-                    let path = track.path.clone();
+                range
+                    .map(|i| {
+                        let track = Arc::new(tracks[i].clone());
+                        let path = track.path.clone();
 
-                    div()
-                        .id(format!("track_{}", path.to_string_lossy().to_string()))
-                        .child(Queue::get_or_create_item(&views, i, track, cx))
-                        .on_click(move |_, _, cx| {
-                            cx.global::<Controller>()
-                                .load(path.to_string_lossy().to_string())
-                        })
-                })
-                .collect()
-        })
-            .w_full()
-            .h_full()
-            .flex()
-            .flex_col()
-            .track_scroll(&scroll_handle)
+                        div()
+                            .id(format!("track_{}", path.to_string_lossy().to_string()))
+                            .child(Queue::get_or_create_item(&views, i, track, cx))
+                            .on_click(move |_, _, cx| {
+                                cx.global::<Controller>()
+                                    .load(path.to_string_lossy().to_string())
+                            })
+                    })
+                    .collect()
+            })
+                .w_full()
+                .h_full()
+                .flex()
+                .flex_col()
+                .track_scroll(&scroll_handle))
     }
 }

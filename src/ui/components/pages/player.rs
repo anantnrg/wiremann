@@ -36,7 +36,7 @@ impl Render for PlayerPage {
 
         let player_state = cx.global::<Controller>().player_state.clone();
         let thumbnail = player_state.thumbnail;
-        let scanner_state = cx.global::<Controller>().scanner_state.clone();
+        // let scanner_state = cx.global::<Controller>().scanner_state.clone();
         let scroll_handle = self.queue_scroll_handle.clone();
         let show_queue = self.show_queue.clone();
 
@@ -248,7 +248,7 @@ impl Render for PlayerPage {
                     .text_color(theme.text_muted)
                     .hover(|this| this.bg(theme.white_05).text_color(theme.text_primary))
                     .on_click(move |_, _, cx| {
-                        show_queue.update(cx, |this, cx| {
+                        show_queue.update(cx, |this, _| {
                             *this = !*this
                         })
                     })
