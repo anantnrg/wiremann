@@ -129,7 +129,6 @@ pub fn run() {
                                     }
                                     AudioEvent::TrackLoaded(path) => {
                                         let meta = Metadata::read(path.clone()).expect("No metadata");
-                                        println!("Meta duration: {:#?}", meta.duration);
                                         cx.global_mut::<Controller>().set_meta_in_engine(meta);
                                         playbar_view.update(cx, |this, cx| {
                                             this.player_page.update(cx, |this, cx| {

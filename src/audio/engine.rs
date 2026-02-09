@@ -268,6 +268,7 @@ impl AudioEngine {
 
     fn set_repeat(&mut self) {
         self.player_state.repeat = !self.player_state.repeat;
+        self.send_player_state();
     }
 
     fn set_shuffle(&mut self) {
@@ -303,5 +304,6 @@ impl AudioEngine {
             self.scanner_state.queue_order = (0..len).collect();
             self.player_state.index = real_index;
         }
+        self.send_player_state();
     }
 }

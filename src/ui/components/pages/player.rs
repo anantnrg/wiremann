@@ -6,6 +6,7 @@ use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::queue::Queue;
 use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::icons::Icons;
+use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::Icon;
 
@@ -123,6 +124,7 @@ impl Render for PlayerPage {
                                     .flex()
                                     .items_center()
                                     .justify_center()
+                                    .when(cx.global::<Controller>().player_state.shuffling, |this| this.text_color(theme.accent))
                                     .hover(|this| this.bg(theme.white_05))
                                     .on_click(|_, _, cx| cx.global::<Controller>().set_shuffle())
                                     .child(Icon::new(Icons::Shuffle).size_4()),
@@ -191,6 +193,7 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .hover(|this| this.bg(theme.white_05))
+                                    .when(cx.global::<Controller>().player_state.repeat, |this| this.text_color(theme.accent))
                                     .on_click(|_, _, cx| cx.global::<Controller>().set_repeat())
                                     .child(Icon::new(Icons::Repeat).size_4()),
                             ),
