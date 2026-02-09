@@ -2,9 +2,10 @@ use crate::controller::{
     metadata::Metadata,
     player::{AudioCommand, AudioEvent, PlayerState},
 };
-use crate::scanner::{Playlist, ScannerState};
+use crate::scanner::ScannerState;
 use crate::utils::decode_thumbnail;
 use crossbeam_channel::{select, tick, Receiver, Sender};
+use rand::prelude::SliceRandom;
 use rodio::{decoder::DecoderBuilder, OutputStream, OutputStreamBuilder, Sink};
 use std::{fs::File, path::PathBuf, time::Duration};
 
@@ -64,7 +65,7 @@ impl AudioEngine {
                         AudioCommand::Seek(pos) => self.seek(pos),
                         AudioCommand::Meta(meta) => self.meta(meta),
                         AudioCommand::Mute => self.set_mute(),
-                        AudioCommand::Playlist(playlist) => self.playlist(playlist),
+                        AudioCommand::ScannerState(scanner_state) => self.scanner_state(scanner_state),
                         AudioCommand::Next => self.next(),
                         AudioCommand::Prev => self.prev(),
                         AudioCommand::Repeat => self.set_repeat(),
@@ -85,17 +86,18 @@ impl AudioEngine {
         self.sink = Sink::connect_new(self.stream_handle.mixer());
         self.track_ended = false;
 
-        if self.scanner_state.current_playlist.is_some() {
-            if let Some(i) = self
-                .scanner_state
-                .current_playlist
-                .clone()
-                .unwrap()
+        if let (Some(playlist), Some(queue)) = (
+            &self.scanner_state.current_playlist,
+            Some(&self.scanner_state.queue_order),
+        ) {
+            if let Some(real_index) = playlist
                 .tracks
                 .iter()
-                .position(|p| *p.path == path)
+                .position(|t| t.path == path)
             {
-                self.player_state.index = i;
+                if let Some(queue_pos) = queue.iter().position(|&i| i == real_index) {
+                    self.player_state.index = queue_pos;
+                }
             }
         }
         self.player_state.current = Some(path.clone());
@@ -132,8 +134,8 @@ impl AudioEngine {
         self.send_player_state();
     }
 
-    fn playlist(&mut self, playlist: Playlist) {
-        self.scanner_state.current_playlist = Some(playlist);
+    fn scanner_state(&mut self, scanner_state: ScannerState) {
+        self.scanner_state = scanner_state;
         self.send_scanner_state();
     }
 
@@ -214,32 +216,42 @@ impl AudioEngine {
             return;
         }
 
-        self.player_state.index = self.player_state.index + 1;
+        let len = self.scanner_state.queue_order.len();
+        if len == 0 {
+            return;
+        }
+        self.player_state.index = (self.player_state.index + 1) % len;
+
+        let index = self.scanner_state.queue_order[self.player_state.index];
 
         let track = self.scanner_state.current_playlist.clone().unwrap().tracks
-            [self.player_state.index]
+            [index]
             .clone();
         self.load(track.path);
     }
 
     fn prev(&mut self) {
-        let playlist = match &self.scanner_state.current_playlist {
-            Some(p) => p,
-            None => return,
-        };
-
-        if playlist.tracks.is_empty() {
+        if self.scanner_state.current_playlist.is_none() {
             return;
         }
 
-        if self.player_state.index == 0 {
-            self.player_state.index = playlist.tracks.len() - 1;
-        } else {
-            self.player_state.index -= 1;
+        let len = self.scanner_state.queue_order.len();
+        if len == 0 {
+            return;
         }
 
-        let track = playlist.tracks[self.player_state.index].clone();
-        self.load(track.path.clone());
+        self.player_state.index = if self.player_state.index == 0 {
+            len - 1
+        } else {
+            self.player_state.index - 1
+        };
+
+        let index = self.scanner_state.queue_order[self.player_state.index];
+
+        let track = self.scanner_state.current_playlist.clone().unwrap().tracks
+            [index]
+            .clone();
+        self.load(track.path);
     }
 
     fn check_track_end(&mut self) {
@@ -260,5 +272,36 @@ impl AudioEngine {
 
     fn set_shuffle(&mut self) {
         self.player_state.shuffling = !self.player_state.shuffling;
+        if self.player_state.shuffling {
+            let playlist = match &self.scanner_state.current_playlist {
+                Some(p) => p,
+                None => return,
+            };
+
+            let len = playlist.tracks.len();
+
+            self.scanner_state.queue_order = (0..len).collect();
+            self.scanner_state.queue_order.shuffle(&mut rand::rng());
+
+            let current_actual_index = self.player_state.index;
+
+            // Start from current song
+            if let Some(pos) = self.scanner_state.queue_order.iter().position(|&i| i == current_actual_index) {
+                self.scanner_state.queue_order.swap(0, pos);
+                self.player_state.index = 0;
+            }
+        } else {
+            let playlist = match &self.scanner_state.current_playlist {
+                Some(p) => p,
+                None => return,
+            };
+
+            let len = playlist.tracks.len();
+
+            let real_index = self.scanner_state.queue_order[self.player_state.index];
+
+            self.scanner_state.queue_order = (0..len).collect();
+            self.player_state.index = real_index;
+        }
     }
 }

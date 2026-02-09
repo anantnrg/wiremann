@@ -1,6 +1,6 @@
 use super::metadata::Metadata;
 use crate::audio::engine::PlaybackState;
-use crate::scanner::{Playlist, ScannerState};
+use crate::scanner::ScannerState;
 use crossbeam_channel::{Receiver, Sender};
 use gpui::*;
 use std::path::PathBuf;
@@ -41,7 +41,7 @@ pub enum AudioCommand {
     Next,
     Prev,
     Meta(Metadata),
-    Playlist(Playlist),
+    ScannerState(ScannerState),
     Repeat,
     Shuffle,
 }
@@ -129,20 +129,20 @@ impl Controller {
         let _ = self.audio_cmd_tx.send(AudioCommand::Meta(meta));
     }
 
-    pub fn set_playlist_in_engine(&self, playlist: Playlist) {
-        let _ = self.audio_cmd_tx.send(AudioCommand::Playlist(playlist));
+    pub fn set_scanner_state_in_engine(&self, scanner_state: ScannerState) {
+        let _ = self.audio_cmd_tx.send(AudioCommand::ScannerState(scanner_state));
     }
 
     pub fn load_playlist(&self, path: String) {
         let _ = self.scanner_cmd_tx.send(ScannerCommand::Load(path));
     }
 
-    pub fn set_repeat(&mut self) {
-        let _ = self.scanner_cmd_tx.send(AudioCommand::Repeat);
+    pub fn set_repeat(&self) {
+        let _ = self.audio_cmd_tx.send(AudioCommand::Repeat);
     }
 
-    pub fn set_shuffle(&mut self) {
-        let _ = self.scanner_cmd_tx.send(AudioCommand::Shuffle);
+    pub fn set_shuffle(&self) {
+        let _ = self.audio_cmd_tx.send(AudioCommand::Shuffle);
     }
 }
 

@@ -26,6 +26,7 @@ pub struct Scanner {
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct ScannerState {
     pub current_playlist: Option<Playlist>,
+    pub queue_order: Vec<usize>,
     pub playlists: Option<Vec<String>>,
 }
 
@@ -85,6 +86,8 @@ impl Scanner {
             tracks: tracks.clone(),
         };
 
+
+        self.state.queue_order = (0..tracks.len()).collect();
         self.state.current_playlist = Some(playlist);
 
         let _ = self.scanner_event_tx.send(ScannerEvent::State(self.state.clone()));

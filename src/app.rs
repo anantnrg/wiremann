@@ -149,18 +149,15 @@ pub fn run() {
                                         } else {
                                             controller.next()
                                         }
-                                        
+
                                         if controller.player_state.state != PlaybackState::Playing {
                                             controller.play();
                                         }
                                     }
-                                    _ => (),
                                 }
                                 Event::Scanner(scanner_event) => match scanner_event {
                                     ScannerEvent::State(state) => {
-                                        if state.current_playlist.is_some() {
-                                            cx.global_mut::<Controller>().set_playlist_in_engine(state.current_playlist.clone().unwrap().clone());
-                                        }
+                                        cx.global_mut::<Controller>().set_scanner_state_in_engine(state.clone());
                                     }
                                     ScannerEvent::Thumbnail { path, image } => {
                                         cx.global_mut::<ImageCache>().add(path.clone(), image.clone());

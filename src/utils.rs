@@ -5,6 +5,7 @@ use smallvec::smallvec;
 use std::io::Cursor;
 use std::sync::Arc;
 
+#[allow(unused)]
 pub fn drop_image_from_app(cx: &mut App, image: Arc<RenderImage>) {
     for window in cx.windows() {
         let image = image.clone();

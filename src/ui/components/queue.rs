@@ -13,6 +13,7 @@ struct ItemData {
     artists: String,
 }
 
+#[allow(unused)]
 struct Item {
     data: ItemData,
     idx: usize,
