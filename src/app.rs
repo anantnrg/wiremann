@@ -125,6 +125,17 @@ pub fn run() {
                                         cx.notify();
                                     }
                                     AudioEvent::ScannerStateChanged(state) => {
+                                        if cx.global::<Controller>().scanner_state.queue_order != state.queue_order {
+                                            playbar_view.update(cx, |this, cx| {
+                                                this.player_page.update(cx, |this, cx| {
+                                                    this.queue.update(cx, |this, cx| {
+                                                        this.queue_order.update(cx, |this, _| *this = state.queue_order.clone());
+                                                        this.views.update(cx, |v, _| v.clear());
+                                                        this.revision.update(cx, |r, _| *r += 1);
+                                                    })
+                                                })
+                                            })
+                                        }
                                         cx.global_mut::<Controller>().scanner_state = state.clone();
                                     }
                                     AudioEvent::TrackLoaded(path) => {
@@ -133,8 +144,24 @@ pub fn run() {
                                         playbar_view.update(cx, |this, cx| {
                                             this.player_page.update(cx, |this, cx| {
                                                 this.queue.update(cx, |this, cx| {
-                                                    let state = &cx.global::<Controller>().player_state;
-                                                    this.scroll_to_item(state.index, cx);
+                                                    let controller = cx.global::<Controller>();
+                                                    let state = &controller.player_state;
+
+                                                    let queue_index = if let (Some(current), Some(playlist)) = (
+                                                        &state.current,
+                                                        &controller.scanner_state.current_playlist,
+                                                    ) {
+                                                        controller
+                                                            .scanner_state
+                                                            .queue_order
+                                                            .iter()
+                                                            .position(|&i| playlist.tracks[i].path == *current)
+                                                            .unwrap_or(state.index)
+                                                    } else {
+                                                        state.index
+                                                    };
+
+                                                    this.scroll_to_item(queue_index, cx);
                                                 });
                                             })
                                         });

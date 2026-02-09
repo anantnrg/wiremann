@@ -14,7 +14,7 @@ struct ItemData {
 }
 
 #[allow(unused)]
-struct Item {
+pub struct Item {
     data: ItemData,
     idx: usize,
 }
@@ -95,9 +95,11 @@ impl Render for Item {
 
 #[derive(Clone)]
 pub struct Queue {
-    views: Entity<AHashMap<usize, Entity<Item>>>,
+    pub views: Entity<AHashMap<usize, Entity<Item>>>,
     scroll_handle: UniformListScrollHandle,
     stop_auto_scroll: Entity<bool>,
+    pub queue_order: Entity<Vec<usize>>,
+    pub revision: Entity<u64>,
 }
 
 impl Queue {
@@ -106,6 +108,8 @@ impl Queue {
             views: cx.new(|_| AHashMap::new()),
             scroll_handle,
             stop_auto_scroll: cx.new(|_| false),
+            queue_order: cx.new(|_| Vec::new()),
+            revision: cx.new(|_| 0),
         })
     }
 
@@ -132,30 +136,29 @@ impl Queue {
 impl Render for Queue {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let views = self.views.clone();
-        let playlist = cx
-            .global::<Controller>()
-            .scanner_state
-            .current_playlist
-            .as_ref();
         let stop_auto_scroll = self.stop_auto_scroll.clone();
+        let controller = cx.global::<Controller>();
+        let playlist = controller.scanner_state.current_playlist.as_ref();
 
         let tracks: Arc<Vec<Track>> = Arc::new(match playlist {
             Some(p) => p.tracks.clone(),
             None => Vec::new(),
         })
             .clone();
-        let len = tracks.len();
+        let queue_order = self.queue_order.clone();
+        let len = queue_order.read(cx).len();
         let scroll_handle = self.scroll_handle.clone();
 
         div().id("queue_container").on_hover(move |state, _, cx| stop_auto_scroll.update(cx, |this, _| *this = *state)).size_full().child(
-            uniform_list("queue", len, move |range, _, cx| {
+            uniform_list(format!("queue_{}", self.revision.read(cx)), len, move |range, _, cx| {
                 views.update(cx, |map, _| {
                     map.retain(|idx, _| range.contains(idx));
                 });
 
                 range
                     .map(|i| {
-                        let track = Arc::new(tracks[i].clone());
+                        let real_index = queue_order.read(cx)[i];
+                        let track = Arc::new(tracks[real_index].clone());
                         let path = track.path.clone();
 
                         div()
