@@ -124,6 +124,7 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .hover(|this| this.bg(theme.white_05))
+                                    .on_click(|_, _, cx| cx.global::<Controller>().set_shuffle())
                                     .child(Icon::new(Icons::Shuffle).size_4()),
                             )
                             .child(
@@ -190,6 +191,7 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .hover(|this| this.bg(theme.white_05))
+                                    .on_click(|_, _, cx| cx.global::<Controller>().set_repeat())
                                     .child(Icon::new(Icons::Repeat).size_4()),
                             ),
                     )

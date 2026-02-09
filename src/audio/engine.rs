@@ -15,6 +15,7 @@ pub struct AudioEngine {
     audio_cmd_rx: Receiver<AudioCommand>,
     scanner_state: ScannerState,
     audio_event_tx: Sender<AudioEvent>,
+    track_ended: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -37,6 +38,7 @@ impl AudioEngine {
             scanner_state: ScannerState::default(),
             audio_cmd_rx,
             audio_event_tx,
+            track_ended: false,
         };
 
         engine.event_loop();
@@ -65,11 +67,14 @@ impl AudioEngine {
                         AudioCommand::Playlist(playlist) => self.playlist(playlist),
                         AudioCommand::Next => self.next(),
                         AudioCommand::Prev => self.prev(),
+                        AudioCommand::Repeat => self.set_repeat(),
+                        AudioCommand::Shuffle => self.set_shuffle()
                     }
                 }
 
                 recv(ticker) -> _ => {
                     self.emit_position();
+                    self.check_track_end();
                 }
             }
         }
@@ -78,6 +83,7 @@ impl AudioEngine {
     fn load(&mut self, path: PathBuf) {
         self.sink.stop();
         self.sink = Sink::connect_new(self.stream_handle.mixer());
+        self.track_ended = false;
 
         if self.scanner_state.current_playlist.is_some() {
             if let Some(i) = self
@@ -234,5 +240,25 @@ impl AudioEngine {
 
         let track = playlist.tracks[self.player_state.index].clone();
         self.load(track.path.clone());
+    }
+
+    fn check_track_end(&mut self) {
+        if self.player_state.state != PlaybackState::Playing {
+            return;
+        }
+
+        if self.sink.empty() && !self.track_ended {
+            self.track_ended = true;
+
+            let _ = self.audio_event_tx.send(AudioEvent::TrackEnded);
+        }
+    }
+
+    fn set_repeat(&mut self) {
+        self.player_state.repeat = !self.player_state.repeat;
+    }
+
+    fn set_shuffle(&mut self) {
+        self.player_state.shuffling = !self.player_state.shuffling;
     }
 }

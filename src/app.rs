@@ -141,6 +141,19 @@ pub fn run() {
                                         });
                                         cx.notify();
                                     }
+                                    AudioEvent::TrackEnded => {
+                                        let controller = cx.global::<Controller>();
+
+                                        if controller.player_state.repeat {
+                                            controller.seek(0);
+                                        } else {
+                                            controller.next()
+                                        }
+                                        
+                                        if controller.player_state.state != PlaybackState::Playing {
+                                            controller.play();
+                                        }
+                                    }
                                     _ => (),
                                 }
                                 Event::Scanner(scanner_event) => match scanner_event {

@@ -24,6 +24,7 @@ pub struct PlayerState {
     pub volume: f32,
     pub mute: bool,
     pub shuffling: bool,
+    pub repeat: bool,
     pub index: usize,
     pub meta: Option<Metadata>,
     pub thumbnail: Option<Arc<RenderImage>>,
@@ -41,6 +42,8 @@ pub enum AudioCommand {
     Prev,
     Meta(Metadata),
     Playlist(Playlist),
+    Repeat,
+    Shuffle,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -133,6 +136,14 @@ impl Controller {
     pub fn load_playlist(&self, path: String) {
         let _ = self.scanner_cmd_tx.send(ScannerCommand::Load(path));
     }
+
+    pub fn set_repeat(&mut self) {
+        let _ = self.scanner_cmd_tx.send(AudioCommand::Repeat);
+    }
+
+    pub fn set_shuffle(&mut self) {
+        let _ = self.scanner_cmd_tx.send(AudioCommand::Shuffle);
+    }
 }
 
 impl gpui::Global for Controller {}
@@ -147,6 +158,7 @@ impl Default for PlayerState {
             meta: None,
             mute: false,
             shuffling: false,
+            repeat: false,
             index: 0,
             thumbnail: None,
         }
