@@ -305,5 +305,6 @@ impl AudioEngine {
             self.player_state.index = real_index;
         }
         self.send_player_state();
+        self.send_scanner_state();
     }
 }
