@@ -95,11 +95,10 @@ impl Render for Item {
 
 #[derive(Clone)]
 pub struct Queue {
-    pub views: Entity<AHashMap<usize, Entity<Item>>>,
+    pub views: Entity<AHashMap<PathBuf, Entity<Item>>>,
     scroll_handle: UniformListScrollHandle,
     stop_auto_scroll: Entity<bool>,
     pub queue_order: Entity<Vec<usize>>,
-    pub revision: Entity<u64>,
 }
 
 impl Queue {
@@ -109,19 +108,18 @@ impl Queue {
             scroll_handle,
             stop_auto_scroll: cx.new(|_| false),
             queue_order: cx.new(|_| Vec::new()),
-            revision: cx.new(|_| 0),
         })
     }
 
     fn get_or_create_item(
-        views: &Entity<AHashMap<usize, Entity<Item>>>,
-        index: usize,
+        views: &Entity<AHashMap<PathBuf, Entity<Item>>>,
         track: Arc<Track>,
         cx: &mut App,
     ) -> Entity<Item> {
+        let key = track.path.clone();
         views.update(cx, |this, cx| {
-            this.entry(index)
-                .or_insert_with(|| Item::new(cx, track, index))
+            this.entry(key)
+                .or_insert_with(|| Item::new(cx, track, 0))
                 .clone()
         })
     }
@@ -150,9 +148,17 @@ impl Render for Queue {
         let scroll_handle = self.scroll_handle.clone();
 
         div().id("queue_container").on_hover(move |state, _, cx| stop_auto_scroll.update(cx, |this, _| *this = *state)).size_full().child(
-            uniform_list(format!("queue_{}", self.revision.read(cx)), len, move |range, _, cx| {
+            uniform_list("queue", len, move |range, _, cx| {
+                let visible_paths: Vec<PathBuf> = range
+                    .clone()
+                    .map(|i| {
+                        let real_index = queue_order.read(cx)[i];
+                        tracks[real_index].path.clone()
+                    })
+                    .collect();
+
                 views.update(cx, |map, _| {
-                    map.retain(|idx, _| range.contains(idx));
+                    map.retain(|path, _| visible_paths.contains(path));
                 });
 
                 range
@@ -163,7 +169,7 @@ impl Render for Queue {
 
                         div()
                             .id(format!("track_{}", path.to_string_lossy().to_string()))
-                            .child(Queue::get_or_create_item(&views, i, track, cx))
+                            .child(Queue::get_or_create_item(&views, track, cx))
                             .on_click(move |_, _, cx| {
                                 cx.global::<Controller>()
                                     .load(path.to_string_lossy().to_string())

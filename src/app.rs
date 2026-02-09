@@ -131,7 +131,6 @@ pub fn run() {
                                                     this.queue.update(cx, |this, cx| {
                                                         this.queue_order.update(cx, |this, _| *this = state.queue_order.clone());
                                                         this.views.update(cx, |v, _| v.clear());
-                                                        this.revision.update(cx, |r, _| *r += 1);
                                                     })
                                                 })
                                             })
