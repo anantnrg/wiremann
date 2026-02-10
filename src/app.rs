@@ -142,10 +142,17 @@ pub fn run() {
                                     AudioEvent::TrackLoaded(path) => {
                                         let meta = Metadata::read(path.clone()).expect("No metadata");
                                         cx.global_mut::<Controller>().set_meta_in_engine(meta);
+                                        cx.notify();
                                         playbar_view.update(cx, |this, cx| {
                                             this.player_page.update(cx, |this, cx| {
                                                 this.queue.update(cx, |this, cx| {
-                                                    this.scroll_to_item(cx);
+                                                    let controller = cx.global::<Controller>();
+                                                    let idx = controller.player_state.index;
+
+                                                    if !this.stop_auto_scroll.read(cx) {
+                                                        this.scroll_handle
+                                                            .scroll_to_item(idx, ScrollStrategy::Nearest);
+                                                    }
                                                 });
                                             })
                                         });
@@ -153,9 +160,12 @@ pub fn run() {
                                     }
                                     AudioEvent::TrackEnded => {
                                         let controller = cx.global::<Controller>();
+                                        let current = controller.player_state.current.clone();
 
                                         if controller.player_state.repeat {
-                                            controller.seek(0);
+                                            if current.is_some() {
+                                                controller.load(current.unwrap().to_string_lossy().to_string())
+                                            }
                                         } else {
                                             controller.next()
                                         }

@@ -111,7 +111,11 @@ impl AudioEngine {
             .build()
             .unwrap();
 
-        self.sink.set_volume(self.player_state.volume);
+        if self.player_state.mute {
+            self.sink.set_volume(0.0);
+        } else {
+            self.sink.set_volume(self.player_state.volume);
+        }
         self.sink.append(source);
 
         let _ = self.audio_event_tx.send(AudioEvent::TrackLoaded(path));

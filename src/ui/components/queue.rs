@@ -96,8 +96,8 @@ impl Render for Item {
 #[derive(Clone)]
 pub struct Queue {
     pub views: Entity<AHashMap<PathBuf, Entity<Item>>>,
-    scroll_handle: UniformListScrollHandle,
-    stop_auto_scroll: Entity<bool>,
+    pub scroll_handle: UniformListScrollHandle,
+    pub stop_auto_scroll: Entity<bool>,
     pub queue_order: Entity<Vec<usize>>,
 }
 
