@@ -124,7 +124,24 @@ impl Queue {
         })
     }
 
-    pub fn scroll_to_item(&self, idx: usize, cx: &mut App) {
+    pub fn scroll_to_item(&self, cx: &mut App) {
+        let controller = cx.global::<Controller>();
+        let state = &controller.player_state;
+
+        let idx = if let (Some(current), Some(playlist)) = (
+            &state.current,
+            &controller.scanner_state.current_playlist,
+        ) {
+            controller
+                .scanner_state
+                .queue_order
+                .iter()
+                .position(|&i| playlist.tracks[i].path == *current)
+                .unwrap_or(0)
+        } else {
+            0
+        };
+
         if !self.stop_auto_scroll.read(cx) {
             self.scroll_handle.scroll_to_item(idx, ScrollStrategy::Nearest);
         }

@@ -131,6 +131,8 @@ pub fn run() {
                                                     this.queue.update(cx, |this, cx| {
                                                         this.queue_order.update(cx, |this, _| *this = state.queue_order.clone());
                                                         this.views.update(cx, |v, _| v.clear());
+                                                        let this = this.clone();
+                                                        cx.defer(move |cx| this.scroll_to_item(cx));
                                                     })
                                                 })
                                             })
@@ -143,24 +145,7 @@ pub fn run() {
                                         playbar_view.update(cx, |this, cx| {
                                             this.player_page.update(cx, |this, cx| {
                                                 this.queue.update(cx, |this, cx| {
-                                                    let controller = cx.global::<Controller>();
-                                                    let state = &controller.player_state;
-
-                                                    let queue_index = if let (Some(current), Some(playlist)) = (
-                                                        &state.current,
-                                                        &controller.scanner_state.current_playlist,
-                                                    ) {
-                                                        controller
-                                                            .scanner_state
-                                                            .queue_order
-                                                            .iter()
-                                                            .position(|&i| playlist.tracks[i].path == *current)
-                                                            .unwrap_or(state.index)
-                                                    } else {
-                                                        state.index
-                                                    };
-
-                                                    this.scroll_to_item(queue_index, cx);
+                                                    this.scroll_to_item(cx);
                                                 });
                                             })
                                         });
