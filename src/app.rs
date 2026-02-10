@@ -147,11 +147,28 @@ pub fn run() {
                                             this.player_page.update(cx, |this, cx| {
                                                 this.queue.update(cx, |this, cx| {
                                                     let controller = cx.global::<Controller>();
-                                                    let idx = controller.player_state.index;
+
+                                                    let idx = if let Some(playlist) = &controller.scanner_state.current_playlist {
+                                                        if let Some(real_index) = playlist
+                                                            .tracks
+                                                            .iter()
+                                                            .position(|t| &t.path == path)
+                                                        {
+                                                            controller
+                                                                .scanner_state
+                                                                .queue_order
+                                                                .iter()
+                                                                .position(|&i| i == real_index)
+                                                                .unwrap_or(0)
+                                                        } else {
+                                                            0
+                                                        }
+                                                    } else {
+                                                        0
+                                                    };
 
                                                     if !this.stop_auto_scroll.read(cx) {
-                                                        this.scroll_handle
-                                                            .scroll_to_item(idx, ScrollStrategy::Nearest);
+                                                        this.scroll_handle.scroll_to_item(idx, ScrollStrategy::Nearest);
                                                     }
                                                 });
                                             })
