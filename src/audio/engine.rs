@@ -63,7 +63,6 @@ impl AudioEngine {
                         AudioCommand::Stop => self.stop(),
                         AudioCommand::Volume(vol) => self.set_volume(vol),
                         AudioCommand::Seek(pos) => self.seek(pos),
-                        AudioCommand::Meta(meta) => self.meta(meta),
                         AudioCommand::Mute => self.set_mute(),
                         AudioCommand::ScannerState(scanner_state) => self.scanner_state(scanner_state),
                         AudioCommand::Next => self.next(),
@@ -104,9 +103,11 @@ impl AudioEngine {
         }
         self.sink.append(source);
 
-        let _ = self.audio_event_tx.send(AudioEvent::TrackLoaded(path));
+        let _ = self.audio_event_tx.send(AudioEvent::TrackLoaded(path.clone()));
 
         self.player_state.state = PlaybackState::Playing;
+
+        self.meta(Metadata::read(path).expect("No metadata"));
 
         let _ = self
             .audio_event_tx
@@ -241,9 +242,7 @@ impl AudioEngine {
         }
         self.player_state.index = (self.player_state.index + 1) % len;
 
-        let index = self.scanner_state.queue_order[self.player_state.index];
-
-        self.load_at(index);
+        self.load_at(self.player_state.index);
     }
 
     fn prev(&mut self) {
@@ -262,9 +261,7 @@ impl AudioEngine {
             self.player_state.index - 1
         };
 
-        let index = self.scanner_state.queue_order[self.player_state.index];
-
-        self.load_at(index);
+        self.load_at(self.player_state.index);
     }
 
     fn check_track_end(&mut self) {

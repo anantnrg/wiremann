@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::{thread, time::Duration};
 
 use crate::audio::engine::{AudioEngine, PlaybackState};
-use crate::controller::metadata::Metadata;
 use crate::controller::player::{AudioCommand, AudioEvent, Controller, Event, PlayerState, ResHandler, ScannerCommand, ScannerEvent};
 use crate::scanner::{Scanner, ScannerState};
 use crate::ui::assets::Assets;
@@ -140,9 +139,6 @@ pub fn run() {
                                         cx.global_mut::<Controller>().scanner_state = state.clone();
                                     }
                                     AudioEvent::TrackLoaded(path) => {
-                                        let meta = Metadata::read(path.clone()).expect("No metadata");
-                                        cx.global_mut::<Controller>().set_meta_in_engine(meta);
-                                        cx.notify();
                                         playbar_view.update(cx, |this, cx| {
                                             this.player_page.update(cx, |this, cx| {
                                                 this.queue.update(cx, |this, cx| {

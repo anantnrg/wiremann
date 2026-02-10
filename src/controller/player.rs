@@ -40,7 +40,6 @@ pub enum AudioCommand {
     Stop,
     Next,
     Prev,
-    Meta(Metadata),
     ScannerState(ScannerState),
     Repeat,
     Shuffle,
@@ -123,10 +122,6 @@ impl Controller {
 
     pub fn prev(&self) {
         let _ = self.audio_cmd_tx.send(AudioCommand::Prev);
-    }
-
-    pub fn set_meta_in_engine(&self, meta: Metadata) {
-        let _ = self.audio_cmd_tx.send(AudioCommand::Meta(meta));
     }
 
     pub fn set_scanner_state_in_engine(&self, scanner_state: ScannerState) {
