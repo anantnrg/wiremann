@@ -22,3 +22,5 @@ ahash = "0.8.12"
 num_cpus = "1.17.0"
 rand = "0.10.0"
 bitcode = "0.6.9"
+dirs = "4.0.0"
+uuid = { version = "1.20.0", features = ["serde", "v4"] }

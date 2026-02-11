@@ -42,37 +42,37 @@ impl Metadata {
         };
 
         let title = tag
-            .get_string(&ItemKey::TrackTitle)
+            .get_string(ItemKey::TrackTitle)
             .unwrap_or("None")
             .to_string();
         let artists: Vec<String> = tag
-            .get_strings(&ItemKey::TrackArtist)
+            .get_strings(ItemKey::TrackArtist)
             .map(|s| s.to_owned())
             .collect();
         let album = tag
-            .get_string(&ItemKey::AlbumTitle)
+            .get_string(ItemKey::AlbumTitle)
             .unwrap_or("None")
             .to_string();
         let genre = tag
-            .get_string(&ItemKey::Genre)
+            .get_string(ItemKey::Genre)
             .unwrap_or("None")
             .to_string();
         let duration = tagged_file.properties().duration().as_secs();
         let writer = tag
-            .get_string(&ItemKey::Writer)
-            .or_else(|| tag.get_string(&ItemKey::Composer))
+            .get_string(ItemKey::Writer)
+            .or_else(|| tag.get_string(ItemKey::Composer))
             .unwrap_or("None")
             .to_string();
         let producer = tag
-            .get_string(&ItemKey::Producer)
+            .get_string(ItemKey::Producer)
             .unwrap_or("None")
             .to_string();
         let publisher = tag
-            .get_string(&ItemKey::Publisher)
+            .get_string(ItemKey::Publisher)
             .unwrap_or("None")
             .to_string();
         let label = tag
-            .get_string(&ItemKey::Label)
+            .get_string(ItemKey::Label)
             .unwrap_or("None")
             .to_string();
 
