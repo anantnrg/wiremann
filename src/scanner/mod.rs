@@ -1,6 +1,7 @@
 use crate::controller::metadata::Metadata;
 use crate::controller::player::{ScannerCommand, ScannerEvent, Track};
 use crate::utils::decode_thumbnail;
+use bitcode::{Decode, Encode};
 use crossbeam_channel::{select, Receiver, Sender};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
@@ -9,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use walkdir::WalkDir;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub struct Playlist {
     pub name: String,
     pub path: Option<PathBuf>,
@@ -23,7 +24,7 @@ pub struct Scanner {
     cancel_thumbs: Option<Arc<AtomicBool>>,
 }
 
-#[derive(Debug, PartialEq, Clone, Default)]
+#[derive(Debug, PartialEq, Clone, Default, Encode, Decode)]
 pub struct ScannerState {
     pub current_playlist: Option<Playlist>,
     pub queue_order: Vec<usize>,
