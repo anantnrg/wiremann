@@ -97,8 +97,9 @@ impl Render for ControlBar {
                                     .flex()
                                     .flex_shrink_0()
                                     .items_center()
-                                    .justify_center()
+                                    .justify_start()
                                     .gap_x_3()
+                                    .pt_2()
                                     .child(div().id("volume_icon").on_click(|_, _, cx|
                                         cx.global::<Controller>().mute()
                                     ).child(Icon::new(if state.mute {
@@ -112,20 +113,12 @@ impl Render for ControlBar {
                                         }
                                     }).size_4()))
                                     .child(
-                                        div().w_32().flex().flex_shrink_0().child(
+                                        div().w_40().flex().flex_shrink_0().child(
                                             Slider::new(&self.vol_slider_state)
                                                 .text_color(theme.accent),
                                         ),
                                     ),
                             )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .p_4()
-                                    .child(Icon::new(Icons::Menu).size_4()),
-                            ),
                     ),
             )
     }
