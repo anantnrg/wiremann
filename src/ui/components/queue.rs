@@ -48,6 +48,7 @@ impl Render for Item {
 
         let thumbnail = cx.global::<ImageCache>().get(&self.data.path);
         div()
+            .id(format!("track_item_{}", self.data.path.to_string_lossy().to_string()))
             .h(px(64.))
             .w_full()
             .flex()
@@ -99,6 +100,7 @@ pub struct Queue {
     pub scroll_handle: UniformListScrollHandle,
     pub stop_auto_scroll: Entity<bool>,
     pub queue_order: Entity<Vec<usize>>,
+    pub tracks: Arc<Vec<Track>>,
 }
 
 impl Queue {
@@ -108,6 +110,7 @@ impl Queue {
             scroll_handle,
             stop_auto_scroll: cx.new(|_| false),
             queue_order: cx.new(|_| Vec::new()),
+            tracks: Arc::new(Vec::new()),
         })
     }
 
@@ -128,10 +131,9 @@ impl Queue {
         let controller = cx.global::<Controller>();
         let state = &controller.player_state;
 
-        let idx = if let (Some(current), Some(playlist)) = (
-            &state.current,
-            &controller.scanner_state.current_playlist,
-        ) {
+        let idx = if let (Some(current), Some(playlist)) =
+            (&state.current, &controller.scanner_state.current_playlist)
+        {
             controller
                 .scanner_state
                 .queue_order
@@ -143,7 +145,8 @@ impl Queue {
         };
 
         if !self.stop_auto_scroll.read(cx) {
-            self.scroll_handle.scroll_to_item(idx, ScrollStrategy::Nearest);
+            self.scroll_handle
+                .scroll_to_item(idx, ScrollStrategy::Nearest);
         }
     }
 }
@@ -155,49 +158,50 @@ impl Render for Queue {
         let controller = cx.global::<Controller>();
         let playlist = controller.scanner_state.current_playlist.as_ref();
 
-        let tracks: Arc<Vec<Track>> = Arc::new(match playlist {
-            Some(p) => p.tracks.clone(),
-            None => Vec::new(),
-        })
-            .clone();
+        let tracks = self.tracks.clone();
         let queue_order = self.queue_order.clone();
         let len = queue_order.read(cx).len();
         let scroll_handle = self.scroll_handle.clone();
 
-        div().id("queue_container").on_hover(move |state, _, cx| stop_auto_scroll.update(cx, |this, _| *this = *state)).size_full().child(
-            uniform_list("queue", len, move |range, _, cx| {
-                let visible_paths: Vec<PathBuf> = range
-                    .clone()
-                    .map(|i| {
-                        let real_index = queue_order.read(cx)[i];
-                        tracks[real_index].path.clone()
-                    })
-                    .collect();
+        div()
+            .id("queue_container")
+            .on_hover(move |_, _, cx| stop_auto_scroll.update(cx, |this, _| *this = false))
+            .size_full()
+            .child(
+                uniform_list("queue", len, move |range, _, cx| {
+                    let visible_paths: Vec<PathBuf> = range
+                        .clone()
+                        .map(|i| {
+                            let real_index = queue_order.read(cx)[i];
+                            tracks[real_index].path.clone()
+                        })
+                        .collect();
 
-                views.update(cx, |map, _| {
-                    map.retain(|path, _| visible_paths.contains(path));
-                });
+                    views.update(cx, |map, _| {
+                        map.retain(|path, _| visible_paths.contains(path));
+                    });
 
-                range
-                    .map(|i| {
-                        let real_index = queue_order.read(cx)[i];
-                        let track = Arc::new(tracks[real_index].clone());
-                        let path = track.path.clone();
+                    range
+                        .map(|i| {
+                            let real_index = queue_order.read(cx)[i];
+                            let track = Arc::new(tracks[real_index].clone());
+                            let path = track.path.clone();
 
-                        div()
-                            .id(format!("track_{}", path.to_string_lossy().to_string()))
-                            .child(Queue::get_or_create_item(&views, track, cx))
-                            .on_click(move |_, _, cx| {
-                                cx.global::<Controller>()
-                                    .load(path.to_string_lossy().to_string())
-                            })
-                    })
-                    .collect()
-            })
-                .w_full()
-                .h_full()
-                .flex()
-                .flex_col()
-                .track_scroll(&scroll_handle))
+                            div()
+                                .id(format!("track_{}", path.to_string_lossy().to_string()))
+                                .child(Queue::get_or_create_item(&views, track, cx))
+                                .on_click(move |_, _, cx| {
+                                    cx.global::<Controller>()
+                                        .load(path.to_string_lossy().to_string())
+                                })
+                        })
+                        .collect()
+                })
+                    .w_full()
+                    .h_full()
+                    .flex()
+                    .flex_col()
+                    .track_scroll(&scroll_handle),
+            )
     }
 }

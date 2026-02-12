@@ -169,6 +169,7 @@ impl CacheManager {
         fs::rename(&tmp_path, &final_path).expect("rename failed");
     }
 
+
     pub fn write_playlist(&mut self, playlist: Playlist, thumbnails: Vec<(PathBuf, Vec<u8>)>) {
         let base = match dirs::audio_dir() {
             Some(dir) => dir,
