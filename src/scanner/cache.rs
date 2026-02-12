@@ -1,6 +1,7 @@
+use crate::audio::engine::PlaybackState;
 use crate::controller::metadata::Metadata;
-use crate::controller::player::Track;
-use crate::scanner::Playlist;
+use crate::controller::player::{PlayerState, Track};
+use crate::scanner::{Playlist, ScannerState};
 use bitcode::{Decode, Encode};
 use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
@@ -58,6 +59,22 @@ pub struct MetadataCache {
 #[derive(Clone, Encode, Decode)]
 pub struct ThumbnailsCached {
     pub thumbnails: HashMap<String, Vec<u8>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug, Default)]
+pub struct AppStateCache {
+    // PlayerState
+    pub current: Option<String>,
+    pub state: PlaybackState,
+    pub position: u64,
+    pub volume: f32,
+    pub mute: bool,
+    pub shuffling: bool,
+    pub repeat: bool,
+    pub index: usize,
+
+    // ScannerState
+    pub queue_order: Vec<usize>,
 }
 
 impl From<Playlist> for PlaylistCache {
@@ -248,5 +265,46 @@ impl CacheManager {
         }
 
         Some((playlist.into(), thumbnails))
+    }
+
+    pub fn write_app_state(&self, player_state: PlayerState, scanner_state: ScannerState) {
+        let tmp_path = self.cache_dir.join("app_state.tmp");
+        let final_path = self.cache_dir.join("app_state.ron");
+
+        let PlayerState { current, state, position, volume, mute, shuffling, repeat, index, .. } = player_state.clone();
+        let ScannerState { queue_order, .. } = scanner_state.clone();
+
+        let app_state_cache = AppStateCache {
+            current: current.map(|this| this.to_string_lossy().to_string()),
+            state,
+            position,
+            volume,
+            mute,
+            shuffling,
+            repeat,
+            index,
+            queue_order,
+        };
+
+        let bytes = ron::ser::to_string_pretty(&app_state_cache, PrettyConfig::default()).expect("couldnt serialize state");
+
+
+        fs::write(&tmp_path, &bytes).expect("write failed");
+        fs::rename(&tmp_path, &final_path).expect("rename failed");
+    }
+
+    pub fn read_app_state(&self) -> Option<AppStateCache> {
+        let app_state_cache: AppStateCache =
+            match File::open(self.cache_dir.join("app_state.ron")) {
+                Ok(mut file) => {
+                    let mut app_state_bytes = String::new();
+                    file.read_to_string(&mut app_state_bytes)
+                        .expect("couldnt read to string");
+                    ron::from_str(&app_state_bytes).unwrap_or_default()
+                }
+                Err(_) => return None,
+            };
+
+        Some(app_state_cache)
     }
 }

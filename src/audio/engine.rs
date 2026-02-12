@@ -7,6 +7,7 @@ use crate::utils::decode_thumbnail;
 use crossbeam_channel::{select, tick, Receiver, Sender};
 use rand::prelude::SliceRandom;
 use rodio::{decoder::DecoderBuilder, OutputStream, OutputStreamBuilder, Sink};
+use serde::{Deserialize, Serialize};
 use std::{fs::File, path::PathBuf, time::Duration};
 
 pub struct AudioEngine {
@@ -19,7 +20,7 @@ pub struct AudioEngine {
     track_ended: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub enum PlaybackState {
     #[default]
     Stopped,
