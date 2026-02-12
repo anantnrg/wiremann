@@ -59,6 +59,7 @@ impl AudioEngine {
 
                     match cmd {
                         AudioCommand::Load(path) => self.load_path(PathBuf::from(path)),
+                        AudioCommand::LoadId(id) => self.load_at(id),
                         AudioCommand::Play => self.play(),
                         AudioCommand::Pause => self.pause(),
                         AudioCommand::Stop => self.stop(),

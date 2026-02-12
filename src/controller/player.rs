@@ -1,5 +1,6 @@
 use super::metadata::Metadata;
 use crate::audio::engine::PlaybackState;
+use crate::scanner::cache::AppStateCache;
 use crate::scanner::ScannerState;
 use crossbeam_channel::{Receiver, Sender};
 use gpui::*;
@@ -32,6 +33,7 @@ pub struct PlayerState {
 
 pub enum AudioCommand {
     Load(String),
+    LoadId(usize),
     Play,
     Pause,
     Volume(f32),
@@ -55,6 +57,8 @@ pub enum AudioEvent {
 
 pub enum ScannerCommand {
     Load(String),
+    GetPlayerCache,
+    WritePlayerCache((PlayerState, ScannerState))
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -65,6 +69,7 @@ pub enum ScannerEvent {
         image: Arc<RenderImage>,
     },
     ClearImageCache,
+    AppStateCache(AppStateCache),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -104,6 +109,11 @@ impl Controller {
         let _ = self.audio_cmd_tx.send(AudioCommand::Load(path));
     }
 
+    pub fn load_id(&self, id: usize) {
+        let _ = self.audio_cmd_tx.send(AudioCommand::LoadId(id));
+    }
+
+
     pub fn volume(&self, volume: f32) {
         let _ = self.audio_cmd_tx.send(AudioCommand::Volume(volume / 100.0));
     }
@@ -138,6 +148,14 @@ impl Controller {
 
     pub fn set_shuffle(&self) {
         let _ = self.audio_cmd_tx.send(AudioCommand::Shuffle);
+    }
+
+    pub fn get_app_state_cache(&self) {
+        let _ = self.scanner_cmd_tx.send(ScannerCommand::GetPlayerCache);
+    }
+
+    pub fn write_app_state_cache(&self) {
+        let _ = self.scanner_cmd_tx.send(ScannerCommand::WritePlayerCache((self.player_state.clone(), self.scanner_state.clone())));
     }
 }
 

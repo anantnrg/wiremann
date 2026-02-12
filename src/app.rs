@@ -1,14 +1,14 @@
-use crossbeam_channel::unbounded;
-use std::sync::Arc;
-use std::{thread, time::Duration};
-
 use crate::audio::engine::{AudioEngine, PlaybackState};
 use crate::controller::player::{AudioCommand, AudioEvent, Controller, Event, PlayerState, ResHandler, ScannerCommand, ScannerEvent};
 use crate::scanner::{Scanner, ScannerState};
 use crate::ui::assets::Assets;
 use crate::ui::{image_cache::ImageCache, wiremann::Wiremann};
+use crossbeam_channel::unbounded;
 use gpui::*;
 use gpui_component::*;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::{thread, time::Duration};
 
 pub fn run() {
     let (audio_cmd_tx, audio_cmd_rx) = unbounded::<AudioCommand>();
@@ -121,6 +121,7 @@ pub fn run() {
                                                 })
                                             })
                                         }
+                                        cx.global::<Controller>().write_app_state_cache();
                                         cx.notify();
                                     }
                                     AudioEvent::ScannerStateChanged(state) => {
@@ -146,6 +147,7 @@ pub fn run() {
                                         });
 
                                         cx.global_mut::<Controller>().scanner_state = state.clone();
+                                        cx.global::<Controller>().write_app_state_cache();
                                     }
                                     AudioEvent::TrackLoaded(path) => {
                                         playbar_view.update(cx, |this, cx| {
@@ -178,6 +180,7 @@ pub fn run() {
                                                 });
                                             })
                                         });
+                                        cx.global::<Controller>().write_app_state_cache();
                                         cx.notify();
                                     }
                                     AudioEvent::TrackEnded => {
@@ -200,11 +203,32 @@ pub fn run() {
                                 Event::Scanner(scanner_event) => match scanner_event {
                                     ScannerEvent::State(state) => {
                                         cx.global_mut::<Controller>().set_scanner_state_in_engine(state.clone());
+                                        cx.global::<Controller>().write_app_state_cache();
                                     }
                                     ScannerEvent::Thumbnail { path, image } => {
                                         cx.global_mut::<ImageCache>().add(path.clone(), image.clone());
                                     }
-                                    ScannerEvent::ClearImageCache => cx.global_mut::<ImageCache>().clear()
+                                    ScannerEvent::ClearImageCache => cx.global_mut::<ImageCache>().clear(),
+                                    ScannerEvent::AppStateCache(app_state_cache) => {
+                                        let controller = cx.global_mut::<Controller>();
+
+                                        controller.player_state.state = app_state_cache.state;
+                                        controller.player_state.index = app_state_cache.index;
+                                        controller.player_state.mute = app_state_cache.mute;
+                                        controller.player_state.shuffling = app_state_cache.shuffling;
+                                        controller.player_state.current = app_state_cache.current.clone().map(|this| PathBuf::from(this));
+                                        controller.player_state.repeat = app_state_cache.repeat;
+                                        controller.player_state.position = app_state_cache.position;
+                                        controller.player_state.volume = app_state_cache.volume;
+
+                                        controller.scanner_state.queue_order = app_state_cache.queue_order.clone();
+
+                                        if app_state_cache.current.is_some() {
+                                            cx.global::<Controller>().load(app_state_cache.current.clone().unwrap());
+                                        }
+
+                                        cx.notify();
+                                    }
                                 }
                             },
                         )

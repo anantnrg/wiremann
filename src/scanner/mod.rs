@@ -1,4 +1,4 @@
-mod cache;
+pub mod cache;
 
 use crate::controller::metadata::Metadata;
 use crate::controller::player::{ScannerCommand, ScannerEvent, Track};
@@ -69,6 +69,12 @@ impl Scanner {
 
                     match cmd {
                         ScannerCommand::Load(path) => self.load(&path),
+                        ScannerCommand::GetPlayerCache => {
+                            if let Some(app_state_cache) = self.cache_manager.read_app_state() {
+                                let _ = self.scanner_event_tx.send(ScannerEvent::AppStateCache(app_state_cache));
+                            }
+                        },
+                        ScannerCommand::WritePlayerCache((player_state, scanner_state)) => self.cache_manager.write_app_state(player_state, scanner_state)
                     }
             }}
         }
