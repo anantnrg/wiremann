@@ -169,7 +169,6 @@ impl CacheManager {
         fs::rename(&tmp_path, &final_path).expect("rename failed");
     }
 
-
     pub fn write_playlist(&mut self, playlist: Playlist, thumbnails: Vec<(PathBuf, Vec<u8>)>) {
         let base = match dirs::audio_dir() {
             Some(dir) => dir,
@@ -210,5 +209,44 @@ impl CacheManager {
 
         fs::write(&thumbnails_tmp, &thumbnails_encoded).expect("write failed");
         fs::rename(&thumbnails_tmp, &thumbnails_final).expect("rename failed");
+    }
+
+    pub fn read_playlist(&self, id: String) -> Option<(Playlist, HashMap<PathBuf, Vec<u8>>)> {
+        let path = self.cache_dir.join(id);
+
+        let playlist: PlaylistCache = match File::open(path.clone().join("tracks.bin")) {
+            Ok(mut file) => {
+                let mut bytes ;
+                file.read(&mut bytes).expect("couldnt read bytes");
+
+                match bitcode::decode(bytes.as_ref()) {
+                    Ok(decoded) => decoded,
+                    Err(_) => return None,
+                }
+            }
+            Err(_) => return None,
+        };
+        
+        let thumbnails_cache: ThumbnailsCached = match File::open(path.join("thumbnails.bin")) { 
+            
+            Ok(mut file) => {
+                let mut bytes ;
+                file.read(&mut bytes).expect("couldnt read bytes");
+                
+                match bitcode::decode(bytes.as_ref()) {
+                    Ok(decoded) => decoded,
+                    Err(_) => return None,
+                }
+            }
+            Err(_) => return None,
+        };
+        
+        let mut thumbnails = HashMap::new();
+        
+        for (path, image) in thumbnails_cache.thumbnails {
+            thumbnails.insert(PathBuf::from(path), image);
+        }
+        
+        Some((playlist.into(), thumbnails))
     }
 }

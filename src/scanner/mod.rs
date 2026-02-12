@@ -73,8 +73,6 @@ impl Scanner {
     }
 
     fn load(&mut self, path: &String) {
-        // TODO: Check if playlist has already been cached
-
         if let Some(flag) = &self.cancel_thumbs {
             flag.store(true, Ordering::Relaxed);
         }
