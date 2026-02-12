@@ -36,7 +36,6 @@ pub struct Scanner {
 pub struct ScannerState {
     pub current_playlist: Option<Playlist>,
     pub queue_order: Vec<usize>,
-    pub playlists: Vec<(String)>,
     pub playlist_indexes: CachedPlaylistIndexes,
 }
 

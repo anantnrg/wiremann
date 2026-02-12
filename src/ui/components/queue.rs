@@ -155,8 +155,6 @@ impl Render for Queue {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let views = self.views.clone();
         let stop_auto_scroll = self.stop_auto_scroll.clone();
-        let controller = cx.global::<Controller>();
-        let playlist = controller.scanner_state.current_playlist.as_ref();
 
         let tracks = self.tracks.clone();
         let queue_order = self.queue_order.clone();

@@ -139,7 +139,7 @@ pub fn run() {
 
                                         playbar_view.update(cx, |this, cx| {
                                             this.player_page.update(cx, |this, cx| {
-                                                this.queue.update(cx, |this, cx| {
+                                                this.queue.update(cx, |this, _| {
                                                     this.tracks = Arc::new(state.current_playlist.clone().unwrap().tracks)
                                                 })
                                             })
