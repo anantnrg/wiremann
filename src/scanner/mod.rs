@@ -2,6 +2,7 @@ mod cache;
 
 use crate::controller::metadata::Metadata;
 use crate::controller::player::{ScannerCommand, ScannerEvent, Track};
+use crate::scanner::cache::{CacheManager, CachedPlaylistIndex, CachedPlaylistIndexes};
 use crate::utils::decode_thumbnail;
 use crossbeam_channel::{select, Receiver, Sender};
 use rayon::prelude::*;
@@ -25,6 +26,7 @@ pub struct Scanner {
     pub scanner_event_tx: Sender<ScannerEvent>,
     pub state: ScannerState,
     cancel_thumbs: Option<Arc<AtomicBool>>,
+    cache_manager: CacheManager,
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -32,17 +34,24 @@ pub struct ScannerState {
     pub current_playlist: Option<Playlist>,
     pub queue_order: Vec<usize>,
     pub playlists: Vec<(String)>,
+    pub playlist_indexes: CachedPlaylistIndexes,
 }
 
 impl Scanner {
     pub fn run(scanner_cmd_rx: Receiver<ScannerCommand>, scanner_event_tx: Sender<ScannerEvent>) {
-        let state = ScannerState::default();
+        let mut state = ScannerState::default();
+        let cache_manager = CacheManager::init();
+
+        state.playlist_indexes = cache_manager.read_cached_playlist_indexes();
+
         let mut scanner = Scanner {
             scanner_cmd_rx,
             scanner_event_tx,
             state,
             cancel_thumbs: None,
+            cache_manager,
         };
+
 
         scanner.event_loop();
     }
@@ -91,15 +100,17 @@ impl Scanner {
             tracks: tracks.clone(),
         };
 
-
         self.state.queue_order = (0..tracks.len()).collect();
-        self.state.current_playlist = Some(playlist);
+        self.state.current_playlist = Some(playlist.clone());
 
-        let _ = self.scanner_event_tx.send(ScannerEvent::State(self.state.clone()));
+        let _ = self
+            .scanner_event_tx
+            .send(ScannerEvent::State(self.state.clone()));
 
         let tx = self.scanner_event_tx.clone();
+        let mut state = self.state.clone();
 
-        let state = self.state.clone();
+        let mut cache_manager = self.cache_manager.clone();
 
         std::thread::spawn(move || {
             let threads = std::cmp::max(1, num_cpus::get() - 2);
@@ -109,24 +120,38 @@ impl Scanner {
                 .build()
                 .unwrap();
             let tx2 = tx.clone();
-            pool.install(|| {
-                tracks.par_iter_mut().for_each(|track| {
-                    if cancel.load(Ordering::Relaxed) {
-                        return;
-                    }
-
-                    if let Some(bytes) = track.meta.thumbnail.clone() {
-                        if let Ok(image) = decode_thumbnail(bytes.into_boxed_slice(), true) {
-                            let _ = tx2.send(ScannerEvent::Thumbnail {
-                                path: track.path.clone(),
-                                image: image.clone(),
-                            });
+            let thumbnails: Vec<(PathBuf, Vec<u8>)> = pool.install(|| {
+                tracks
+                    .par_iter_mut()
+                    .filter_map(|track| {
+                        if cancel.load(Ordering::Relaxed) {
+                            return None;
                         }
-                    }
 
-                    track.meta.thumbnail = None;
-                });
+                        if let Some(bytes) = track.meta.thumbnail.take() {
+                            if let Ok(image) =
+                                decode_thumbnail(bytes.clone().into_boxed_slice(), true)
+                            {
+                                let _ = tx2.send(ScannerEvent::Thumbnail {
+                                    path: track.path.clone(),
+                                    image: image.clone(),
+                                });
+
+                                return Some((track.path.clone(), image.as_bytes(0).unwrap().to_vec()));
+                            }
+                        }
+
+                        None
+                    })
+                    .collect()
             });
+
+            let id = playlist.id.clone().to_string();
+            let name = playlist.name.clone();
+
+            cache_manager.write_playlist(playlist, thumbnails);
+            state.playlist_indexes.playlists.push(CachedPlaylistIndex { id, name });
+            cache_manager.write_cached_playlist_indexes(state.playlist_indexes.clone());
 
             let _ = tx.send(ScannerEvent::State(state.clone()));
         });

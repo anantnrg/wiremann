@@ -1,26 +1,27 @@
 use crate::controller::metadata::Metadata;
 use crate::controller::player::Track;
 use crate::scanner::Playlist;
-use ahash::AHashMap;
 use bitcode::{Decode, Encode};
+use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct CacheManager {
     cache_dir: PathBuf,
-    pub playlist_indexes: CachedPlaylistIndexes,
 }
 
-#[derive(Clone, Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize, Default, PartialEq, Debug)]
 pub struct CachedPlaylistIndexes {
     pub playlists: Vec<CachedPlaylistIndex>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub struct CachedPlaylistIndex {
     pub id: String,
     pub name: String,
@@ -55,11 +56,11 @@ pub struct MetadataCache {
 
 #[derive(Clone, Encode, Decode)]
 pub struct ThumbnailsCached {
-    pub thumbnails: AHashMap<String, Vec<u8>>,
+    pub thumbnails: HashMap<String, Vec<u8>>,
 }
 
-impl From<&Playlist> for PlaylistCache {
-    fn from(value: &Playlist) -> Self {
+impl From<Playlist> for PlaylistCache {
+    fn from(value: Playlist) -> Self {
         PlaylistCache {
             id: value.id.to_string(),
             name: value.name,
@@ -136,10 +137,17 @@ impl From<MetadataCache> for Metadata {
 
 impl CacheManager {
     pub fn init() -> Self {
-        let cache_dir = dirs::audio_dir().unwrap().join("wiremann").join("cache");
+        let cache_dir = dirs::audio_dir().unwrap_or_default().join("wiremann").join("cache");
+        fs::create_dir_all(cache_dir.clone()).expect("failed to create cache directory");
 
+        CacheManager {
+            cache_dir,
+        }
+    }
+
+    pub fn read_cached_playlist_indexes(&self) -> CachedPlaylistIndexes {
         let playlist_indexes: CachedPlaylistIndexes =
-            match File::open(cache_dir.join("playlists.ron")) {
+            match File::open(self.cache_dir.join("playlists.ron")) {
                 Ok(mut file) => {
                     let mut playlists = String::new();
                     file.read_to_string(&mut playlists)
@@ -149,10 +157,16 @@ impl CacheManager {
                 Err(_) => CachedPlaylistIndexes::default(),
             };
 
-        CacheManager {
-            cache_dir,
-            playlist_indexes,
-        }
+        playlist_indexes
+    }
+
+    pub fn write_cached_playlist_indexes(&self, playlist_indexes: CachedPlaylistIndexes) {
+        let bytes = ron::ser::to_string_pretty(&playlist_indexes, PrettyConfig::default()).unwrap_or_default();
+        let tmp_path = self.cache_dir.join("playlists.tmp");
+        let final_path = self.cache_dir.join("playlists.ron");
+
+        fs::write(&tmp_path, &bytes).expect("write failed");
+        fs::rename(&tmp_path, &final_path).expect("rename failed");
     }
 
     pub fn write_playlist(&mut self, playlist: Playlist, thumbnails: Vec<(PathBuf, Vec<u8>)>) {
@@ -170,7 +184,7 @@ impl CacheManager {
 
         let playlist: PlaylistCache = playlist.into();
 
-        let mut thumbnails_cached = ThumbnailsCached { thumbnails: AHashMap::new() };
+        let mut thumbnails_cached = ThumbnailsCached { thumbnails: HashMap::new() };
 
         for (path, image) in thumbnails {
             thumbnails_cached
@@ -194,6 +208,6 @@ impl CacheManager {
         fs::rename(&tracks_tmp, &tracks_final).expect("rename failed");
 
         fs::write(&thumbnails_tmp, &thumbnails_encoded).expect("write failed");
-        fs::rename(&thumbnails_final, &tracks_final).expect("rename failed");
+        fs::rename(&thumbnails_tmp, &thumbnails_final).expect("rename failed");
     }
 }
