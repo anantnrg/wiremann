@@ -19,7 +19,7 @@ pub fn drop_image_from_app(cx: &mut App, image: Arc<RenderImage>) {
 }
 
 
-fn rgb_to_bgr(img: &mut RgbaImage) {
+pub fn rgb_to_bgr(img: &mut RgbaImage) {
     for px in img.pixels_mut() {
         px.0.swap(0, 2);
     }

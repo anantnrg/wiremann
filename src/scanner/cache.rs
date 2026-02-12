@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct CacheManager {
-    cache_dir: PathBuf,
+    pub cache_dir: PathBuf,
 }
 
 #[derive(Clone, Serialize, Deserialize, Default, PartialEq, Debug)]
@@ -21,10 +21,11 @@ pub struct CachedPlaylistIndexes {
     pub playlists: Vec<CachedPlaylistIndex>,
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug, Default)]
 pub struct CachedPlaylistIndex {
     pub id: String,
     pub name: String,
+    pub path: String,
 }
 
 #[derive(Clone, Encode, Decode)]
@@ -216,8 +217,8 @@ impl CacheManager {
 
         let playlist: PlaylistCache = match File::open(path.clone().join("tracks.bin")) {
             Ok(mut file) => {
-                let mut bytes ;
-                file.read(&mut bytes).expect("couldnt read bytes");
+                let mut bytes = vec![];
+                file.read_to_end(&mut bytes).expect("couldnt read bytes");
 
                 match bitcode::decode(bytes.as_ref()) {
                     Ok(decoded) => decoded,
@@ -226,13 +227,12 @@ impl CacheManager {
             }
             Err(_) => return None,
         };
-        
-        let thumbnails_cache: ThumbnailsCached = match File::open(path.join("thumbnails.bin")) { 
-            
+
+        let thumbnails_cache: ThumbnailsCached = match File::open(path.join("thumbnails.bin")) {
             Ok(mut file) => {
-                let mut bytes ;
-                file.read(&mut bytes).expect("couldnt read bytes");
-                
+                let mut bytes = vec![];
+                file.read_to_end(&mut bytes).expect("couldnt read bytes");
+
                 match bitcode::decode(bytes.as_ref()) {
                     Ok(decoded) => decoded,
                     Err(_) => return None,
@@ -240,13 +240,13 @@ impl CacheManager {
             }
             Err(_) => return None,
         };
-        
+
         let mut thumbnails = HashMap::new();
-        
+
         for (path, image) in thumbnails_cache.thumbnails {
             thumbnails.insert(PathBuf::from(path), image);
         }
-        
+
         Some((playlist.into(), thumbnails))
     }
 }
