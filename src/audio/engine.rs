@@ -2,6 +2,7 @@ use crate::controller::{
     metadata::Metadata,
     player::{AudioCommand, AudioEvent, PlayerState},
 };
+use crate::scanner::cache::AppStateCache;
 use crate::scanner::ScannerState;
 use crate::utils::decode_thumbnail;
 use crossbeam_channel::{select, tick, Receiver, Sender};
@@ -322,5 +323,29 @@ impl AudioEngine {
         }
         self.send_player_state();
         self.send_scanner_state();
+    }
+
+    fn set_app_state(&mut self, app_state_cache: AppStateCache) {
+        self.scanner_state.queue_order = app_state_cache.queue_order;
+
+        self.load_at(app_state_cache.index);
+
+        match app_state_cache.state {
+            PlaybackState::Playing => self.play(),
+            PlaybackState::Paused => self.pause(),
+            PlaybackState::Stopped => {}
+        }
+
+        self.seek(app_state_cache.position);
+        self.set_volume(app_state_cache.volume);
+        if app_state_cache.mute {
+            self.set_mute()
+        }
+        if app_state_cache.shuffling {
+            self.player_state.shuffling = true
+        }
+        if app_state_cache.repeat {
+            self.set_repeat()
+        }
     }
 }
