@@ -4,15 +4,15 @@ use crate::controller::metadata::Metadata;
 use crate::controller::player::{ScannerCommand, ScannerEvent, Track};
 use crate::scanner::cache::{CacheManager, CachedPlaylistIndex, CachedPlaylistIndexes};
 use crate::utils::decode_thumbnail;
-use crossbeam_channel::{select, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, select};
 use gpui::RenderImage;
 use image::{Frame, RgbaImage};
-use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
+use rayon::prelude::*;
 use smallvec::smallvec;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use uuid::Uuid;
 use walkdir::WalkDir;
 
@@ -54,7 +54,6 @@ impl Scanner {
             cache_manager,
         };
 
-
         scanner.event_loop();
     }
 
@@ -81,9 +80,13 @@ impl Scanner {
     }
 
     fn load(&mut self, path: &String) {
-        let id = match self.state.playlist_indexes.playlists
+        let id = match self
+            .state
+            .playlist_indexes
+            .playlists
             .iter()
-            .find(|x| x.path == *path) {
+            .find(|x| x.path == *path)
+        {
             Some(entry) => entry.id.clone(),
             None => {
                 return self.load_raw(path);
@@ -102,7 +105,9 @@ impl Scanner {
                 let tx = self.scanner_event_tx.clone();
                 std::thread::spawn(move || {
                     for (path, bytes) in thumbnails {
-                        let image = Arc::new(RenderImage::new(smallvec![Frame::new(RgbaImage::from_raw(64, 64, bytes).unwrap())]));
+                        let image = Arc::new(RenderImage::new(smallvec![Frame::new(
+                            RgbaImage::from_raw(64, 64, bytes).unwrap()
+                        )]));
 
                         let _ = tx.send(ScannerEvent::Thumbnail { path, image });
                     }
@@ -175,7 +180,10 @@ impl Scanner {
                                     image: image.clone(),
                                 });
 
-                                return Some((track.path.clone(), image.as_bytes(0).unwrap().to_vec()));
+                                return Some((
+                                    track.path.clone(),
+                                    image.as_bytes(0).unwrap().to_vec(),
+                                ));
                             }
                         }
 
@@ -186,10 +194,18 @@ impl Scanner {
 
             let id = playlist.id.clone().to_string();
             let name = playlist.name.clone();
-            let path = playlist.path.clone().unwrap_or_default().to_string_lossy().to_string();
+            let path = playlist
+                .path
+                .clone()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
 
             cache_manager.write_playlist(playlist, thumbnails);
-            state.playlist_indexes.playlists.push(CachedPlaylistIndex { id, name, path });
+            state
+                .playlist_indexes
+                .playlists
+                .push(CachedPlaylistIndex { id, name, path });
             cache_manager.write_cached_playlist_indexes(state.playlist_indexes.clone());
 
             let _ = tx.send(ScannerEvent::State(state.clone()));

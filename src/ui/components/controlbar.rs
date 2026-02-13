@@ -100,25 +100,31 @@ impl Render for ControlBar {
                                     .justify_start()
                                     .gap_x_3()
                                     .pt_2()
-                                    .child(div().id("volume_icon").on_click(|_, _, cx|
-                                        cx.global::<Controller>().mute()
-                                    ).child(Icon::new(if state.mute {
-                                        Icons::VolumeMute
-                                    } else {
-                                        match state.volume.clamp(0.0, 1.0) {
-                                            v if v == 0.0 => Icons::Volume0,
-                                            v if v < 0.4 => Icons::Volume0,
-                                            v if v < 0.8 => Icons::Volume1,
-                                            _ => Icons::Volume2,
-                                        }
-                                    }).size_4()))
+                                    .child(
+                                        div()
+                                            .id("volume_icon")
+                                            .on_click(|_, _, cx| cx.global::<Controller>().mute())
+                                            .child(
+                                                Icon::new(if state.mute {
+                                                    Icons::VolumeMute
+                                                } else {
+                                                    match state.volume.clamp(0.0, 1.0) {
+                                                        v if v == 0.0 => Icons::Volume0,
+                                                        v if v < 0.4 => Icons::Volume0,
+                                                        v if v < 0.8 => Icons::Volume1,
+                                                        _ => Icons::Volume2,
+                                                    }
+                                                })
+                                                .size_4(),
+                                            ),
+                                    )
                                     .child(
                                         div().w_40().flex().flex_shrink_0().child(
                                             Slider::new(&self.vol_slider_state)
                                                 .text_color(theme.accent),
                                         ),
                                     ),
-                            )
+                            ),
                     ),
             )
     }

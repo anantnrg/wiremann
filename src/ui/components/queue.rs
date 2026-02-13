@@ -48,7 +48,10 @@ impl Render for Item {
 
         let thumbnail = cx.global::<ImageCache>().get(&self.data.path);
         div()
-            .id(format!("track_item_{}", self.data.path.to_string_lossy().to_string()))
+            .id(format!(
+                "track_item_{}",
+                self.data.path.to_string_lossy().to_string()
+            ))
             .h(px(64.))
             .w_full()
             .flex()
@@ -195,11 +198,11 @@ impl Render for Queue {
                         })
                         .collect()
                 })
-                    .w_full()
-                    .h_full()
-                    .flex()
-                    .flex_col()
-                    .track_scroll(&scroll_handle),
+                .w_full()
+                .h_full()
+                .flex()
+                .flex_col()
+                .track_scroll(&scroll_handle),
             )
     }
 }

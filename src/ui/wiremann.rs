@@ -8,11 +8,7 @@ use super::{
     image_cache::ImageCache,
     theme::Theme,
 };
-use crate::{
-    audio::engine::PlaybackState,
-    controller::player::Controller,
-    ui::components::Page,
-};
+use crate::{audio::engine::PlaybackState, controller::player::Controller, ui::components::Page};
 use gpui::*;
 
 pub struct Wiremann {
@@ -47,7 +43,7 @@ impl Wiremann {
                 }
             },
         )
-            .detach();
+        .detach();
 
         cx.subscribe(
             &playback_slider_state,
@@ -64,7 +60,7 @@ impl Wiremann {
                 }
             },
         )
-            .detach();
+        .detach();
 
         cx.set_global(Theme::default());
         cx.set_global(Page::Player);

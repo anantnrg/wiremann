@@ -70,7 +70,8 @@ impl AudioEngine {
                         AudioCommand::Next => self.next(),
                         AudioCommand::Prev => self.prev(),
                         AudioCommand::Repeat => self.set_repeat(),
-                        AudioCommand::Shuffle => self.set_shuffle()
+                        AudioCommand::Shuffle => self.set_shuffle(),
+                        AudioCommand::SetAppState(app_state) => self.set_app_state(app_state),
                     }
                 }
 
@@ -105,7 +106,9 @@ impl AudioEngine {
         }
         self.sink.append(source);
 
-        let _ = self.audio_event_tx.send(AudioEvent::TrackLoaded(path.clone()));
+        let _ = self
+            .audio_event_tx
+            .send(AudioEvent::TrackLoaded(path.clone()));
 
         self.player_state.state = PlaybackState::Playing;
 
@@ -121,11 +124,7 @@ impl AudioEngine {
             &self.scanner_state.current_playlist,
             Some(&self.scanner_state.queue_order),
         ) {
-            if let Some(real_index) = playlist
-                .tracks
-                .iter()
-                .position(|t| t.path == path)
-            {
+            if let Some(real_index) = playlist.tracks.iter().position(|t| t.path == path) {
                 if let Some(queue_pos) = queue.iter().position(|&i| i == real_index) {
                     self.player_state.index = queue_pos;
                 }
@@ -299,7 +298,12 @@ impl AudioEngine {
             let current_actual_index = self.player_state.index;
 
             // Start from current song
-            if let Some(pos) = self.scanner_state.queue_order.iter().position(|&i| i == current_actual_index) {
+            if let Some(pos) = self
+                .scanner_state
+                .queue_order
+                .iter()
+                .position(|&i| i == current_actual_index)
+            {
                 self.scanner_state.queue_order.swap(0, pos);
                 self.player_state.index = 0;
             }

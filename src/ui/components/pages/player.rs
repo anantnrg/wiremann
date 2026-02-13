@@ -4,7 +4,7 @@ use crate::audio::engine::PlaybackState;
 use crate::controller::player::Controller;
 use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::queue::Queue;
-use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
+use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
 use crate::ui::icons::Icons;
 use gpui::prelude::FluentBuilder;
 use gpui::*;
@@ -124,7 +124,10 @@ impl Render for PlayerPage {
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .when(cx.global::<Controller>().player_state.shuffling, |this| this.text_color(theme.accent))
+                                    .when(
+                                        cx.global::<Controller>().player_state.shuffling,
+                                        |this| this.text_color(theme.accent),
+                                    )
                                     .hover(|this| this.bg(theme.white_05))
                                     .on_click(|_, _, cx| cx.global::<Controller>().set_shuffle())
                                     .child(Icon::new(Icons::Shuffle).size_4()),
@@ -161,7 +164,6 @@ impl Render for PlayerPage {
                                             }
                                         }
                                     })
-
                                     .child(
                                         if cx.global::<Controller>().player_state.state
                                             == PlaybackState::Playing
@@ -193,7 +195,9 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .hover(|this| this.bg(theme.white_05))
-                                    .when(cx.global::<Controller>().player_state.repeat, |this| this.text_color(theme.accent))
+                                    .when(cx.global::<Controller>().player_state.repeat, |this| {
+                                        this.text_color(theme.accent)
+                                    })
                                     .on_click(|_, _, cx| cx.global::<Controller>().set_repeat())
                                     .child(Icon::new(Icons::Repeat).size_4()),
                             ),
@@ -201,63 +205,68 @@ impl Render for PlayerPage {
                     .child(self.controlbar.clone()),
             )
             .child(div().w(px(1.0)).h_full().bg(theme.white_05))
-            .child(
-                if *show_queue.read(cx) {
-                    div()
-                        .h_full()
-                        .w_80()
-                        .flex_shrink_0()
-                        .flex()
-                        .flex_col()
-                        .bg(theme.bg_queue)
-                        .child(
-                            div()
-                                .w_full()
-                                .flex()
-                                .items_center()
-                                .justify_start()
-                                .p_4()
-                                .child(
-                                    div()
-                                        .text_base()
-                                        .text_color(theme.text_primary)
-                                        .font_weight(FontWeight(500.0))
-                                        .child("Queue"),
-                                )
-                        )
-                        .child(
-                            div()
-                                .id("queue_container")
-                                .w_full()
-                                .h_full()
-                                .px_4()
-                                .pb_4()
-                                .flex()
-                                .relative()
-                                .child(self.queue.clone())
-                                .child(floating_scrollbar(
-                                    "queue_scrollbar",
-                                    scroll_handle,
-                                    RightPad::None,
-                                )),
-                        )
-                } else { div() }
-            )
+            .child(if *show_queue.read(cx) {
+                div()
+                    .h_full()
+                    .w_80()
+                    .flex_shrink_0()
+                    .flex()
+                    .flex_col()
+                    .bg(theme.bg_queue)
+                    .child(
+                        div()
+                            .w_full()
+                            .flex()
+                            .items_center()
+                            .justify_start()
+                            .p_4()
+                            .child(
+                                div()
+                                    .text_base()
+                                    .text_color(theme.text_primary)
+                                    .font_weight(FontWeight(500.0))
+                                    .child("Queue"),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .id("queue_container")
+                            .w_full()
+                            .h_full()
+                            .px_4()
+                            .pb_4()
+                            .flex()
+                            .relative()
+                            .child(self.queue.clone())
+                            .child(floating_scrollbar(
+                                "queue_scrollbar",
+                                scroll_handle,
+                                RightPad::None,
+                            )),
+                    )
+            } else {
+                div()
+            })
             .child(
                 div()
                     .id("show_hide_queue")
-                    .px_3().py_1().absolute().top_4().right_3().text_center()
+                    .px_3()
+                    .py_1()
+                    .absolute()
+                    .top_4()
+                    .right_3()
+                    .text_center()
                     .rounded_md()
                     .text_sm()
                     .font_weight(FontWeight(400.0))
                     .text_color(theme.text_muted)
                     .hover(|this| this.bg(theme.white_05).text_color(theme.text_primary))
-                    .on_click(move |_, _, cx| {
-                        show_queue.update(cx, |this, _| {
-                            *this = !*this
-                        })
-                    })
-                    .child(if *self.show_queue.read(cx) { "Hide" } else { "Show Queue" }),
+                    .on_click(move |_, _, cx| show_queue.update(cx, |this, _| *this = !*this))
+                    .child(if *self.show_queue.read(cx) {
+                        "Hide"
+                    } else {
+                        "Show Queue"
+                    }),
             )
     }
 }

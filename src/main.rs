@@ -1,8 +1,8 @@
 pub mod app;
 pub mod audio;
 pub mod controller;
-pub mod ui;
 mod scanner;
+pub mod ui;
 mod utils;
 
 fn main() {

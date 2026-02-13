@@ -47,7 +47,7 @@ impl IconNamed for Icons {
             Icons::Menu => "icons/menu.svg",
             Icons::Search => "icons/search.svg",
         }
-            .into()
+        .into()
     }
 }
 

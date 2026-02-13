@@ -1,13 +1,12 @@
 use std::ops::Range;
 
 use gpui::{
-    div, prelude::FluentBuilder as _, px, relative, Along, App, AppContext as _, Axis,
-    Bounds, Context, DefiniteLength, DragMoveEvent, Empty, Entity, EntityId,
-    EventEmitter, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement as _,
-    Pixels, Point, Render, RenderOnce, StatefulInteractiveElement as _,
-    StyleRefinement, Styled, Window,
+    Along, App, AppContext as _, Axis, Bounds, Context, DefiniteLength, DragMoveEvent, Empty,
+    Entity, EntityId, EventEmitter, InteractiveElement, IntoElement, MouseButton, MouseDownEvent,
+    ParentElement as _, Pixels, Point, Render, RenderOnce, StatefulInteractiveElement as _,
+    StyleRefinement, Styled, Window, div, prelude::FluentBuilder as _, px, relative,
 };
-use gpui_component::{h_flex, ActiveTheme, AxisExt, ElementExt, StyledExt};
+use gpui_component::{ActiveTheme, AxisExt, ElementExt, StyledExt, h_flex};
 
 #[derive(Clone)]
 struct DragThumb((EntityId, bool));
@@ -545,25 +544,25 @@ impl RenderOnce for Slider {
                             cx.stop_propagation();
                             cx.new(|_| drag.clone())
                         })
-                            .on_drag_move(window.listener_for(
-                                &self.state,
-                                move |view, e: &DragMoveEvent<DragSlider>, window, cx| match e.drag(cx)
-                                {
-                                    DragSlider(id) => {
-                                        if *id != entity_id {
-                                            return;
-                                        }
-
-                                        view.update_value_by_position(
-                                            axis,
-                                            e.event.position,
-                                            false,
-                                            window,
-                                            cx,
-                                        )
+                        .on_drag_move(window.listener_for(
+                            &self.state,
+                            move |view, e: &DragMoveEvent<DragSlider>, window, cx| match e.drag(cx)
+                            {
+                                DragSlider(id) => {
+                                    if *id != entity_id {
+                                        return;
                                     }
-                                },
-                            ))
+
+                                    view.update_value_by_position(
+                                        axis,
+                                        e.event.position,
+                                        false,
+                                        window,
+                                        cx,
+                                    )
+                                }
+                            },
+                        ))
                     })
                     .when(axis.is_horizontal(), |this| {
                         this.items_center().h_6().w_full()
@@ -602,12 +601,7 @@ impl RenderOnce for Slider {
                                     cx,
                                 ))
                             })
-                            .child(self.render_thumb(
-                                relative(percentage.end),
-                                false,
-                                window,
-                                cx,
-                            ))
+                            .child(self.render_thumb(relative(percentage.end), false, window, cx))
                             .on_prepaint({
                                 let state = self.state.clone();
                                 move |bounds, _, cx| state.update(cx, |r, _| r.bounds = bounds)

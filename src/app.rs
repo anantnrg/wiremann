@@ -1,12 +1,14 @@
 use crate::audio::engine::{AudioEngine, PlaybackState};
-use crate::controller::player::{AudioCommand, AudioEvent, Controller, Event, PlayerState, ResHandler, ScannerCommand, ScannerEvent};
+use crate::controller::player::{
+    AudioCommand, AudioEvent, Controller, Event, PlayerState, ResHandler, ScannerCommand,
+    ScannerEvent,
+};
 use crate::scanner::{Scanner, ScannerState};
 use crate::ui::assets::Assets;
 use crate::ui::{image_cache::ImageCache, wiremann::Wiremann};
 use crossbeam_channel::unbounded;
 use gpui::*;
 use gpui_component::*;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::{thread, time::Duration};
 
@@ -24,8 +26,14 @@ pub fn run() {
         Scanner::run(scanner_cmd_rx, scanner_events_tx);
     });
 
-
-    let controller = Controller::new(audio_cmd_tx, audio_events_rx, scanner_cmd_tx, scanner_events_rx, PlayerState::default(), ScannerState::default());
+    let controller = Controller::new(
+        audio_cmd_tx,
+        audio_events_rx,
+        scanner_cmd_tx,
+        scanner_events_rx,
+        PlayerState::default(),
+        ScannerState::default(),
+    );
 
     let assets = Assets {};
     let app = Application::new().with_assets(assets.clone());
@@ -65,12 +73,16 @@ pub fn run() {
                         cx.spawn(async move |_, cx| {
                             let res_handler = arc_res.clone();
                             loop {
-                                while let Ok(event) = controller_evt_clone.audio_events_rx.try_recv() {
+                                while let Ok(event) =
+                                    controller_evt_clone.audio_events_rx.try_recv()
+                                {
                                     res_handler.update(&mut cx.clone(), |res_handler, cx| {
                                         res_handler.handle(cx, Event::Audio(event));
                                     });
                                 }
-                                while let Ok(event) = controller_evt_clone.scanner_events_rx.try_recv() {
+                                while let Ok(event) =
+                                    controller_evt_clone.scanner_events_rx.try_recv()
+                                {
                                     res_handler.update(&mut cx.clone(), |res_handler, cx| {
                                         res_handler.handle(cx, Event::Scanner(event));
                                     });
@@ -80,159 +92,156 @@ pub fn run() {
                                     .await;
                             }
                         })
-                            .detach();
+                        .detach();
 
                         let playbar_view = view.clone();
 
-                        cx.subscribe(
-                            &res_handler,
-                            move |_, _, event: &Event, cx| match event
-                            {
-                                Event::Audio(audio_event) => match audio_event
-                                {
-                                    AudioEvent::PlayerStateChanged(state) => {
-                                        cx.global_mut::<Controller>().player_state = state.clone();
+                        cx.subscribe(&res_handler, move |_, _, event: &Event, cx| match event {
+                            Event::Audio(audio_event) => match audio_event {
+                                AudioEvent::PlayerStateChanged(state) => {
+                                    cx.global_mut::<Controller>().player_state = state.clone();
 
-                                        if state.state == PlaybackState::Playing {
-                                            playbar_view.update(cx, |this, cx| {
-                                                this.player_page.update(cx, |this, cx| {
-                                                    this.controlbar.update(cx, |this, cx| {
-                                                        this.playback_slider_state.update(
-                                                            cx,
-                                                            |this, cx| {
-                                                                if let Some(meta) = cx
-                                                                    .global::<Controller>()
-                                                                    .player_state
-                                                                    .meta
-                                                                    .clone()
-                                                                {
-                                                                    this.set_value(
-                                                                        secs_to_slider(
-                                                                            state.position,
-                                                                            meta.duration,
-                                                                        ),
-                                                                        cx,
-                                                                    );
-                                                                }
-                                                                cx.notify();
-                                                            },
-                                                        );
-                                                    });
-                                                })
-                                            })
-                                        }
-                                        cx.global::<Controller>().write_app_state_cache();
-                                        cx.notify();
-                                    }
-                                    AudioEvent::ScannerStateChanged(state) => {
-                                        if cx.global::<Controller>().scanner_state.queue_order != state.queue_order {
-                                            playbar_view.update(cx, |this, cx| {
-                                                this.player_page.update(cx, |this, cx| {
-                                                    this.queue.update(cx, |this, cx| {
-                                                        this.queue_order.update(cx, |this, _| *this = state.queue_order.clone());
-                                                        this.views.update(cx, |v, _| v.clear());
-                                                        let this = this.clone();
-                                                        cx.defer(move |cx| this.scroll_to_item(cx));
-                                                    })
-                                                })
-                                            })
-                                        }
-
+                                    if state.state == PlaybackState::Playing {
                                         playbar_view.update(cx, |this, cx| {
                                             this.player_page.update(cx, |this, cx| {
-                                                this.queue.update(cx, |this, _| {
-                                                    this.tracks = Arc::new(state.current_playlist.clone().unwrap().tracks)
-                                                })
+                                                this.controlbar.update(cx, |this, cx| {
+                                                    this.playback_slider_state.update(
+                                                        cx,
+                                                        |this, cx| {
+                                                            if let Some(meta) = cx
+                                                                .global::<Controller>()
+                                                                .player_state
+                                                                .meta
+                                                                .clone()
+                                                            {
+                                                                this.set_value(
+                                                                    secs_to_slider(
+                                                                        state.position,
+                                                                        meta.duration,
+                                                                    ),
+                                                                    cx,
+                                                                );
+                                                            }
+                                                            cx.notify();
+                                                        },
+                                                    );
+                                                });
                                             })
-                                        });
-
-                                        cx.global_mut::<Controller>().scanner_state = state.clone();
-                                        cx.global::<Controller>().write_app_state_cache();
+                                        })
                                     }
-                                    AudioEvent::TrackLoaded(path) => {
+                                    cx.global::<Controller>().write_app_state_cache();
+                                    cx.notify();
+                                }
+                                AudioEvent::ScannerStateChanged(state) => {
+                                    if cx.global::<Controller>().scanner_state.queue_order
+                                        != state.queue_order
+                                    {
                                         playbar_view.update(cx, |this, cx| {
                                             this.player_page.update(cx, |this, cx| {
                                                 this.queue.update(cx, |this, cx| {
-                                                    let controller = cx.global::<Controller>();
+                                                    this.queue_order.update(cx, |this, _| {
+                                                        *this = state.queue_order.clone()
+                                                    });
+                                                    this.views.update(cx, |v, _| v.clear());
+                                                    let this = this.clone();
+                                                    cx.defer(move |cx| this.scroll_to_item(cx));
+                                                })
+                                            })
+                                        })
+                                    }
 
-                                                    let idx = if let Some(playlist) = &controller.scanner_state.current_playlist {
-                                                        if let Some(real_index) = playlist
-                                                            .tracks
+                                    playbar_view.update(cx, |this, cx| {
+                                        this.player_page.update(cx, |this, cx| {
+                                            this.queue.update(cx, |this, _| {
+                                                this.tracks = Arc::new(
+                                                    state.current_playlist.clone().unwrap().tracks,
+                                                )
+                                            })
+                                        })
+                                    });
+
+                                    cx.global_mut::<Controller>().scanner_state = state.clone();
+                                    cx.global::<Controller>().write_app_state_cache();
+                                }
+                                AudioEvent::TrackLoaded(path) => {
+                                    playbar_view.update(cx, |this, cx| {
+                                        this.player_page.update(cx, |this, cx| {
+                                            this.queue.update(cx, |this, cx| {
+                                                let controller = cx.global::<Controller>();
+
+                                                let idx = if let Some(playlist) =
+                                                    &controller.scanner_state.current_playlist
+                                                {
+                                                    if let Some(real_index) = playlist
+                                                        .tracks
+                                                        .iter()
+                                                        .position(|t| &t.path == path)
+                                                    {
+                                                        controller
+                                                            .scanner_state
+                                                            .queue_order
                                                             .iter()
-                                                            .position(|t| &t.path == path)
-                                                        {
-                                                            controller
-                                                                .scanner_state
-                                                                .queue_order
-                                                                .iter()
-                                                                .position(|&i| i == real_index)
-                                                                .unwrap_or(0)
-                                                        } else {
-                                                            0
-                                                        }
+                                                            .position(|&i| i == real_index)
+                                                            .unwrap_or(0)
                                                     } else {
                                                         0
-                                                    };
-
-                                                    if !this.stop_auto_scroll.read(cx) {
-                                                        this.scroll_handle.scroll_to_item(idx, ScrollStrategy::Nearest);
                                                     }
-                                                });
-                                            })
-                                        });
-                                        cx.global::<Controller>().write_app_state_cache();
-                                        cx.notify();
-                                    }
-                                    AudioEvent::TrackEnded => {
-                                        let controller = cx.global::<Controller>();
-                                        let current = controller.player_state.current.clone();
+                                                } else {
+                                                    0
+                                                };
 
-                                        if controller.player_state.repeat {
-                                            if current.is_some() {
-                                                controller.load(current.unwrap().to_string_lossy().to_string())
-                                            }
-                                        } else {
-                                            controller.next()
-                                        }
-
-                                        if controller.player_state.state != PlaybackState::Playing {
-                                            controller.play();
-                                        }
-                                    }
+                                                if !this.stop_auto_scroll.read(cx) {
+                                                    this.scroll_handle.scroll_to_item(
+                                                        idx,
+                                                        ScrollStrategy::Nearest,
+                                                    );
+                                                }
+                                            });
+                                        })
+                                    });
+                                    cx.global::<Controller>().write_app_state_cache();
+                                    cx.notify();
                                 }
-                                Event::Scanner(scanner_event) => match scanner_event {
-                                    ScannerEvent::State(state) => {
-                                        cx.global_mut::<Controller>().set_scanner_state_in_engine(state.clone());
-                                        cx.global::<Controller>().write_app_state_cache();
-                                    }
-                                    ScannerEvent::Thumbnail { path, image } => {
-                                        cx.global_mut::<ImageCache>().add(path.clone(), image.clone());
-                                    }
-                                    ScannerEvent::ClearImageCache => cx.global_mut::<ImageCache>().clear(),
-                                    ScannerEvent::AppStateCache(app_state_cache) => {
-                                        let controller = cx.global_mut::<Controller>();
+                                AudioEvent::TrackEnded => {
+                                    let controller = cx.global::<Controller>();
+                                    let current = controller.player_state.current.clone();
 
-                                        controller.player_state.state = app_state_cache.state;
-                                        controller.player_state.index = app_state_cache.index;
-                                        controller.player_state.mute = app_state_cache.mute;
-                                        controller.player_state.shuffling = app_state_cache.shuffling;
-                                        controller.player_state.current = app_state_cache.current.clone().map(|this| PathBuf::from(this));
-                                        controller.player_state.repeat = app_state_cache.repeat;
-                                        controller.player_state.position = app_state_cache.position;
-                                        controller.player_state.volume = app_state_cache.volume;
-
-                                        controller.scanner_state.queue_order = app_state_cache.queue_order.clone();
-
-                                        if app_state_cache.current.is_some() {
-                                            cx.global::<Controller>().load(app_state_cache.current.clone().unwrap());
+                                    if controller.player_state.repeat {
+                                        if current.is_some() {
+                                            controller.load(
+                                                current.unwrap().to_string_lossy().to_string(),
+                                            )
                                         }
+                                    } else {
+                                        controller.next()
+                                    }
 
-                                        cx.notify();
+                                    if controller.player_state.state != PlaybackState::Playing {
+                                        controller.play();
                                     }
                                 }
                             },
-                        )
-                            .detach();
+                            Event::Scanner(scanner_event) => match scanner_event {
+                                ScannerEvent::State(state) => {
+                                    cx.global_mut::<Controller>()
+                                        .set_scanner_state_in_engine(state.clone());
+                                    cx.global::<Controller>().write_app_state_cache();
+                                }
+                                ScannerEvent::Thumbnail { path, image } => {
+                                    cx.global_mut::<ImageCache>()
+                                        .add(path.clone(), image.clone());
+                                }
+                                ScannerEvent::ClearImageCache => {
+                                    cx.global_mut::<ImageCache>().clear()
+                                }
+                                ScannerEvent::AppStateCache(app_state_cache) => {
+                                    cx.global::<Controller>()
+                                        .send_app_state_cache(app_state_cache.clone());
+                                    cx.notify();
+                                }
+                            },
+                        })
+                        .detach();
 
                         Root::new(view, window, cx)
                     })
@@ -241,7 +250,7 @@ pub fn run() {
 
             Ok::<_, anyhow::Error>(())
         })
-            .detach();
+        .detach();
     });
 }
 
