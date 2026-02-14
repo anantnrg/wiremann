@@ -1,3 +1,4 @@
+use crate::controller::player::ScannerCommand;
 use crate::controller::{
     metadata::Metadata,
     player::{AudioCommand, AudioEvent, PlayerState},
@@ -72,7 +73,7 @@ impl AudioEngine {
                         AudioCommand::Prev => self.prev(),
                         AudioCommand::Repeat => self.set_repeat(),
                         AudioCommand::Shuffle => self.set_shuffle(),
-                        AudioCommand::SetAppState(app_state) => self.set_app_state(app_state),
+                        AudioCommand::SetAppState{app_state_cache, scanner_cmd_tx} => self.set_app_state(app_state_cache, scanner_cmd_tx),
                     }
                 }
 
@@ -325,10 +326,12 @@ impl AudioEngine {
         self.send_scanner_state();
     }
 
-    fn set_app_state(&mut self, app_state_cache: AppStateCache) {
+    fn set_app_state(&mut self, app_state_cache: AppStateCache, scanner_cmd_tx: Sender<ScannerCommand>) {
+        let _ = scanner_cmd_tx.send(ScannerCommand::Load(app_state_cache.playlist));
+
         self.scanner_state.queue_order = app_state_cache.queue_order;
 
-        self.load_at(app_state_cache.index);
+        // self.load_at(app_state_cache.index);
 
         match app_state_cache.state {
             PlaybackState::Playing => self.play(),

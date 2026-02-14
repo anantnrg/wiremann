@@ -1,7 +1,7 @@
 use super::metadata::Metadata;
 use crate::audio::engine::PlaybackState;
-use crate::scanner::ScannerState;
 use crate::scanner::cache::AppStateCache;
+use crate::scanner::ScannerState;
 use crossbeam_channel::{Receiver, Sender};
 use gpui::*;
 use std::path::PathBuf;
@@ -45,7 +45,7 @@ pub enum AudioCommand {
     ScannerState(ScannerState),
     Repeat,
     Shuffle,
-    SetAppState(AppStateCache),
+    SetAppState { app_state_cache: AppStateCache, scanner_cmd_tx: Sender<ScannerCommand> },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -163,10 +163,10 @@ impl Controller {
         )));
     }
 
-    pub fn send_app_state_cache(&self, app_state_cache: AppStateCache) {
+    pub fn send_app_state_cache(&self, app_state_cache: AppStateCache, scanner_cmd_tx: Sender<ScannerCommand>) {
         let _ = self
             .audio_cmd_tx
-            .send(AudioCommand::SetAppState(app_state_cache));
+            .send(AudioCommand::SetAppState { app_state_cache, scanner_cmd_tx });
     }
 }
 
@@ -203,7 +203,7 @@ pub enum PlayerStateEvent {
     Position(u64),
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub struct Track {
     pub path: PathBuf,
     pub meta: Metadata,

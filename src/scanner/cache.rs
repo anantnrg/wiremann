@@ -75,6 +75,7 @@ pub struct AppStateCache {
 
     // ScannerState
     pub queue_order: Vec<usize>,
+    pub playlist: String,
 }
 
 impl From<Playlist> for PlaylistCache {
@@ -283,7 +284,9 @@ impl CacheManager {
             index,
             ..
         } = player_state.clone();
-        let ScannerState { queue_order, .. } = scanner_state.clone();
+        let ScannerState { queue_order, current_playlist, .. } = scanner_state.clone();
+
+        let playlist = current_playlist.unwrap_or_default().path.unwrap_or_default().to_string_lossy().to_string();
 
         let app_state_cache = AppStateCache {
             current: current.map(|this| this.to_string_lossy().to_string()),
@@ -295,6 +298,7 @@ impl CacheManager {
             repeat,
             index,
             queue_order,
+            playlist,
         };
 
         let bytes = ron::ser::to_string_pretty(&app_state_cache, PrettyConfig::default())

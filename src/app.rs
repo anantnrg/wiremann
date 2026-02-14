@@ -92,7 +92,7 @@ pub fn run() {
                                     .await;
                             }
                         })
-                        .detach();
+                            .detach();
 
                         let playbar_view = view.clone();
 
@@ -235,13 +235,14 @@ pub fn run() {
                                     cx.global_mut::<ImageCache>().clear()
                                 }
                                 ScannerEvent::AppStateCache(app_state_cache) => {
+                                    let scanner_cmd_tx = cx.global::<Controller>().scanner_cmd_tx.clone();
                                     cx.global::<Controller>()
-                                        .send_app_state_cache(app_state_cache.clone());
+                                        .send_app_state_cache(app_state_cache.clone(), scanner_cmd_tx);
                                     cx.notify();
                                 }
                             },
                         })
-                        .detach();
+                            .detach();
 
                         Root::new(view, window, cx)
                     })
@@ -250,7 +251,7 @@ pub fn run() {
 
             Ok::<_, anyhow::Error>(())
         })
-        .detach();
+            .detach();
     });
 }
 

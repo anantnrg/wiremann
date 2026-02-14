@@ -4,19 +4,19 @@ use crate::controller::metadata::Metadata;
 use crate::controller::player::{ScannerCommand, ScannerEvent, Track};
 use crate::scanner::cache::{CacheManager, CachedPlaylistIndex, CachedPlaylistIndexes};
 use crate::utils::decode_thumbnail;
-use crossbeam_channel::{Receiver, Sender, select};
+use crossbeam_channel::{select, Receiver, Sender};
 use gpui::RenderImage;
 use image::{Frame, RgbaImage};
-use rayon::ThreadPoolBuilder;
 use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 use smallvec::smallvec;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use uuid::Uuid;
 use walkdir::WalkDir;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Playlist {
     pub id: Uuid,
     pub name: String,
