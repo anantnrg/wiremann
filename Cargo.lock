@@ -7446,6 +7446,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "smallvec",
+ "thiserror 2.0.18",
  "uuid",
  "walkdir",
 ]

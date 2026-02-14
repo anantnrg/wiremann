@@ -1,10 +1,12 @@
-pub mod app;
-pub mod audio;
-pub mod controller;
-mod scanner;
-pub mod ui;
-mod utils;
+#![warn(clippy::pedantic)]
 
-fn main() {
-    app::run();
+pub mod app;
+pub mod errors;
+pub mod ui;
+pub mod controller;
+
+use errors::Error;
+
+fn main() -> Result<(), Error> {
+    app::run()
 }
