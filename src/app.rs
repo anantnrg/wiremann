@@ -1,9 +1,11 @@
-use crate::errors::Error;
+use crate::errors::AppError;
 use crate::ui::assets::Assets;
 use gpui::*;
 use gpui_component::*;
 
-pub fn run() -> Result<(), Error> {
+use crate::ui::wiremann::Wiremann;
+
+pub fn run() -> Result<(), AppError> {
     let assets = Assets {};
     let app = Application::new().with_assets(assets.clone());
 
@@ -32,11 +34,11 @@ pub fn run() -> Result<(), Error> {
                 |window, cx| {
                     let view = cx.new(|cx| Wiremann::new(cx));
 
-                    cx.new(|cx| {
-                        Root::new(view, window, cx)
-                    })
+                    cx.new(|cx| Root::new(view, window, cx))
                 },
-            );
+            )?;
+
+            Ok::<_, AppError>(())
         })
         .detach();
     });

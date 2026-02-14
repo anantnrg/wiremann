@@ -5,8 +5,8 @@ pub mod errors;
 pub mod ui;
 pub mod controller;
 
-use errors::Error;
+use errors::AppError;
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), AppError> {
     app::run()
 }
