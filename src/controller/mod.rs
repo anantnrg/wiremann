@@ -2,9 +2,9 @@ pub mod commands;
 pub mod events;
 pub mod state;
 
-use crate::controller::state::AppState;
+use crate::{controller::state::AppState, errors::AppError};
 use commands::{AudioCommand, ScannerCommand, UiCommand};
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, select};
 use events::{AudioEvent, ScannerEvent, UiEvent};
 use gpui::Entity;
 
@@ -45,4 +45,32 @@ impl Controller {
             ui_tx,
         }
     }
+
+    pub fn run(&mut self) -> Result<(), AppError> {
+        loop {
+            select! {
+                recv(self.audio_rx)-> msg => {
+                    if let Ok(e) = msg {
+                        self.handle_audio_event(e)
+                    }
+                },
+                recv(self.scanner_rx) -> msg => {
+                    if let Ok(e) = msg {
+                        self.handle_scanner_event(e)
+                    }
+                },
+                recv(self.ui_rx) -> msg => {
+                    if let Ok(e) = msg {
+                        self.handle_ui_command(e)
+                    }
+                }
+            }
+        }
+    }
+
+    fn handle_audio_event(&mut self, event: AudioEvent) {}
+
+    fn handle_scanner_event(&mut self, event: ScannerEvent) {}
+
+    fn handle_ui_command(&mut self, cmd: UiCommand) {}
 }

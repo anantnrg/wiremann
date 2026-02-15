@@ -1,4 +1,4 @@
-use std::thread;
+use std::{sync::Arc, thread, time::Duration};
 
 use crate::{
     audio::engine::Audio,
@@ -8,8 +8,9 @@ use crate::{
     },
     errors::AppError,
     scanner::Scanner,
-    ui::{assets::Assets, commander::UiCommander, wiremann::Wiremann},
+    ui::{assets::Assets, commander::UiCommander, res_handler::ResHandler, wiremann::Wiremann},
 };
+use crossbeam_channel::select;
 use gpui::*;
 use gpui_component::*;
 
@@ -27,16 +28,10 @@ pub fn run() -> Result<(), AppError> {
         let (ui_cmd_tx, ui_cmd_rx) = crossbeam_channel::unbounded();
         let (ui_event_tx, ui_event_rx) = crossbeam_channel::unbounded();
 
-        thread::spawn(move || audio.run());
-
-        thread::spawn(move || scanner.run());
-
         let state = cx.new(|_| AppState::default());
-        cx.set_global(AppStateGlobal(state.clone()));
-        cx.set_global(UiCommander(ui_cmd_tx));
 
-        let controller = Controller::new(
-            state,
+        let mut controller = Controller::new(
+            state.clone(),
             audio_tx,
             audio_rx,
             scanner_tx,
@@ -44,6 +39,12 @@ pub fn run() -> Result<(), AppError> {
             ui_cmd_rx,
             ui_event_tx,
         );
+
+        thread::spawn(move || audio.run());
+
+        thread::spawn(move || scanner.run());
+
+        thread::spawn(move || controller.run());
 
         cx.spawn(async move |cx| {
             cx.open_window(
@@ -65,9 +66,30 @@ pub fn run() -> Result<(), AppError> {
                 |window, cx| {
                     let view = cx.new(|cx| Wiremann::new(cx));
 
-                    cx.spawn(async move |_| {}).detach();
+                    cx.set_global(AppStateGlobal(state));
+                    cx.set_global(UiCommander(ui_cmd_tx));
 
-                    cx.new(|cx| Root::new(view, window, cx))
+                    cx.new(|cx| {
+                        let res_handler = cx.new(|_| ResHandler {});
+                        let arc_res = Arc::new(res_handler.clone());
+
+                        cx.spawn(async move |_, cx| {
+                            loop {
+                                while let Ok(e) = ui_event_rx.try_recv() {
+                                    arc_res.update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, e);
+                                    });
+                                }
+
+                                cx.background_executor()
+                                    .timer(Duration::from_millis(16))
+                                    .await;
+                            }
+                        })
+                        .detach();
+
+                        Root::new(view, window, cx)
+                    })
                 },
             )?;
 
