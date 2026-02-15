@@ -1,5 +1,8 @@
-use std::collections::HashMap;
-use std::time::Duration;
+use crate::{
+    audio::{Track, TrackId},
+    library::playlists::{Playlist, PlaylistId},
+};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 pub struct AppState {
     pub playback: PlaybackState,
@@ -7,6 +10,7 @@ pub struct AppState {
     pub queue: QueueState,
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct LibraryState {
     pub tracks: HashMap<TrackId, Arc<Track>>,
     pub playlists: HashMap<PlaylistId, Playlist>,
@@ -31,6 +35,10 @@ pub struct PlaybackState {
     pub mute: bool,
     pub shuffling: bool,
     pub repeat: bool,
+}
 
-    pub index: usize,
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct QueueState {
+    pub order: Vec<TrackId>,
+    pub index: Option<usize>,
 }

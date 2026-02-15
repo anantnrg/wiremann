@@ -8,14 +8,14 @@ use crate::audio::TrackId;
 )]
 pub struct PlaylistId(pub Uuid);
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum PlaylistKind {
     User,
     Folder,
     Generated,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Playlist {
     pub id: PlaylistId,
     pub name: String,

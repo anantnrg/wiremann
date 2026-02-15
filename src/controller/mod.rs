@@ -1,8 +1,11 @@
-pub mod events;
 pub mod commands;
+pub mod events;
 pub mod state;
 
-use crossbeam_channel::Sender;
+use crate::controller::state::AppState;
+use commands::{AudioCommand, ScannerCommand};
+use crossbeam_channel::{Receiver, Sender};
+use events::{AudioEvent, ScannerEvent};
 use gpui::Entity;
 
 pub struct Controller {
@@ -14,5 +17,5 @@ pub struct Controller {
 
     // Scanner channel
     pub scanner_tx: Sender<ScannerCommand>,
-    pub scanner_rx: Sender<ScannerEvent>
+    pub scanner_rx: Sender<ScannerEvent>,
 }
