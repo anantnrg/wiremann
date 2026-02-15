@@ -1,0 +1,36 @@
+use std::collections::HashMap;
+use std::time::Duration;
+
+pub struct AppState {
+    pub playback: PlaybackState,
+    pub library: LibraryState,
+    pub queue: QueueState,
+}
+
+pub struct LibraryState {
+    pub tracks: HashMap<TrackId, Arc<Track>>,
+    pub playlists: HashMap<PlaylistId, Playlist>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum PlaybackStatus {
+    #[default]
+    Stopped,
+    Playing,
+    Paused,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct PlaybackState {
+    pub current: Option<TrackId>,
+
+    pub status: PlaybackStatus,
+    pub position: Duration,
+
+    pub volume: f32,
+    pub mute: bool,
+    pub shuffling: bool,
+    pub repeat: bool,
+
+    pub index: usize,
+}
