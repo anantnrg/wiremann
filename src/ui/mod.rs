@@ -1,5 +1,6 @@
 pub mod assets;
 pub mod wiremann;
+pub mod res_handler;
 
 use thiserror::Error;
 
