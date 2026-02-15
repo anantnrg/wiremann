@@ -4,6 +4,7 @@ use crate::{
 };
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct AppState {
     pub playback: PlaybackState,
     pub library: LibraryState,

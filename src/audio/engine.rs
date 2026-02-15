@@ -23,6 +23,6 @@ impl Audio {
     }
 
     pub fn run(&mut self) -> Result<(), AudioError> {
-        Ok(())
+        loop {}
     }
 }
