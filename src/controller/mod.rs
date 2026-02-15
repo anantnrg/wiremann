@@ -20,6 +20,7 @@ pub struct Controller {
     pub scanner_tx: Sender<ScannerCommand>,
     pub scanner_rx: Receiver<ScannerEvent>,
 
+    // UI channel
     pub ui_rx: Receiver<UiCommand>,
     pub ui_tx: Sender<UiEvent>,
 }

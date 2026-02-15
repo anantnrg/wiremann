@@ -1,20 +1,14 @@
-use crate::controller::events::{AudioEvent, ScannerEvent};
+use crate::controller::events::{AudioEvent, ScannerEvent, UiEvent};
 use gpui::*;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ResHandlerEvent {
-    Audio(AudioEvent),
-    Scanner(ScannerEvent),
-}
 
 #[derive(Clone, Copy)]
 pub struct ResHandler {}
 
 impl ResHandler {
-    pub fn handle(&mut self, cx: &mut Context<Self>, event: ResHandlerEvent) {
+    pub fn handle(&mut self, cx: &mut Context<Self>, event: UiEvent) {
         cx.emit(event);
         cx.notify();
     }
 }
 
-impl EventEmitter<ResHandlerEvent> for ResHandler {}
+impl EventEmitter<UiEvent> for ResHandler {}

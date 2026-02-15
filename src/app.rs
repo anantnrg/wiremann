@@ -65,7 +65,7 @@ pub fn run() -> Result<(), AppError> {
                 |window, cx| {
                     let view = cx.new(|cx| Wiremann::new(cx));
 
-                    cx.spawn(async move |_| {});
+                    cx.spawn(async move |_| {}).detach();
 
                     cx.new(|cx| Root::new(view, window, cx))
                 },
