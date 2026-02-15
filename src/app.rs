@@ -4,13 +4,17 @@ use crate::{
     audio::engine::Audio,
     controller::{
         Controller,
-        state::{AppState, AppStateGlobal},
+        events::{AudioEvent, ScannerEvent},
+        state::AppState,
     },
     errors::AppError,
     scanner::Scanner,
-    ui::{assets::Assets, commander::UiCommander, res_handler::ResHandler, wiremann::Wiremann},
+    ui::{
+        assets::Assets,
+        res_handler::{Event, ResHandler},
+        wiremann::Wiremann,
+    },
 };
-use crossbeam_channel::select;
 use gpui::*;
 use gpui_component::*;
 
@@ -25,26 +29,18 @@ pub fn run() -> Result<(), AppError> {
 
         let (mut audio, audio_tx, audio_rx) = Audio::new();
         let (mut scanner, scanner_tx, scanner_rx) = Scanner::new();
-        let (ui_cmd_tx, ui_cmd_rx) = crossbeam_channel::unbounded();
-        let (ui_event_tx, ui_event_rx) = crossbeam_channel::unbounded();
-
-        let state = cx.new(|_| AppState::default());
 
         let mut controller = Controller::new(
-            state.clone(),
+            cx.new(|_| AppState::default()),
             audio_tx,
             audio_rx,
             scanner_tx,
             scanner_rx,
-            ui_cmd_rx,
-            ui_event_tx,
         );
 
         thread::spawn(move || audio.run());
 
         thread::spawn(move || scanner.run());
-
-        thread::spawn(move || controller.run());
 
         cx.spawn(async move |cx| {
             cx.open_window(
@@ -64,20 +60,26 @@ pub fn run() -> Result<(), AppError> {
                     ..Default::default()
                 },
                 |window, cx| {
-                    let view = cx.new(|cx| Wiremann::new(cx));
+                    cx.set_global(controller.clone());
 
-                    cx.set_global(AppStateGlobal(state));
-                    cx.set_global(UiCommander(ui_cmd_tx));
+                    let view = cx.new(|cx| Wiremann::new(cx));
 
                     cx.new(|cx| {
                         let res_handler = cx.new(|_| ResHandler {});
                         let arc_res = Arc::new(res_handler.clone());
+                        let mut controller_resclone = controller.clone();
 
                         cx.spawn(async move |_, cx| {
                             loop {
-                                while let Ok(e) = ui_event_rx.try_recv() {
+                                while let Ok(e) = controller.audio_rx.try_recv() {
                                     arc_res.update(cx, |res_handler, cx| {
-                                        res_handler.handle(cx, e);
+                                        res_handler.handle(cx, Event::Audio(e));
+                                    });
+                                }
+
+                                while let Ok(e) = controller.scanner_rx.try_recv() {
+                                    arc_res.update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, Event::Scanner(e));
                                     });
                                 }
 
@@ -85,6 +87,14 @@ pub fn run() -> Result<(), AppError> {
                                     .timer(Duration::from_millis(16))
                                     .await;
                             }
+                        })
+                        .detach();
+
+                        let view_clone = view.clone();
+
+                        cx.subscribe(&res_handler, move |_, _, event, cx| match event {
+                            Event::Audio(event) => controller_resclone.handle_audio_event(cx, event),
+                            Event::Scanner(event) => controller_resclone.handle_scanner_event(event),
                         })
                         .detach();
 

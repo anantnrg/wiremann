@@ -2,11 +2,13 @@ pub mod commands;
 pub mod events;
 pub mod state;
 
-use crate::{controller::state::AppState, errors::AppError};
-use commands::{AudioCommand, ScannerCommand, UiCommand};
+use std::{path::PathBuf, time::Duration};
+
+use crate::controller::state::AppState;
+use commands::{AudioCommand, ScannerCommand};
 use crossbeam_channel::{Receiver, Sender, select};
-use events::{AudioEvent, ScannerEvent, UiEvent};
-use gpui::Entity;
+use events::{AudioEvent, ScannerEvent};
+use gpui::{App, Entity, Global};
 
 #[derive(Clone)]
 pub struct Controller {
@@ -19,10 +21,6 @@ pub struct Controller {
     // Scanner channel
     pub scanner_tx: Sender<ScannerCommand>,
     pub scanner_rx: Receiver<ScannerEvent>,
-
-    // UI channel
-    pub ui_rx: Receiver<UiCommand>,
-    pub ui_tx: Sender<UiEvent>,
 }
 
 impl Controller {
@@ -32,8 +30,6 @@ impl Controller {
         audio_rx: Receiver<AudioEvent>,
         scanner_tx: Sender<ScannerCommand>,
         scanner_rx: Receiver<ScannerEvent>,
-        ui_rx: Receiver<UiCommand>,
-        ui_tx: Sender<UiEvent>,
     ) -> Self {
         Controller {
             state,
@@ -41,36 +37,31 @@ impl Controller {
             audio_rx,
             scanner_tx,
             scanner_rx,
-            ui_rx,
-            ui_tx,
         }
     }
 
-    pub fn run(&mut self) -> Result<(), AppError> {
-        loop {
-            select! {
-                recv(self.audio_rx)-> msg => {
-                    if let Ok(e) = msg {
-                        self.handle_audio_event(e)
-                    }
-                },
-                recv(self.scanner_rx) -> msg => {
-                    if let Ok(e) = msg {
-                        self.handle_scanner_event(e)
-                    }
-                },
-                recv(self.ui_rx) -> msg => {
-                    if let Ok(e) = msg {
-                        self.handle_ui_command(e)
-                    }
-                }
+    pub fn handle_audio_event(&mut self, cx: &mut App, event: &AudioEvent) {
+        match event {
+            AudioEvent::Position(pos) => {
+                self.state.update(cx, |this, cx| {
+                    this.playback.position = Duration::from_secs(*pos);
+                    cx.notify();
+                });
+            }
+            AudioEvent::TrackLoaded(path) => {
+                self.state.update(cx, |this, cx| {
+                    println!("loaded: {:#?}", path.to_str());
+                    cx.notify();
+                });
             }
         }
     }
 
-    fn handle_audio_event(&mut self, event: AudioEvent) {}
+    pub fn handle_scanner_event(&mut self, event: &ScannerEvent) {}
 
-    fn handle_scanner_event(&mut self, event: ScannerEvent) {}
-
-    fn handle_ui_command(&mut self, cmd: UiCommand) {}
+    pub fn load_audio(&self, path: PathBuf) {
+        let _ = self.audio_tx.send(AudioCommand::Load(path));
+    }
 }
+
+impl Global for Controller {}

@@ -45,7 +45,3 @@ pub struct QueueState {
     pub order: Vec<TrackId>,
     pub index: Option<usize>,
 }
-
-pub struct AppStateGlobal(pub Entity<AppState>);
-
-impl Global for AppStateGlobal {}

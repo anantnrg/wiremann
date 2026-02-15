@@ -1,8 +1,10 @@
+use std::path::PathBuf;
+
 #[derive(Clone, PartialEq, Debug)]
-pub enum AudioEvent {}
+pub enum AudioEvent {
+    TrackLoaded(PathBuf),
+    Position(u64)
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum ScannerEvent {}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum UiEvent {}
