@@ -1,3 +1,5 @@
+use gpui::{Entity, Global};
+
 use crate::{
     audio::{Track, TrackId},
     library::playlists::{Playlist, PlaylistId},
@@ -43,3 +45,7 @@ pub struct QueueState {
     pub order: Vec<TrackId>,
     pub index: Option<usize>,
 }
+
+pub struct AppStateGlobal(pub Entity<AppState>);
+
+impl Global for AppStateGlobal {}

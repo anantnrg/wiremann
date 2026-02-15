@@ -3,10 +3,10 @@ pub mod events;
 pub mod state;
 
 use crate::controller::state::AppState;
-use commands::{AudioCommand, ScannerCommand};
+use commands::{AudioCommand, ScannerCommand, UiCommand};
 use crossbeam_channel::{Receiver, Sender};
-use events::{AudioEvent, ScannerEvent};
-use gpui::{Entity, Global};
+use events::{AudioEvent, ScannerEvent, UiEvent};
+use gpui::Entity;
 
 #[derive(Clone)]
 pub struct Controller {
@@ -19,6 +19,9 @@ pub struct Controller {
     // Scanner channel
     pub scanner_tx: Sender<ScannerCommand>,
     pub scanner_rx: Receiver<ScannerEvent>,
+
+    pub ui_rx: Receiver<UiCommand>,
+    pub ui_tx: Sender<UiEvent>,
 }
 
 impl Controller {
@@ -28,15 +31,17 @@ impl Controller {
         audio_rx: Receiver<AudioEvent>,
         scanner_tx: Sender<ScannerCommand>,
         scanner_rx: Receiver<ScannerEvent>,
+        ui_rx: Receiver<UiCommand>,
+        ui_tx: Sender<UiEvent>,
     ) -> Self {
         Controller {
+            state,
             audio_tx,
             audio_rx,
             scanner_tx,
             scanner_rx,
-            state,
+            ui_rx,
+            ui_tx,
         }
     }
 }
-
-impl Global for Controller {}
