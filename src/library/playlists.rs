@@ -1,11 +1,8 @@
-use serde::{Serialize, Deserialize};
+use super::TrackId;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::audio::TrackId;
 
-#[derive(
-    Clone, Copy, Hash, Eq, PartialEq,
-    Serialize, Deserialize, Debug
-)]
+#[derive(Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize, Debug)]
 pub struct PlaylistId(pub Uuid);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

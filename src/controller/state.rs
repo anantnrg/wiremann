@@ -1,8 +1,6 @@
-use gpui::{Entity, Global};
-
 use crate::{
-    audio::{Track, TrackId},
     library::playlists::{Playlist, PlaylistId},
+    library::{Track, TrackId},
 };
 use std::{collections::HashMap, sync::Arc, time::Duration};
 

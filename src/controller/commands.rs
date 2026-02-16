@@ -2,7 +2,9 @@ use std::path::PathBuf;
 
 pub enum AudioCommand {
     Load(PathBuf),
-    GetPosition
+    GetPosition,
 }
 
-pub enum ScannerCommand {}
+pub enum ScannerCommand {
+    GetTrackMetadata(PathBuf),
+}
