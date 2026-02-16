@@ -1,4 +1,4 @@
-use std::{sync::Arc, thread, time::Duration};
+use std::{sync::Arc, thread, time::{Duration, Instant}};
 
 use crate::{
     audio::engine::Audio,
@@ -70,6 +70,8 @@ pub fn run() -> Result<(), AppError> {
                         let mut controller_resclone = controller.clone();
 
                         cx.spawn(async move |_, cx| {
+                            let mut last_pos_request = Instant::now();
+
                             loop {
                                 while let Ok(e) = controller.audio_rx.try_recv() {
                                     arc_res.update(cx, |res_handler, cx| {
@@ -83,6 +85,12 @@ pub fn run() -> Result<(), AppError> {
                                     });
                                 }
 
+                                if last_pos_request.elapsed() >= Duration::from_millis(256) {
+                                    let _ = controller.get_pos();
+
+                                    last_pos_request = Instant::now();
+                                }
+
                                 cx.background_executor()
                                     .timer(Duration::from_millis(16))
                                     .await;
@@ -93,8 +101,12 @@ pub fn run() -> Result<(), AppError> {
                         let view_clone = view.clone();
 
                         cx.subscribe(&res_handler, move |_, _, event, cx| match event {
-                            Event::Audio(event) => controller_resclone.handle_audio_event(cx, event),
-                            Event::Scanner(event) => controller_resclone.handle_scanner_event(event),
+                            Event::Audio(event) => {
+                                controller_resclone.handle_audio_event(cx, event)
+                            }
+                            Event::Scanner(event) => {
+                                controller_resclone.handle_scanner_event(event)
+                            }
                         })
                         .detach();
 

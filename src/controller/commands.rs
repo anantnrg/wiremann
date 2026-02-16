@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 pub enum AudioCommand {
-    Load(PathBuf)
+    Load(PathBuf),
+    GetPosition
 }
 
 pub enum ScannerCommand {}

@@ -1,6 +1,6 @@
-use std::{path::PathBuf, time::Duration, fs::File};
+use std::{fs::File, path::PathBuf};
 
-use crossbeam_channel::{Receiver, Sender, select, tick};
+use crossbeam_channel::{Receiver, Sender, tick};
 
 use crate::{
     controller::{commands::AudioCommand, events::AudioEvent},
@@ -34,27 +34,14 @@ impl Audio {
     }
 
     pub fn run(&mut self) -> Result<(), AudioError> {
-        let ticker = tick(Duration::from_millis(256));
         loop {
-            select! {
-                recv(self.rx) -> msg => {
-                    let cmd = match msg {
-                        Ok(c) => c,
-                        Err(_) => break,
-                    };
-
-                    match cmd {
-                        AudioCommand::Load(path) => self.load_path(PathBuf::from(path))?,
-                    }
-                }
-
-                recv(ticker) -> _ => {
-                    self.emit_position()?;
-                    // self.check_track_end();
+            while let Ok(cmd) = self.rx.try_recv() {
+                match cmd {
+                    AudioCommand::Load(path) => self.load_path(PathBuf::from(path))?,
+                    AudioCommand::GetPosition => self.emit_position()?,
                 }
             }
         }
-        Ok(())
     }
 
     fn load_path(&mut self, path: PathBuf) -> Result<(), AudioError> {
@@ -78,7 +65,7 @@ impl Audio {
     }
 
     fn emit_position(&self) -> Result<(), AudioError> {
-        let _ = self.tx.send(AudioEvent::Position(0));
+        let _ = self.tx.send(AudioEvent::Position(self.sink.get_pos().as_secs()));
         Ok(())
     }
 }

@@ -6,7 +6,7 @@ use std::{path::PathBuf, time::Duration};
 
 use crate::controller::state::AppState;
 use commands::{AudioCommand, ScannerCommand};
-use crossbeam_channel::{Receiver, Sender, select};
+use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
 use gpui::{App, Entity, Global};
 
@@ -44,7 +44,8 @@ impl Controller {
         match event {
             AudioEvent::Position(pos) => {
                 self.state.update(cx, |this, cx| {
-                    this.playback.position = Duration::from_secs(*pos);
+                    this.playback.position = Duration::from_secs(pos.clone());
+                    println!("pos: {}", pos);
                     cx.notify();
                 });
             }
@@ -61,6 +62,10 @@ impl Controller {
 
     pub fn load_audio(&self, path: PathBuf) {
         let _ = self.audio_tx.send(AudioCommand::Load(path));
+    }
+
+    pub fn get_pos(&self) {
+        let _ = self.audio_tx.send(AudioCommand::GetPosition);
     }
 }
 
