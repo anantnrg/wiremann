@@ -1,15 +1,11 @@
 use crossbeam_channel::{Receiver, Sender};
 use lofty::{prelude::*, probe::Probe};
-use std::{
-    fs::{self, File},
-    io::BufReader,
-    path::PathBuf,
-    time::UNIX_EPOCH,
-};
+use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
 use crate::{
     controller::{commands::ScannerCommand, events::ScannerEvent},
     errors::ScannerError,
+    library::TrackId,
 };
 
 pub struct Scanner {
@@ -34,13 +30,15 @@ impl Scanner {
         loop {
             while let Ok(cmd) = self.rx.try_recv() {
                 match cmd {
-                    ScannerCommand::GetTrackMetadata(path) => self.get_track_metadata(path)?,
+                    ScannerCommand::GetTrackMetadata { path, track_id } => {
+                        self.get_track_metadata(path, track_id)?
+                    }
                 }
             }
         }
     }
 
-    fn get_track_metadata(&mut self, path: PathBuf) -> Result<(), ScannerError> {
+    fn get_track_metadata(&mut self, path: PathBuf, track_id: TrackId) -> Result<(), ScannerError> {
         let tagged_file = Probe::open(path.clone())?.guess_file_type()?.read()?;
         let file_metadata = fs::metadata(path)?;
 
@@ -71,6 +69,8 @@ impl Scanner {
             .as_secs();
 
         let _ = self.tx.send(ScannerEvent::TrackMetadata {
+            track_id,
+            path,
             title,
             artist,
             album,

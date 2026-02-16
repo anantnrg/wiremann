@@ -1,4 +1,8 @@
-use std::{sync::Arc, thread, time::{Duration, Instant}};
+use std::{
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 
 use crate::{
     audio::engine::Audio,
@@ -100,12 +104,17 @@ pub fn run() -> Result<(), AppError> {
 
                         let view_clone = view.clone();
 
-                        cx.subscribe(&res_handler, move |_, _, event, cx| match event {
-                            Event::Audio(event) => {
-                                controller_resclone.handle_audio_event(cx, event)
-                            }
-                            Event::Scanner(event) => {
-                                controller_resclone.handle_scanner_event(event)
+                        cx.subscribe(&res_handler, move |_, _, event, cx| {
+                            if let Err(e) = match event {
+                                Event::Audio(event) => {
+                                    controller_resclone.handle_audio_event(cx, event)
+                                }
+
+                                Event::Scanner(event) => {
+                                    controller_resclone.handle_scanner_event(cx, event)
+                                }
+                            } {
+                                eprintln!("controller error: {e:?}");
                             }
                         })
                         .detach();

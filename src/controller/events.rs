@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crate::library::TrackId;
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum AudioEvent {
     TrackLoaded(PathBuf),
@@ -9,6 +11,8 @@ pub enum AudioEvent {
 #[derive(Clone, PartialEq, Debug)]
 pub enum ScannerEvent {
     TrackMetadata {
+        path: PathBuf,
+        track_id: TrackId,
         title: String,
         artist: String,
         album: String,
