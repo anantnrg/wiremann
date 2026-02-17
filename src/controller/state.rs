@@ -28,6 +28,7 @@ pub enum PlaybackStatus {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PlaybackState {
     pub current: Option<TrackId>,
+    pub current_playlist: Option<PlaylistId>,
 
     pub status: PlaybackStatus,
     pub position: u64,

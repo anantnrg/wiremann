@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use super::TrackId;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -6,9 +7,9 @@ use uuid::Uuid;
 pub struct PlaylistId(pub Uuid);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum PlaylistKind {
+pub enum PlaylistSource {
     User,
-    Folder,
+    Folder(PathBuf),
     Generated,
 }
 
@@ -16,6 +17,6 @@ pub enum PlaylistKind {
 pub struct Playlist {
     pub id: PlaylistId,
     pub name: String,
-    pub kind: PlaylistKind,
+    pub source: PlaylistSource,
     pub tracks: Vec<TrackId>,
 }
