@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-
+use crate::library::playlists::Playlist;
 use crate::library::TrackId;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -20,4 +20,5 @@ pub enum ScannerEvent {
         size: u64,
         modified: u64,
     },
+    Playlist(Playlist)
 }

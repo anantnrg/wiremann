@@ -1,12 +1,16 @@
-use crossbeam_channel::{Receiver, Sender};
-use lofty::{prelude::*, probe::Probe};
-use std::{fs, path::PathBuf, time::UNIX_EPOCH};
-
+use crate::library::gen_track_id;
+use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
 use crate::{
     controller::{commands::ScannerCommand, events::ScannerEvent},
     errors::ScannerError,
     library::TrackId,
 };
+use crossbeam_channel::{Receiver, Sender};
+use lofty::{prelude::*, probe::Probe};
+use std::collections::HashSet;
+use std::{fs, path::PathBuf, time::UNIX_EPOCH};
+use uuid::Uuid;
+use walkdir::WalkDir;
 
 pub struct Scanner {
     pub tx: Sender<ScannerEvent>,
@@ -33,6 +37,7 @@ impl Scanner {
                     ScannerCommand::GetTrackMetadata { path, track_id } => {
                         self.get_track_metadata(path, track_id)?
                     }
+                    ScannerCommand::ScanFolder { path, tracks } => self.scan_folder(path, tracks)?,
                 }
             }
         }
@@ -79,6 +84,47 @@ impl Scanner {
             modified,
         });
 
+        Ok(())
+    }
+
+    fn scan_folder(&mut self, path: PathBuf, tracks: HashSet<TrackId>) -> Result<(), ScannerError> {
+        let supported = ["mp3", "flac", "wav", "ogg", "m4a"];
+        let mut new_tracks = vec![];
+        if path.is_dir() {
+            for entry in WalkDir::new(path.clone()).into_iter().filter_map(|e| e.ok()).filter(|e| e.file_type().is_file()).filter(|e| {
+                e.path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| supported.contains(&ext.to_lowercase().as_str()))
+                    .unwrap_or(false)
+            })
+                .map(|e| e.path().to_path_buf()) {
+                let track_id = gen_track_id(&PathBuf::from(entry.clone()))?;
+
+                if tracks.contains(&track_id) {
+                    new_tracks.push(track_id);
+                } else {
+                    self.get_track_metadata(entry.clone(), track_id)?;
+                    new_tracks.push(track_id);
+                }
+            }
+        }
+
+        let name = path
+            .file_name()
+            .and_then(|os_str| os_str.to_str())
+            .map(|s| s.to_string())
+            .unwrap();
+
+        let playlist = Playlist {
+            id: PlaylistId(Uuid::new_v4()),
+            name,
+            source: PlaylistSource::Folder(path),
+            tracks: new_tracks,
+        };
+        
+        let _ = self.tx.send(ScannerEvent::Playlist(playlist));
+        
         Ok(())
     }
 }

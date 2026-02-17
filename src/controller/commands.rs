@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-
 use crate::library::TrackId;
+use std::collections::HashSet;
+use std::path::PathBuf;
 
 pub enum AudioCommand {
     Load(PathBuf),
@@ -8,5 +8,12 @@ pub enum AudioCommand {
 }
 
 pub enum ScannerCommand {
-    GetTrackMetadata { path: PathBuf, track_id: TrackId },
+    GetTrackMetadata {
+        path: PathBuf,
+        track_id: TrackId,
+    },
+    ScanFolder {
+        path: PathBuf,
+        tracks: HashSet<TrackId>,
+    },
 }

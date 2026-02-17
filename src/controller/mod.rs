@@ -2,17 +2,18 @@ pub mod commands;
 pub mod events;
 pub mod state;
 
-use std::{path::PathBuf, sync::Arc, time::Duration};
-
+use crate::library::TrackId;
 use crate::{
     controller::state::AppState,
     errors::ControllerError,
-    library::{Track, gen_track_id},
+    library::{gen_track_id, Track},
 };
 use commands::{AudioCommand, ScannerCommand};
 use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
 use gpui::{App, Entity, Global};
+use std::collections::HashSet;
+use std::{path::PathBuf, sync::Arc};
 
 #[derive(Clone)]
 pub struct Controller {
@@ -58,10 +59,13 @@ impl Controller {
             }
             AudioEvent::TrackLoaded(path) => {
                 let track_id = gen_track_id(path)?;
-                let _ = self.scanner_tx.send(ScannerCommand::GetTrackMetadata {
-                    path: path.clone(),
-                    track_id: track_id.clone(),
-                });
+                if !self.state.read(cx).library.tracks.contains_key(&track_id) {
+                    let _ = self.scanner_tx.send(ScannerCommand::GetTrackMetadata {
+                        path: path.clone(),
+                        track_id: track_id.clone(),
+                    });
+                }
+
                 self.state.update(cx, |this, cx| {
                     this.playback.current = Some(track_id);
                     cx.notify();
@@ -103,6 +107,12 @@ impl Controller {
                     cx.notify();
                 });
             }
+            ScannerEvent::Playlist(playlist) => {
+                self.state.update(cx, |this, cx| {
+                    this.library.playlists.insert(playlist.id.clone(), playlist.clone());
+                    cx.notify();
+                })
+            }
         }
         Ok(())
     }
@@ -113,6 +123,10 @@ impl Controller {
 
     pub fn get_pos(&self) {
         let _ = self.audio_tx.send(AudioCommand::GetPosition);
+    }
+
+    pub fn scan_folder(&self, tracks: HashSet<TrackId>, path: PathBuf) {
+        let _ = self.scanner_tx.send(ScannerCommand::ScanFolder { path, tracks });
     }
 }
 
