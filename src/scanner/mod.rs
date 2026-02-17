@@ -40,7 +40,7 @@ impl Scanner {
 
     fn get_track_metadata(&mut self, path: PathBuf, track_id: TrackId) -> Result<(), ScannerError> {
         let tagged_file = Probe::open(path.clone())?.guess_file_type()?.read()?;
-        let file_metadata = fs::metadata(path)?;
+        let file_metadata = fs::metadata(path.clone())?;
 
         let tag = match tagged_file.primary_tag() {
             Some(primary_tag) => primary_tag,

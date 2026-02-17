@@ -52,8 +52,7 @@ impl Controller {
         match event {
             AudioEvent::Position(pos) => {
                 self.state.update(cx, |this, cx| {
-                    this.playback.position = Duration::from_secs(pos.clone());
-                    println!("pos: {}", pos);
+                    this.playback.position = *pos;
                     cx.notify();
                 });
             }

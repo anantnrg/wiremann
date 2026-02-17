@@ -30,7 +30,7 @@ pub struct PlaybackState {
     pub current: Option<TrackId>,
 
     pub status: PlaybackStatus,
-    pub position: Duration,
+    pub position: u64,
 
     pub volume: f32,
     pub mute: bool,

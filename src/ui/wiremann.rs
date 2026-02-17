@@ -14,6 +14,18 @@ impl Wiremann {
 
 impl Render for Wiremann {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div().size_full()
+        let controller = cx.global::<Controller>();
+        let state = controller.state.read(cx);
+
+        let title = state
+            .playback
+            .current
+            .and_then(|id| state.library.tracks.get(&id))
+            .map(|t| t.title.clone())
+            .unwrap_or("Not loaded.".to_string());
+
+        let position = state.playback.position.clone();
+
+        div().flex().flex_col().size_full().child(title).child(position.as_secs().to_string())
     }
 }
