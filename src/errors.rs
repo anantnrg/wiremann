@@ -1,6 +1,6 @@
-use std::time::SystemTimeError;
-
+use crossbeam_channel::RecvError;
 use lofty::error::LoftyError;
+use std::time::SystemTimeError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -27,6 +27,8 @@ pub enum ScannerError {
     LoftyError(#[from] LoftyError),
     #[error("SystemTime Error occurred: `{0}`")]
     SystemTimeError(#[from] SystemTimeError),
+    #[error("Recv Error occurred: `{0}`")]
+    RecvError(#[from] RecvError),
 }
 
 #[derive(Error, Debug)]

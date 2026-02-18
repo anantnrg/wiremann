@@ -6,7 +6,7 @@ use crate::library::TrackId;
 use crate::{
     controller::state::AppState,
     errors::ControllerError,
-    library::{gen_track_id, Track},
+    library::gen_track_id,
 };
 use commands::{AudioCommand, ScannerCommand};
 use crossbeam_channel::{Receiver, Sender};
@@ -81,30 +81,12 @@ impl Controller {
         event: &ScannerEvent,
     ) -> Result<(), ControllerError> {
         match event {
-            ScannerEvent::TrackMetadata {
-                path,
-                track_id,
-                title,
-                artist,
-                album,
-                duration,
-                size,
-                modified,
-            } => {
-                let track = Track {
-                    id: track_id.clone(),
-                    path: path.clone(),
-                    title: title.clone(),
-                    artist: artist.clone(),
-                    album: album.clone(),
-                    duration: *duration,
-                    size: *size,
-                    modified: *modified,
-                };
-
+            ScannerEvent::Tracks(tracks) => {
                 self.state.update(cx, |this, cx| {
-                    this.library.tracks.insert(*track_id, Arc::new(track));
-                    cx.notify();
+                    this.library.tracks.reserve(tracks.len());
+                    for track in tracks {
+                        this.library.tracks.insert(*track.id, Arc::new(track.clone()));
+                    }
                 });
             }
             ScannerEvent::Playlist(playlist) => {

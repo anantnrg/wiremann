@@ -6,12 +6,11 @@ pub struct Wiremann;
 
 impl Wiremann {
     pub fn new(cx: &mut App) -> Self {
-        cx.global::<Controller>()
-            .load_audio("E:\\music\\violence ft. doomguy\\468 - GIVE ME A REASON.mp3".into());
-        
         let tracks = cx.global::<Controller>().state.read(cx).library.tracks.keys().cloned().collect();
         cx.global::<Controller>()
             .scan_folder(tracks, "E:\\music\\violence ft. doomguy".into());
+        // cx.global::<Controller>()
+        //     .load_audio("E:\\music\\violence ft. doomguy\\468 - GIVE ME A REASON.mp3".into());
         Wiremann {}
     }
 }

@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use crate::library::playlists::Playlist;
-use crate::library::TrackId;
+use std::path::PathBuf;
+use crate::library::Track;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AudioEvent {
@@ -10,15 +10,6 @@ pub enum AudioEvent {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum ScannerEvent {
-    TrackMetadata {
-        path: PathBuf,
-        track_id: TrackId,
-        title: String,
-        artist: String,
-        album: String,
-        duration: u64,
-        size: u64,
-        modified: u64,
-    },
-    Playlist(Playlist)
+    Tracks(Vec<Track>),
+    Playlist(Playlist),
 }
