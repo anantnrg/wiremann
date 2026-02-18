@@ -3,11 +3,7 @@ pub mod events;
 pub mod state;
 
 use crate::library::TrackId;
-use crate::{
-    controller::state::AppState,
-    errors::ControllerError,
-    library::gen_track_id,
-};
+use crate::{controller::state::AppState, errors::ControllerError, library::gen_track_id};
 use commands::{AudioCommand, ScannerCommand};
 use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
@@ -85,17 +81,19 @@ impl Controller {
                 self.state.update(cx, |this, cx| {
                     this.library.tracks.reserve(tracks.len());
                     for track in tracks {
-                        this.library.tracks.insert(track.id.clone(), Arc::new(track.clone()));
+                        this.library
+                            .tracks
+                            .insert(track.id.clone(), Arc::new(track.clone()));
                     }
                     cx.notify();
                 });
             }
-            ScannerEvent::Playlist(playlist) => {
-                self.state.update(cx, |this, cx| {
-                    this.library.playlists.insert(playlist.id.clone(), playlist.clone());
-                    cx.notify();
-                })
-            }
+            ScannerEvent::Playlist(playlist) => self.state.update(cx, |this, cx| {
+                this.library
+                    .playlists
+                    .insert(playlist.id.clone(), playlist.clone());
+                cx.notify();
+            }),
         }
         Ok(())
     }
@@ -109,7 +107,9 @@ impl Controller {
     }
 
     pub fn scan_folder(&self, tracks: HashSet<TrackId>, path: PathBuf) {
-        let _ = self.scanner_tx.send(ScannerCommand::ScanFolder { path, tracks });
+        let _ = self
+            .scanner_tx
+            .send(ScannerCommand::ScanFolder { path, tracks });
     }
 }
 

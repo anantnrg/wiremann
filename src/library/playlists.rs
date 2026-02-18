@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use super::TrackId;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use uuid::Uuid;
 
 #[derive(Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize, Debug)]

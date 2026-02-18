@@ -1,5 +1,6 @@
+use crate::errors::ControllerError::ScannerError;
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{gen_track_id, Track};
+use crate::library::{Track, gen_track_id};
 use crate::{
     controller::{commands::ScannerCommand, events::ScannerEvent},
     errors::ScannerError,
@@ -7,6 +8,7 @@ use crate::{
 };
 use crossbeam_channel::{Receiver, Sender};
 use lofty::{prelude::*, probe::Probe};
+use rayon::iter::IntoParallelRefIterator;
 use std::collections::HashSet;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 use uuid::Uuid;
@@ -37,9 +39,7 @@ impl Scanner {
                     let track = self.get_track_metadata(path, track_id)?;
                     let _ = self.tx.send(ScannerEvent::Tracks(vec![track]));
                 }
-                ScannerCommand::ScanFolder { path, tracks } => {
-                    self.scan_folder(path, tracks)?
-                }
+                ScannerCommand::ScanFolder { path, tracks } => self.scan_folder(path, tracks)?,
             }
         }
     }
@@ -145,18 +145,16 @@ impl Scanner {
         })
     }
 
-
     fn scan_folder(
         &mut self,
         path: PathBuf,
         existing_tracks: HashSet<TrackId>,
     ) -> Result<(), ScannerError> {
-        println!("started scanning!");
         let supported = ["mp3", "flac", "wav", "ogg", "m4a"];
         let mut track_ids = vec![];
         let mut tracks = vec![];
         if path.is_dir() {
-            for entry in WalkDir::new(path.clone())
+            let files: Vec<PathBuf> = WalkDir::new(path.clone())
                 .into_iter()
                 .filter_map(|e| e.ok())
                 .filter(|e| e.file_type().is_file())
@@ -168,14 +166,25 @@ impl Scanner {
                         .unwrap_or(false)
                 })
                 .map(|e| e.path().to_path_buf())
-            {
-                let track_id = gen_track_id(&entry)?;
+                .collect();
 
-                if existing_tracks.contains(&track_id) {
-                    track_ids.push(track_id);
-                } else {
-                    let track = self.get_track_metadata(entry.clone(), track_id)?;
-                    track_ids.push(track_id);
+            let results: Vec<(TrackId, Option<Track>)> = files
+                .par_iter()
+                .map(|entry| {
+                    let track_id = gen_track_id(entry)?;
+
+                    if existing_tracks.contains(&track_id) {
+                        Ok((track_id, None))
+                    } else {
+                        let track = self.get_track_metadata(entry.clone(), track_id.clone())?;
+                        Ok((track_id, Some(track)))
+                    }
+                })
+                .collect::<Result<Vec<_>, ScannerError>>()?;
+            for (track_id, track) in results {
+                track_ids.push(track_id);
+
+                if let Some(track) = track {
                     tracks.push(track);
                 }
             }

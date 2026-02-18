@@ -65,7 +65,9 @@ impl Audio {
     }
 
     fn emit_position(&self) -> Result<(), AudioError> {
-        let _ = self.tx.send(AudioEvent::Position(self.sink.get_pos().as_secs()));
+        let _ = self
+            .tx
+            .send(AudioEvent::Position(self.sink.get_pos().as_secs()));
         Ok(())
     }
 }

@@ -3,7 +3,7 @@ use gpui::*;
 
 pub enum Event {
     Audio(AudioEvent),
-    Scanner(ScannerEvent)
+    Scanner(ScannerEvent),
 }
 
 #[derive(Clone, Copy)]

@@ -1,6 +1,6 @@
+use crate::library::Track;
 use crate::library::playlists::Playlist;
 use std::path::PathBuf;
-use crate::library::Track;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AudioEvent {
