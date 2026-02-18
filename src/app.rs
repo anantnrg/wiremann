@@ -44,7 +44,11 @@ pub fn run() -> Result<(), AppError> {
 
         thread::spawn(move || audio.run());
 
-        thread::spawn(move || scanner.run());
+        thread::spawn(move || {
+            if let Err(e) = scanner.run() {
+                eprintln!("SCANNER CRASHED: {:?}", e);
+            }
+        });
 
         cx.spawn(async move |cx| {
             cx.open_window(

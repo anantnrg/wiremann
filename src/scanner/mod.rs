@@ -5,7 +5,7 @@ use crate::{
     errors::ScannerError,
     library::TrackId,
 };
-use crossbeam_channel::{select, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender};
 use lofty::{prelude::*, probe::Probe};
 use std::collections::HashSet;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
@@ -32,19 +32,15 @@ impl Scanner {
 
     pub fn run(&mut self) -> Result<(), ScannerError> {
         loop {
-            select! {
-                recv(self.rx) -> msg => {
-                    let cmd = match msg {
-                        Ok(c) => c,
-                        Err(_) => break Ok(()),
-                    };
-                    match cmd {
-                        ScannerCommand::GetTrackMetadata { path, track_id } => {
-                            let track = self.get_track_metadata(path, track_id)?;
-                            let _ = self.tx.send(ScannerEvent::Tracks(vec![track]));
-                        }
-                        ScannerCommand::ScanFolder { path, tracks } => self.scan_folder(path, tracks)?,
-                    }
+            match self.rx.recv()? {
+                ScannerCommand::GetTrackMetadata { path, track_id } => {
+                    println!("get track received!");
+                    let track = self.get_track_metadata(path, track_id)?;
+                    let _ = self.tx.send(ScannerEvent::Tracks(vec![track]));
+                }
+                ScannerCommand::ScanFolder { path, tracks } => {
+                    println!("scan folder received!");
+                    self.scan_folder(path, tracks)?
                 }
             }
         }
@@ -101,6 +97,7 @@ impl Scanner {
         path: PathBuf,
         existing_tracks: HashSet<TrackId>,
     ) -> Result<(), ScannerError> {
+        println!("started scanning!");
         let supported = ["mp3", "flac", "wav", "ogg", "m4a"];
         let mut track_ids = vec![];
         let mut tracks = vec![];

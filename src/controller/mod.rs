@@ -82,15 +82,18 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         match event {
             ScannerEvent::Tracks(tracks) => {
+                println!("tracks receieved");
                 self.state.update(cx, |this, cx| {
                     this.library.tracks.reserve(tracks.len());
                     for track in tracks {
                         println!("track: {}", track.title);
                         this.library.tracks.insert(track.id.clone(), Arc::new(track.clone()));
                     }
+                    cx.notify();
                 });
             }
             ScannerEvent::Playlist(playlist) => {
+                println!("playlst receieved");
                 self.state.update(cx, |this, cx| {
                     this.library.playlists.insert(playlist.id.clone(), playlist.clone());
                     cx.notify();
