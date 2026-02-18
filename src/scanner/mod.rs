@@ -1,6 +1,5 @@
-use crate::errors::ControllerError::ScannerError;
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{Track, gen_track_id};
+use crate::library::{gen_track_id, Track};
 use crate::{
     controller::{commands::ScannerCommand, events::ScannerEvent},
     errors::ScannerError,
@@ -8,7 +7,7 @@ use crate::{
 };
 use crossbeam_channel::{Receiver, Sender};
 use lofty::{prelude::*, probe::Probe};
-use rayon::iter::IntoParallelRefIterator;
+use rayon::prelude::*;
 use std::collections::HashSet;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 use uuid::Uuid;
@@ -45,7 +44,7 @@ impl Scanner {
     }
 
     fn get_track_metadata(
-        &mut self,
+        &self,
         path: PathBuf,
         track_id: TrackId,
     ) -> Result<Track, ScannerError> {
