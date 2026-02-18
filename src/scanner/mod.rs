@@ -194,8 +194,6 @@ impl Scanner {
             tracks: track_ids,
         };
 
-        println!("Tracks: {:#?}", tracks.clone());
-
         let _ = self.tx.send(ScannerEvent::Tracks(tracks));
         let _ = self.tx.send(ScannerEvent::Playlist(playlist));
 

@@ -7,9 +7,9 @@ use std::{
 use crate::{
     audio::engine::Audio,
     controller::{
+        state::AppState
+        ,
         Controller,
-        events::{AudioEvent, ScannerEvent},
-        state::AppState,
     },
     errors::AppError,
     scanner::Scanner,
@@ -42,11 +42,13 @@ pub fn run() -> Result<(), AppError> {
             scanner_rx,
         );
 
-        thread::spawn(move || audio.run());
+        thread::spawn(move || if let Err(e) = audio.run() {
+            eprintln!("Audio thread crashed with error: {:?}", e);
+        });
 
         thread::spawn(move || {
             if let Err(e) = scanner.run() {
-                eprintln!("SCANNER CRASHED: {:?}", e);
+                eprintln!("Scanner thread crashed with error: {:?}", e);
             }
         });
 
@@ -104,7 +106,7 @@ pub fn run() -> Result<(), AppError> {
                                     .await;
                             }
                         })
-                        .detach();
+                            .detach();
 
                         let view_clone = view.clone();
 
@@ -121,7 +123,7 @@ pub fn run() -> Result<(), AppError> {
                                 eprintln!("controller error: {e:?}");
                             }
                         })
-                        .detach();
+                            .detach();
 
                         Root::new(view, window, cx)
                     })
@@ -130,7 +132,7 @@ pub fn run() -> Result<(), AppError> {
 
             Ok::<_, AppError>(())
         })
-        .detach();
+            .detach();
     });
 
     Ok(())
