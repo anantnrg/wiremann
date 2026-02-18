@@ -85,7 +85,8 @@ impl Controller {
                 self.state.update(cx, |this, cx| {
                     this.library.tracks.reserve(tracks.len());
                     for track in tracks {
-                        this.library.tracks.insert(*track.id, Arc::new(track.clone()));
+                        println!("track: {}", track.title);
+                        this.library.tracks.insert(track.id.clone(), Arc::new(track.clone()));
                     }
                 });
             }

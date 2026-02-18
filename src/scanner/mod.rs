@@ -5,7 +5,7 @@ use crate::{
     errors::ScannerError,
     library::TrackId,
 };
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{select, Receiver, Sender};
 use lofty::{prelude::*, probe::Probe};
 use std::collections::HashSet;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
@@ -32,20 +32,29 @@ impl Scanner {
 
     pub fn run(&mut self) -> Result<(), ScannerError> {
         loop {
-            match self.rx.recv()? {
-                Ok(cmd) => match cmd {
-                    ScannerCommand::GetTrackMetadata { path, track_id } => {
-                        let track = self.get_track_metadata(path, track_id)?;
-                        let _ = self.tx.send(ScannerEvent::Tracks(vec![track]));
+            select! {
+                recv(self.rx) -> msg => {
+                    let cmd = match msg {
+                        Ok(c) => c,
+                        Err(_) => break Ok(()),
+                    };
+                    match cmd {
+                        ScannerCommand::GetTrackMetadata { path, track_id } => {
+                            let track = self.get_track_metadata(path, track_id)?;
+                            let _ = self.tx.send(ScannerEvent::Tracks(vec![track]));
+                        }
+                        ScannerCommand::ScanFolder { path, tracks } => self.scan_folder(path, tracks)?,
                     }
-                    ScannerCommand::ScanFolder { path, tracks } => self.scan_folder(path, tracks)?,
                 }
-                Err(e) => eprintln!("Error at scanner recv: {}", e),
             }
         }
     }
 
-    fn get_track_metadata(&mut self, path: PathBuf, track_id: TrackId) -> Result<Track, ScannerError> {
+    fn get_track_metadata(
+        &mut self,
+        path: PathBuf,
+        track_id: TrackId,
+    ) -> Result<Track, ScannerError> {
         let tagged_file = Probe::open(path.clone())?.guess_file_type()?.read()?;
         let file_metadata = fs::metadata(path.clone())?;
 
@@ -87,19 +96,28 @@ impl Scanner {
         })
     }
 
-    fn scan_folder(&mut self, path: PathBuf, existing_tracks: HashSet<TrackId>) -> Result<(), ScannerError> {
+    fn scan_folder(
+        &mut self,
+        path: PathBuf,
+        existing_tracks: HashSet<TrackId>,
+    ) -> Result<(), ScannerError> {
         let supported = ["mp3", "flac", "wav", "ogg", "m4a"];
         let mut track_ids = vec![];
         let mut tracks = vec![];
         if path.is_dir() {
-            for entry in WalkDir::new(path.clone()).into_iter().filter_map(|e| e.ok()).filter(|e| e.file_type().is_file()).filter(|e| {
-                e.path()
-                    .extension()
-                    .and_then(|ext| ext.to_str())
-                    .map(|ext| supported.contains(&ext.to_lowercase().as_str()))
-                    .unwrap_or(false)
-            })
-                .map(|e| e.path().to_path_buf()) {
+            for entry in WalkDir::new(path.clone())
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_type().is_file())
+                .filter(|e| {
+                    e.path()
+                        .extension()
+                        .and_then(|ext| ext.to_str())
+                        .map(|ext| supported.contains(&ext.to_lowercase().as_str()))
+                        .unwrap_or(false)
+                })
+                .map(|e| e.path().to_path_buf())
+            {
                 let track_id = gen_track_id(&entry)?;
 
                 if existing_tracks.contains(&track_id) {
@@ -124,6 +142,8 @@ impl Scanner {
             source: PlaylistSource::Folder(path),
             tracks: track_ids,
         };
+
+        println!("Tracks: {:#?}", tracks.clone());
 
         let _ = self.tx.send(ScannerEvent::Tracks(tracks));
         let _ = self.tx.send(ScannerEvent::Playlist(playlist));
