@@ -1,12 +1,13 @@
+use crossbeam_channel::{Receiver, Sender};
+use std::time::Duration;
 use std::{fs::File, path::PathBuf};
 
-use crossbeam_channel::{Receiver, Sender, tick};
-
+use crate::controller::state::PlaybackStatus;
 use crate::{
     controller::{commands::AudioCommand, events::AudioEvent},
     errors::AudioError,
 };
-use rodio::{OutputStream, OutputStreamBuilder, Sink, decoder::DecoderBuilder};
+use rodio::{decoder::DecoderBuilder, OutputStream, OutputStreamBuilder, Sink};
 
 pub struct Audio {
     sink: Sink,
@@ -14,6 +15,8 @@ pub struct Audio {
 
     pub rx: Receiver<AudioCommand>,
     pub tx: Sender<AudioEvent>,
+
+    track_ended: bool,
 }
 
 impl Audio {
@@ -28,6 +31,7 @@ impl Audio {
             sink,
             rx: cmd_rx,
             tx: event_tx,
+            track_ended: false,
         };
 
         (engine, cmd_tx, event_rx)
@@ -68,6 +72,53 @@ impl Audio {
         let _ = self
             .tx
             .send(AudioEvent::Position(self.sink.get_pos().as_secs()));
+        Ok(())
+    }
+
+    fn play(&self) -> Result<(), AudioError> {
+        self.sink.play();
+        let _ = self.tx.send(AudioEvent::PlaybackStatus(PlaybackStatus::Playing));
+
+        Ok(())
+    }
+
+    fn pause(&self) -> Result<(), AudioError> {
+        self.sink.pause();
+        let _ = self.tx.send(AudioEvent::PlaybackStatus(PlaybackStatus::Paused));
+
+        Ok(())
+    }
+
+    fn stop(&self) -> Result<(), AudioError> {
+        self.sink.stop();
+        let _ = self.tx.send(AudioEvent::PlaybackStatus(PlaybackStatus::Stopped));
+
+        Ok(())
+    }
+
+    fn set_volume(&self, volume: f32) -> Result<(), AudioError> {
+        let volume = volume.clamp(0.0, 1.0);
+        self.sink.set_volume(volume);
+        let _ = self.tx.send(AudioEvent::Volume(volume));
+
+        Ok(())
+    }
+
+    fn seek(&self, pos: f32) -> Result<(), AudioError> {
+        self.sink.try_seek(Duration::from_secs_f32(pos))?;
+
+        Ok(())
+    }
+
+    fn check_track_ended(&mut self) -> Result<(), AudioError> {
+        if self.sink.is_paused() { return Ok(()); }
+
+        if self.sink.empty() && !self.track_ended {
+            self.track_ended = true;
+
+            let _ = self.tx.send(AudioEvent::TrackEnded);
+        }
+
         Ok(())
     }
 }

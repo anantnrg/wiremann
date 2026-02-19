@@ -1,6 +1,7 @@
 use crossbeam_channel::RecvError;
 use lofty::error::LoftyError;
 use std::time::SystemTimeError;
+use rodio::source::SeekError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -15,6 +16,8 @@ pub enum AppError {
 pub enum AudioError {
     #[error("Failed to load audio file: `{0}`")]
     LoadFile(String),
+    #[error("Error occurred while seeking: `{0}`")]
+    SeekError(#[from] SeekError),
 }
 
 #[derive(Error, Debug)]

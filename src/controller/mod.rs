@@ -92,6 +92,8 @@ impl Controller {
                 this.library
                     .playlists
                     .insert(playlist.id.clone(), playlist.clone());
+                this.playback.current_playlist = Some(playlist.id.clone());
+                this.queue.tracks = playlist.tracks.clone();
                 cx.notify();
             }),
         }

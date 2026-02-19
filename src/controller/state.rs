@@ -41,6 +41,7 @@ pub struct PlaybackState {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct QueueState {
-    pub order: Vec<TrackId>,
-    pub index: Option<usize>,
+    pub tracks: Vec<TrackId>,
+    pub order: Vec<usize>,
+    pub index: usize,
 }
