@@ -43,6 +43,12 @@ impl Audio {
                 match cmd {
                     AudioCommand::Load(path) => self.load_path(PathBuf::from(path))?,
                     AudioCommand::GetPosition => self.emit_position()?,
+                    AudioCommand::CheckTrackEnded => self.check_track_ended()?,
+                    AudioCommand::Play => self.play()?,
+                    AudioCommand::Pause => self.pause()?,
+                    AudioCommand::Stop => self.stop()?,
+                    AudioCommand::SetVolume(v) => self.set_volume(v)?,
+                    AudioCommand::Seek(u64) => self.seek(u64)?,
                 }
             }
         }
@@ -104,8 +110,8 @@ impl Audio {
         Ok(())
     }
 
-    fn seek(&self, pos: f32) -> Result<(), AudioError> {
-        self.sink.try_seek(Duration::from_secs_f32(pos))?;
+    fn seek(&self, pos: u64) -> Result<(), AudioError> {
+        self.sink.try_seek(Duration::from_secs(pos))?;
 
         Ok(())
     }
