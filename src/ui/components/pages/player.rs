@@ -39,8 +39,9 @@ impl Render for PlayerPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
 
-        let state = cx.global::<Controller>().state.read(cx);
-        let thumbnail = cx.global::<ImageCache>().current;
+        let controller = cx.global::<Controller>().clone();
+        let state = controller.state.read(cx);
+        let thumbnail = cx.global::<ImageCache>().current.clone();
         // let scanner_state = cx.global::<Controller>().scanner_state.clone();
         let scroll_handle = self.queue_scroll_handle.clone();
         let show_queue = self.show_queue.clone();
@@ -64,7 +65,7 @@ impl Render for PlayerPage {
                     .px_16()
                     .pt_8()
                     .pb_2()
-                    .child(if let Some(track) = current {
+                    .child(if let Some(track) = current.clone() {
                         div()
                             .w_auto()
                             .h_auto()
@@ -99,7 +100,7 @@ impl Render for PlayerPage {
                                             .font_weight(FontWeight(500.0))
                                             .max_w_96()
                                             .truncate()
-                                            .child(track.title),
+                                            .child(track.title.clone()),
                                     )
                                     .child(
                                         div()
@@ -108,7 +109,7 @@ impl Render for PlayerPage {
                                             .font_weight(FontWeight(400.0))
                                             .max_w_96()
                                             .truncate()
-                                            .child(track.title),
+                                            .child(track.title.clone()),
                                     ),
                             )
                     } else {
@@ -137,7 +138,10 @@ impl Render for PlayerPage {
                                         |this| this.text_color(theme.accent),
                                     )
                                     .hover(|this| this.bg(theme.white_05))
-                                    .on_click(|_, _, cx| cx.global::<Controller>().set_shuffle())
+                                    .on_click({
+                                        let controller = controller.clone();
+                                        move |_, _, cx| controller.set_shuffle(cx)
+                                    })
                                     .child(Icon::new(Icons::Shuffle).size_4()),
                             )
                             .child(
@@ -206,7 +210,10 @@ impl Render for PlayerPage {
                                     .when(cx.global::<Controller>().state.read(cx).playback.repeat, |this| {
                                         this.text_color(theme.accent)
                                     })
-                                    .on_click(|_, _, cx| cx.global::<Controller>().set_repeat())
+                                    .on_click({
+                                        let controller = controller.clone();
+                                        move |_, _, cx| controller.set_repeat(cx)
+                                    })
                                     .child(Icon::new(Icons::Repeat).size_4()),
                             ),
                     )

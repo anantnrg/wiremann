@@ -1,12 +1,11 @@
-use crate::controller::state::PlaybackStatus;
 use crate::controller::Controller;
 use crate::ui::components;
 use crate::ui::components::controlbar::ControlBar;
+use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::helpers::slider_to_secs;
 use crate::ui::theme::Theme;
 use components::{pages::player::PlayerPage, titlebar::Titlebar, Page};
 use gpui::*;
-use gpui_component::slider::{SliderEvent, SliderState};
 
 pub struct Wiremann {
     pub titlebar: Entity<Titlebar>,
@@ -14,7 +13,7 @@ pub struct Wiremann {
 }
 
 impl Wiremann {
-    pub fn new(cx: &mut App) -> Self {
+    pub fn new(cx: &mut Context<Self>) -> Self {
         let vol_slider_state = cx.new(|_| {
             SliderState::new()
                 .min(0.0)
@@ -35,7 +34,7 @@ impl Wiremann {
             &vol_slider_state,
             |_, _, event: &SliderEvent, cx| match event {
                 SliderEvent::Change(value) => {
-                    cx.global::<Controller>().volume(value.start());
+                    cx.global::<Controller>().set_volume(value.start());
                     cx.notify();
                 }
             },
@@ -47,11 +46,16 @@ impl Wiremann {
             |_, _, event: &SliderEvent, cx| match event {
                 SliderEvent::Change(value) => {
                     let controller = cx.global::<Controller>();
-                    if controller.player_state.state == PlaybackStatus::Playing {
-                        if let Some(meta) = controller.player_state.clone().meta {
-                            controller.seek(slider_to_secs(value.start(), meta.duration));
-                        }
-                    }
+                    let state = controller.state.read(cx);
+                    let current = if let Some(id) = state.playback.current {
+                        state.library.tracks.get(&id)
+                    } else { None };
+
+                    let duration = if let Some(track) = current {
+                        track.duration
+                    } else { 0 };
+                    
+                    controller.seek(slider_to_secs(value.start(), duration));
 
                     cx.notify();
                 }

@@ -28,7 +28,8 @@ impl ControlBar {
 impl Render for ControlBar {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
-        let state = cx.global::<Controller>().state.read(cx);
+        let controller = cx.global::<Controller>();
+        let state = controller.state.read(cx);
 
         let current = if let Some(id) = state.playback.current {
             state.library.tracks.get(&id)
@@ -108,7 +109,10 @@ impl Render for ControlBar {
                                     .child(
                                         div()
                                             .id("volume_icon")
-                                            .on_click(|_, _, cx| cx.global::<Controller>().mute())
+                                            .on_click({
+                                                let controller = controller.clone();
+                                                move |_, _, cx| controller.set_mute(cx)
+                                            })
                                             .child(
                                                 Icon::new(if state.playback.mute {
                                                     Icons::VolumeMute

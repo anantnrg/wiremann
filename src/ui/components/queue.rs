@@ -27,8 +27,8 @@ impl Item {
 
             let data = ItemData {
                 id: track.id,
-                title: track.title,
-                artist: track.artist,
+                title: track.title.clone(),
+                artist: track.artist.clone(),
             };
 
             Self { data, idx }
@@ -39,15 +39,22 @@ impl Item {
 impl Render for Item {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
-        let state = cx.global::<Controller>().state.read(cx).playback;
+        let state = cx.global::<Controller>().state.read(cx);
 
-        let is_current = Some(&self.data.id) == state.current.as_ref();
+        let is_current = Some(&self.data.id) == state.playback.current.as_ref();
 
         let thumbnail = cx.global::<ImageCache>().get(&self.data.id);
+        let current = if let Some(id) = state.playback.current {
+            state.library.tracks.get(&id)
+        } else { None };
+
+        let path = if let Some(track) = current {
+            track.path.clone()
+        } else { PathBuf::new() };
         div()
             .id(format!(
                 "track_item_{}",
-                self.data.path.to_string_lossy().to_string()
+                path.to_string_lossy().to_string()
             ))
             .h(px(64.))
             .w_full()
@@ -81,14 +88,14 @@ impl Render for Item {
                             } else {
                                 theme.text_primary
                             })
-                            .child(self.data.title.as_ref()),
+                            .child(self.data.title.clone()),
                     )
                     .child(
                         div()
                             .text_sm()
                             .truncate()
                             .text_color(theme.text_muted)
-                            .child(self.data.artist.as_ref()),
+                            .child(self.data.artist.clone()),
                     ),
             )
     }
@@ -131,14 +138,14 @@ impl Queue {
         let controller = cx.global::<Controller>();
         let state = controller.state.read(cx);
 
-        let idx = if let (Some(current), Some(playlist)) =
-            (&state.playback.current, &state.queue.tracks)
+        let idx = if let (Some(current)) =
+            (&state.playback.current)
         {
             state
                 .queue
                 .order
                 .iter()
-                .position(|&i| playlist.tracks[i] == *current)
+                .position(|&i| state.queue.tracks[i] == *current)
                 .unwrap_or(0)
         } else {
             0
@@ -190,7 +197,7 @@ impl Render for Queue {
                                 .child(Queue::get_or_create_item(&views, track, cx))
                                 .on_click(move |_, _, cx| {
                                     cx.global::<Controller>()
-                                        .load(path.to_string_lossy().to_string())
+                                        .load_audio(path.clone())
                                 })
                         })
                         .collect()

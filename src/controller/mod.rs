@@ -112,6 +112,39 @@ impl Controller {
             .scanner_tx
             .send(ScannerCommand::ScanFolder { path, tracks });
     }
+
+    pub fn play(&self) {
+        let _ = self.audio_tx.send(AudioCommand::Play);
+    }
+
+    pub fn pause(&self) {
+        let _ = self.audio_tx.send(AudioCommand::Pause);
+    }
+
+    pub fn stop(&self) {
+        let _ = self.audio_tx.send(AudioCommand::Stop);
+    }
+
+    pub fn set_repeat(&self, cx: &mut App) {
+        self.state.update(cx, |this, cx| {
+            this.playback.repeat = !this.playback.repeat;
+        })
+    }
+
+    pub fn set_mute(&self, cx: &mut App) {
+        self.state.update(cx, |this, cx| {
+            this.playback.mute = !this.playback.mute;
+        })
+    }
+
+    pub fn set_volume(&self, vol: f32) {
+        let _ = self.audio_tx.send(AudioCommand::SetVolume(vol));
+    }
+
+    pub fn set_shuffle(&self, cx: &mut App) {}
+
+    pub fn next(&self) {}
+    pub fn prev(&self) {}
 }
 
 impl Global for Controller {}
