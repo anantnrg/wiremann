@@ -1,5 +1,8 @@
-mod titlebar;
-mod navbar;
+pub mod titlebar;
+pub mod navbar;
+pub mod pages;
+pub mod controlbar;
+pub mod slider;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Page {

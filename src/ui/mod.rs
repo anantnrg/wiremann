@@ -4,6 +4,7 @@ pub mod wiremann;
 mod components;
 mod theme;
 mod icons;
+mod helpers;
 
 use thiserror::Error;
 

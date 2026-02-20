@@ -1,25 +1,75 @@
-use gpui::*;
-
+use crate::controller::state::PlaybackStatus;
 use crate::controller::Controller;
+use crate::ui::components;
+use crate::ui::components::controlbar::ControlBar;
+use crate::ui::helpers::slider_to_secs;
+use crate::ui::theme::Theme;
+use components::{pages::player::PlayerPage, titlebar::Titlebar, Page};
+use gpui::*;
+use gpui_component::slider::{SliderEvent, SliderState};
 
-pub struct Wiremann;
+pub struct Wiremann {
+    pub titlebar: Entity<Titlebar>,
+    pub player_page: Entity<PlayerPage>,
+}
 
 impl Wiremann {
     pub fn new(cx: &mut App) -> Self {
-        cx.global::<Controller>()
-            .load_audio("E:\\music\\violence ft. doomguy\\468 - GIVE ME A REASON.mp3".into());
-        let tracks = cx
-            .global::<Controller>()
-            .state
-            .read(cx)
-            .library
-            .tracks
-            .keys()
-            .cloned()
-            .collect();
-        cx.global::<Controller>()
-            .scan_folder(tracks, "E:\\music\\violence ft. doomguy".into());
-        Wiremann {}
+        let vol_slider_state = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .default_value(100.0)
+                .step(1.0)
+        });
+
+        let playback_slider_state = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(100.0)
+                .default_value(0.0)
+                .step(1.0)
+        });
+
+        cx.subscribe(
+            &vol_slider_state,
+            |_, _, event: &SliderEvent, cx| match event {
+                SliderEvent::Change(value) => {
+                    cx.global::<Controller>().volume(value.start());
+                    cx.notify();
+                }
+            },
+        )
+            .detach();
+
+        cx.subscribe(
+            &playback_slider_state,
+            |_, _, event: &SliderEvent, cx| match event {
+                SliderEvent::Change(value) => {
+                    let controller = cx.global::<Controller>();
+                    if controller.player_state.state == PlaybackStatus::Playing {
+                        if let Some(meta) = controller.player_state.clone().meta {
+                            controller.seek(slider_to_secs(value.start(), meta.duration));
+                        }
+                    }
+
+                    cx.notify();
+                }
+            },
+        )
+            .detach();
+
+        cx.set_global(Theme::default());
+        cx.set_global(Page::Player);
+
+        let titlebar = cx.new(|cx| Titlebar::new(cx));
+        let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
+        let player_page = cx.new(|cx| PlayerPage::new(cx, controlbar));
+
+        Self {
+            titlebar,
+            player_page,
+        }
     }
 }
 

@@ -1,7 +1,6 @@
 pub mod commands;
 pub mod events;
 pub mod state;
-
 use crate::library::TrackId;
 use crate::{controller::state::AppState, errors::ControllerError, library::gen_track_id};
 use commands::{AudioCommand, ScannerCommand};
