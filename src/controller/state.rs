@@ -3,6 +3,7 @@ use crate::{
     library::{Track, TrackId},
 };
 use std::{collections::HashMap, sync::Arc, time::Duration};
+use gpui::RenderImage;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct AppState {

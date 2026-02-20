@@ -1,11 +1,15 @@
-use crate::ui::theme::Theme;
-
-use crate::audio::engine::PlaybackState;
-use crate::controller::player::Controller;
-use crate::ui::components::controlbar::ControlBar;
-use crate::ui::components::queue::Queue;
-use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
-use crate::ui::icons::Icons;
+use crate::{
+    controller::state::PlaybackStatus,
+    controller::Controller,
+    ui::{
+        components::controlbar::ControlBar,
+        components::image_cache::ImageCache,
+        components::queue::Queue,
+        components::scrollbar::{floating_scrollbar, RightPad},
+        icons::Icons,
+        theme::Theme,
+    },
+};
 use gpui::prelude::FluentBuilder;
 use gpui::*;
 use gpui_component::Icon;
@@ -35,11 +39,15 @@ impl Render for PlayerPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
 
-        let player_state = cx.global::<Controller>().player_state.clone();
-        let thumbnail = player_state.thumbnail;
+        let state = cx.global::<Controller>().state.read(cx);
+        let thumbnail = cx.global::<ImageCache>().current;
         // let scanner_state = cx.global::<Controller>().scanner_state.clone();
         let scroll_handle = self.queue_scroll_handle.clone();
         let show_queue = self.show_queue.clone();
+
+        let current = if let Some(id) = state.playback.current {
+            state.library.tracks.get(&id)
+        } else { None };
 
         div()
             .size_full()
@@ -56,7 +64,7 @@ impl Render for PlayerPage {
                     .px_16()
                     .pt_8()
                     .pb_2()
-                    .child(if let Some(meta) = player_state.meta {
+                    .child(if let Some(track) = current {
                         div()
                             .w_auto()
                             .h_auto()
@@ -91,7 +99,7 @@ impl Render for PlayerPage {
                                             .font_weight(FontWeight(500.0))
                                             .max_w_96()
                                             .truncate()
-                                            .child(meta.title.clone()),
+                                            .child(track.title),
                                     )
                                     .child(
                                         div()
@@ -100,7 +108,7 @@ impl Render for PlayerPage {
                                             .font_weight(FontWeight(400.0))
                                             .max_w_96()
                                             .truncate()
-                                            .child(meta.artists.join(", ").clone()),
+                                            .child(track.title),
                                     ),
                             )
                     } else {
@@ -125,7 +133,7 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .when(
-                                        cx.global::<Controller>().player_state.shuffling,
+                                        cx.global::<Controller>().state.read(cx).playback.shuffling,
                                         |this| this.text_color(theme.accent),
                                     )
                                     .hover(|this| this.bg(theme.white_05))
@@ -155,18 +163,18 @@ impl Render for PlayerPage {
                                     .bg(theme.accent)
                                     .hover(|this| this.bg(theme.accent_30))
                                     .on_click(|_, _, cx| {
-                                        match cx.global::<Controller>().player_state.state {
-                                            PlaybackState::Paused | PlaybackState::Stopped => {
+                                        match cx.global::<Controller>().state.read(cx).playback.status {
+                                            PlaybackStatus::Paused | PlaybackStatus::Stopped => {
                                                 cx.global::<Controller>().play()
                                             }
-                                            PlaybackState::Playing => {
+                                            PlaybackStatus::Playing => {
                                                 cx.global::<Controller>().pause()
                                             }
                                         }
                                     })
                                     .child(
-                                        if cx.global::<Controller>().player_state.state
-                                            == PlaybackState::Playing
+                                        if cx.global::<Controller>().state.read(cx).playback.status
+                                            == PlaybackStatus::Playing
                                         {
                                             Icon::new(Icons::Pause).size_5()
                                         } else {
@@ -195,7 +203,7 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .hover(|this| this.bg(theme.white_05))
-                                    .when(cx.global::<Controller>().player_state.repeat, |this| {
+                                    .when(cx.global::<Controller>().state.read(cx).playback.repeat, |this| {
                                         this.text_color(theme.accent)
                                     })
                                     .on_click(|_, _, cx| cx.global::<Controller>().set_repeat())

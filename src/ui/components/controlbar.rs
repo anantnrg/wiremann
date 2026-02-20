@@ -28,9 +28,15 @@ impl ControlBar {
 impl Render for ControlBar {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
-        let state = cx.global::<Controller>().player_state.clone();
+        let state = cx.global::<Controller>().state.read(cx);
 
-        let duration = state.meta.as_ref().map(|m| m.duration).unwrap_or(0);
+        let current = if let Some(id) = state.playback.current {
+            state.library.tracks.get(&id)
+        } else { None };
+
+        let duration = if let Some(track) = current {
+            track.duration
+        } else { 0 };
 
         div()
             .w_full()
@@ -68,8 +74,8 @@ impl Render for ControlBar {
                                     .text_color(theme.text_muted)
                                     .child(format!(
                                         "{:02}:{:02}",
-                                        state.position / 60,
-                                        state.position % 60
+                                        state.playback.position / 60,
+                                        state.playback.position % 60
                                     )),
                             )
                             .child(
@@ -104,10 +110,10 @@ impl Render for ControlBar {
                                             .id("volume_icon")
                                             .on_click(|_, _, cx| cx.global::<Controller>().mute())
                                             .child(
-                                                Icon::new(if state.mute {
+                                                Icon::new(if state.playback.mute {
                                                     Icons::VolumeMute
                                                 } else {
-                                                    match state.volume.clamp(0.0, 1.0) {
+                                                    match state.playback.volume.clamp(0.0, 1.0) {
                                                         v if v == 0.0 => Icons::Volume0,
                                                         v if v < 0.4 => Icons::Volume0,
                                                         v if v < 0.8 => Icons::Volume1,

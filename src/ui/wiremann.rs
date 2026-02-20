@@ -75,23 +75,20 @@ impl Wiremann {
 
 impl Render for Wiremann {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let controller = cx.global::<Controller>();
-        let state = controller.state.read(cx);
-
-        let title = state
-            .playback
-            .current
-            .and_then(|id| state.library.tracks.get(&id))
-            .map(|t| t.title.clone())
-            .unwrap_or("Not loaded.".to_string());
-
-        let position = state.playback.position.clone();
-
+        let theme = cx.global::<Theme>();
         div()
+            .id("main_container")
+            .size_full()
+            .font_family("Space Grotesk")
             .flex()
             .flex_col()
-            .size_full()
-            .child(title)
-            .child(position.to_string())
+            .justify_center()
+            .items_center()
+            .bg(theme.bg_main)
+            .child(self.titlebar.clone())
+            .child(match cx.global::<Page>() {
+                Page::Player => div().w_full().h_full().child(self.player_page.clone()),
+                _ => div(),
+            })
     }
 }
