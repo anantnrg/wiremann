@@ -109,7 +109,7 @@ impl Render for PlayerPage {
                                             .font_weight(FontWeight(400.0))
                                             .max_w_96()
                                             .truncate()
-                                            .child(track.title.clone()),
+                                            .child(track.artist.clone()),
                                     ),
                             )
                     } else {

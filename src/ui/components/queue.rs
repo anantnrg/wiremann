@@ -138,8 +138,8 @@ impl Queue {
         let controller = cx.global::<Controller>();
         let state = controller.state.read(cx);
 
-        let idx = if let (Some(current)) =
-            (&state.playback.current)
+        let idx = if let Some(current) =
+            &state.playback.current
         {
             state
                 .queue

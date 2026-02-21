@@ -4,7 +4,7 @@ use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::helpers::slider_to_secs;
 use crate::ui::theme::Theme;
-use components::{pages::player::PlayerPage, titlebar::Titlebar, Page};
+use components::{image_cache::ImageCache, pages::player::PlayerPage, titlebar::Titlebar, Page};
 use gpui::*;
 
 pub struct Wiremann {
@@ -54,7 +54,7 @@ impl Wiremann {
                     let duration = if let Some(track) = current {
                         track.duration
                     } else { 0 };
-                    
+
                     controller.seek(slider_to_secs(value.start(), duration));
 
                     cx.notify();
@@ -65,10 +65,14 @@ impl Wiremann {
 
         cx.set_global(Theme::default());
         cx.set_global(Page::Player);
+        cx.set_global(ImageCache::default());
+
 
         let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
         let player_page = cx.new(|cx| PlayerPage::new(cx, controlbar));
+
+        cx.global::<Controller>().load_audio("E:\\music\\$UMH4RD$HIT\\002 - Push Ups.mp3".into());
 
         Self {
             titlebar,

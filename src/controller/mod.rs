@@ -66,6 +66,9 @@ impl Controller {
                     cx.notify();
                 });
             }
+            AudioEvent::PlaybackStatus(status) => self.state.update(cx, |this,cx| {this.playback.status = *status;cx.notify()}),
+            AudioEvent::TrackEnded => {}
+            AudioEvent::Volume(volume) => self.state.update(cx, |this,cx| {this.playback.volume = *volume; cx.notify()}),
         }
         Ok(())
     }
@@ -145,6 +148,10 @@ impl Controller {
 
     pub fn next(&self) {}
     pub fn prev(&self) {}
+    
+    pub fn seek(&self, pos: u64) {
+        let _ = self.audio_tx.send(AudioCommand::Seek(pos));
+    }
 }
 
 impl Global for Controller {}
