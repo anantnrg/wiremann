@@ -11,6 +11,7 @@ use image::imageops::thumbnail;
 use image::{Frame, ImageReader};
 use lofty::{prelude::*, probe::Probe};
 use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
@@ -22,6 +23,12 @@ use walkdir::WalkDir;
 pub struct Scanner {
     pub tx: Sender<ScannerEvent>,
     pub rx: Receiver<ScannerCommand>,
+}
+
+struct ScanResult {
+    id: TrackId,
+    track: Option<Track>,
+    image: Option<Vec<u8>>,
 }
 
 impl Scanner {
@@ -41,11 +48,11 @@ impl Scanner {
         loop {
             match self.rx.recv()? {
                 ScannerCommand::GetTrackMetadata { path, track_id } => {
-                    let track = self.get_track_metadata(path.clone(), track_id)?;
+                    let (track, image) = self.get_track_metadata(path.clone(), track_id)?;
                     let _ = self.tx.send(ScannerEvent::Tracks(vec![track]));
 
-                    match self.get_track_image(path) {
-                        Ok(Some(image)) => {
+                    match image {
+                        Some(image) => {
                             match self.render_album_art(image, false) {
                                 Ok(img) => {
                                     let _ = self.tx.send(ScannerEvent::AlbumArt(img));
@@ -53,8 +60,7 @@ impl Scanner {
                                 Err(e) => return Err(e),
                             }
                         }
-                        Ok(None) => {}
-                        Err(e) => return Err(e),
+                        None => {}
                     }
                 }
                 ScannerCommand::ScanFolder { path, tracks } => self.scan_folder(path, tracks)?,
@@ -66,7 +72,7 @@ impl Scanner {
         &self,
         path: PathBuf,
         track_id: TrackId,
-    ) -> Result<Track, ScannerError> {
+    ) -> Result<(Track, Option<Vec<u8>>), ScannerError> {
         let tagged_file = match Probe::open(path.clone())
             .and_then(|p| Ok(p.guess_file_type()?))
             .and_then(|p| p.read())
@@ -89,7 +95,7 @@ impl Scanner {
                     .unwrap_or("Unknown")
                     .to_string();
 
-                return Ok(Track {
+                return Ok((Track {
                     path,
                     id: track_id,
                     title,
@@ -98,7 +104,7 @@ impl Scanner {
                     duration,
                     modified,
                     size,
-                });
+                }, None));
             }
         };
 
@@ -111,6 +117,7 @@ impl Scanner {
         let title;
         let artist;
         let album;
+        let thumbnail;
 
         if let Some(tag) = tag {
             title = tag
@@ -133,6 +140,11 @@ impl Scanner {
                 .get_string(ItemKey::AlbumTitle)
                 .unwrap_or("Unknown Album")
                 .to_string();
+
+            thumbnail = match tag.pictures().get(0) {
+                Some(data) => Some(data.data().to_vec()),
+                None => None,
+            };
         } else {
             title = path
                 .file_stem()
@@ -142,6 +154,8 @@ impl Scanner {
 
             artist = "Unknown Artist".to_string();
             album = "Unknown Album".to_string();
+
+            thumbnail = None;
         }
 
         let duration = tagged_file.properties().duration().as_secs();
@@ -151,7 +165,7 @@ impl Scanner {
             .duration_since(UNIX_EPOCH)?
             .as_secs();
 
-        Ok(Track {
+        Ok((Track {
             path,
             id: track_id,
             title,
@@ -160,35 +174,7 @@ impl Scanner {
             duration,
             modified,
             size,
-        })
-    }
-
-    fn get_track_image(&self, path: PathBuf) -> Result<Option<Vec<u8>>, ScannerError> {
-        let tagged_file = match Probe::open(path.clone())
-            .and_then(|p| Ok(p.guess_file_type()?))
-            .and_then(|p| p.read())
-        {
-            Ok(file) => file,
-            Err(e) => {
-                eprintln!("Error while decoding image in audio file {:?}: {:?}", path, e);
-                return Err(ScannerError::LoftyError(e));
-            }
-        };
-
-        let tag = tagged_file
-            .primary_tag()
-            .or_else(|| tagged_file.first_tag());
-
-        if let Some(tag) = tag {
-            let thumbnail = match tag.pictures().get(0) {
-                Some(data) => Some(data.data().to_vec()),
-                None => None,
-            };
-
-            return Ok(thumbnail);
-        }
-
-        Ok(None)
+        }, thumbnail))
     }
 
     fn scan_folder(
@@ -199,6 +185,7 @@ impl Scanner {
         let supported = ["mp3", "flac", "wav", "ogg", "m4a"];
         let mut track_ids = vec![];
         let mut tracks = vec![];
+        let mut images = vec![];
         if path.is_dir() {
             let files: Vec<PathBuf> = WalkDir::new(path.clone())
                 .into_iter()
@@ -214,24 +201,38 @@ impl Scanner {
                 .map(|e| e.path().to_path_buf())
                 .collect();
 
-            let results: Vec<(TrackId, Option<Track>)> = files
+            let results: Vec<ScanResult> = files
                 .par_iter()
                 .map(|entry| {
                     let track_id = gen_track_id(entry)?;
 
                     if existing_tracks.contains(&track_id) {
-                        Ok((track_id, None))
+                        Ok(ScanResult {
+                            id: track_id,
+                            track: None,
+                            image: None,
+                        })
                     } else {
-                        let track = self.get_track_metadata(entry.clone(), track_id.clone())?;
-                        Ok((track_id, Some(track)))
+                        let (track, image) =
+                            self.get_track_metadata(entry.clone(), track_id.clone())?;
+
+                        Ok(ScanResult {
+                            id: track_id,
+                            track: Some(track),
+                            image,
+                        })
                     }
                 })
-                .collect::<Result<Vec<_>, ScannerError>>()?;
-            for (track_id, track) in results {
-                track_ids.push(track_id);
+                .collect::<Result<_, ScannerError>>()?;
+            for result in results {
+                track_ids.push(result.id);
 
-                if let Some(track) = track {
+                if let Some(track) = result.track {
                     tracks.push(track);
+                }
+
+                if let Some(img) = result.image {
+                    images.push((result.id, img));
                 }
             }
         }
@@ -252,17 +253,25 @@ impl Scanner {
         let _ = self.tx.send(ScannerEvent::Tracks(tracks.clone()));
         let _ = self.tx.send(ScannerEvent::Playlist(playlist));
 
-        let thumbnails: HashMap<TrackId, Arc<RenderImage>> =
-            tracks
-                .par_iter()
-                .filter_map(|t| {
-                    let image = self.get_track_image(t.path.clone()).ok()??;
-                    let img = self.render_album_art(image, true).ok()?;
-                    Some((t.id.clone(), img))
-                })
-                .collect();
+        std::thread::spawn(move || {
+            let threads = std::cmp::max(1, num_cpus::get() - 2);
 
-        let _ = self.tx.send(ScannerEvent::Thumbnails(thumbnails));
+            let pool = ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            let thumbnails: HashMap<TrackId, Arc<RenderImage>> = pool.install(|| {
+                images
+                    .par_iter()
+                    .filter_map(|t| {
+                        let img = self.render_album_art(t.1, true).ok()?;
+                        Some((t.0, img))
+                    })
+                    .collect();
+            });
+            let _ = self.tx.send(ScannerEvent::Thumbnails(thumbnails));
+        }
+        );
 
         Ok(())
     }
