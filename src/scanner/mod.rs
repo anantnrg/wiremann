@@ -144,6 +144,34 @@ impl Scanner {
         })
     }
 
+    fn get_track_image(&self, path: PathBuf) -> Result<Option<Vec<u8>>, ScannerError> {
+        let tagged_file = match Probe::open(path.clone())
+            .and_then(|p| Ok(p.guess_file_type()?))
+            .and_then(|p| p.read())
+        {
+            Ok(file) => file,
+            Err(e) => {
+                eprintln!("Error while decoding image in audio file {:?}: {:?}", path, e);
+                return Err(ScannerError::LoftyError(e));
+            }
+        };
+
+        let tag = tagged_file
+            .primary_tag()
+            .or_else(|| tagged_file.first_tag());
+
+        if let Some(tag) = tag {
+            let thumbnail = match tag.pictures().get(0) {
+                Some(data) => Some(data.data().to_vec()),
+                None => None,
+            };
+            
+            return Ok(thumbnail);
+        }
+
+        Ok(None)
+    }
+
     fn scan_folder(
         &mut self,
         path: PathBuf,
