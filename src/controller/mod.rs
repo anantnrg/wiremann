@@ -132,9 +132,9 @@ impl Controller {
                 image_cache.current = Some(image.clone());
             }
             ScannerEvent::Thumbnails(thumbnails) => {
-                let mut thumbnail_cache = cx.global_mut::<ImageCache>().thumbs;
+                let mut thumbnail_cache = cx.global_mut::<ImageCache>();
 
-               thumbnail_cache.extend(thumbnails.clone());
+                thumbnail_cache.thumbs.extend(thumbnails.clone());
             }
         }
         Ok(())

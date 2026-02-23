@@ -45,7 +45,7 @@ impl Scanner {
                     let _ = self.tx.send(ScannerEvent::Tracks(vec![track]));
 
                     match self.get_track_image(path) {
-                        Some(image) => {
+                        Ok(Some(image)) => {
                             match self.render_album_art(image, false) {
                                 Ok(img) => {
                                     let _ = self.tx.send(ScannerEvent::AlbumArt(img));
@@ -53,6 +53,8 @@ impl Scanner {
                                 Err(e) => return Err(e),
                             }
                         }
+                        Ok(None) => {}
+                        Err(e) => return Err(e),
                     }
                 }
                 ScannerCommand::ScanFolder { path, tracks } => self.scan_folder(path, tracks)?,
