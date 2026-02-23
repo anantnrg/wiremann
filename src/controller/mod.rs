@@ -4,7 +4,7 @@ pub mod state;
 use crate::library::TrackId;
 use crate::ui::helpers::secs_to_slider;
 use crate::ui::wiremann::Wiremann;
-use crate::{controller::state::AppState, errors::ControllerError, library::gen_track_id};
+use crate::{controller::state::AppState, errors::ControllerError, library::gen_track_id, ui::components::image_cache::ImageCache};
 use commands::{AudioCommand, ScannerCommand};
 use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
@@ -126,6 +126,16 @@ impl Controller {
                 this.queue.tracks = playlist.tracks.clone();
                 cx.notify();
             }),
+            ScannerEvent::AlbumArt(image) => {
+                let mut image_cache = cx.global_mut::<ImageCache>();
+
+                image_cache.current = Some(image.clone());
+            }
+            ScannerEvent::Thumbnails(thumbnails) => {
+                let mut thumbnail_cache = cx.global_mut::<ImageCache>().thumbs;
+
+               thumbnail_cache.extend(thumbnails.clone());
+            }
         }
         Ok(())
     }

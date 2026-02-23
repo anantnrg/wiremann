@@ -1,18 +1,18 @@
 use crate::library::TrackId;
-use ahash::AHashMap;
 use gpui::RenderImage;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct ImageCache {
     pub current: Option<Arc<RenderImage>>,
-    pub thumbs: AHashMap<TrackId, Arc<RenderImage>>,
+    pub thumbs: HashMap<TrackId, Arc<RenderImage>>,
 }
 
 impl Default for ImageCache {
     fn default() -> Self {
         Self {
             current: None,
-            thumbs: AHashMap::new(),
+            thumbs: HashMap::new(),
         }
     }
 }

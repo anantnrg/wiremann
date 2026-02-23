@@ -1,7 +1,7 @@
 pub mod assets;
 pub mod res_handler;
 pub mod wiremann;
-mod components;
+pub mod components;
 mod theme;
 mod icons;
 pub mod helpers;

@@ -41,8 +41,19 @@ impl Scanner {
         loop {
             match self.rx.recv()? {
                 ScannerCommand::GetTrackMetadata { path, track_id } => {
-                    let track = self.get_track_metadata(path, track_id)?;
+                    let track = self.get_track_metadata(path.clone(), track_id)?;
                     let _ = self.tx.send(ScannerEvent::Tracks(vec![track]));
+
+                    match self.get_track_image(path) {
+                        Some(image) => {
+                            match self.render_album_art(image, false) {
+                                Ok(img) => {
+                                    let _ = self.tx.send(ScannerEvent::AlbumArt(img));
+                                }
+                                Err(e) => return Err(e),
+                            }
+                        }
+                    }
                 }
                 ScannerCommand::ScanFolder { path, tracks } => self.scan_folder(path, tracks)?,
             }
