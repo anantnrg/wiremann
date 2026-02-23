@@ -53,7 +53,7 @@ impl Scanner {
 
                     match image {
                         Some(image) => {
-                            match self.render_album_art(image, false) {
+                            match render_album_art(&image, false) {
                                 Ok(img) => {
                                     let _ = self.tx.send(ScannerEvent::AlbumArt(img));
                                 }
@@ -253,6 +253,8 @@ impl Scanner {
         let _ = self.tx.send(ScannerEvent::Tracks(tracks.clone()));
         let _ = self.tx.send(ScannerEvent::Playlist(playlist));
 
+        let tx = self.tx.clone();
+
         std::thread::spawn(move || {
             let threads = std::cmp::max(1, num_cpus::get() - 2);
 
@@ -264,31 +266,32 @@ impl Scanner {
                 images
                     .par_iter()
                     .filter_map(|t| {
-                        let img = self.render_album_art(t.1, true).ok()?;
+                        let img = render_album_art(&t.1, true).ok()?;
                         Some((t.0, img))
                     })
-                    .collect();
+                    .collect()
             });
-            let _ = self.tx.send(ScannerEvent::Thumbnails(thumbnails));
+
+            let _ = tx.send(ScannerEvent::Thumbnails(thumbnails));
         }
         );
 
         Ok(())
     }
+}
 
-    fn render_album_art(&self, bytes: Vec<u8>, is_thumbnail: bool) -> Result<Arc<RenderImage>, ScannerError> {
-        let mut image = ImageReader::new(Cursor::new(bytes)).with_guessed_format()?.decode()?.into_rgba8();
+fn render_album_art(bytes: &[u8], is_thumbnail: bool) -> Result<Arc<RenderImage>, ScannerError> {
+    let mut image = ImageReader::new(Cursor::new(bytes)).with_guessed_format()?.decode()?.into_rgba8();
 
-        for px in image.pixels_mut() {
-            px.0.swap(0, 2);
-        }
-
-        let frame = if is_thumbnail {
-            Frame::new(thumbnail(&image, 64, 64))
-        } else {
-            Frame::new(image)
-        };
-
-        Ok(Arc::new(RenderImage::new(smallvec![frame])))
+    for px in image.pixels_mut() {
+        px.0.swap(0, 2);
     }
+
+    let frame = if is_thumbnail {
+        Frame::new(thumbnail(&image, 64, 64))
+    } else {
+        Frame::new(image)
+    };
+
+    Ok(Arc::new(RenderImage::new(smallvec![frame])))
 }
