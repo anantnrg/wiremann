@@ -12,7 +12,7 @@ use image::{Frame, ImageReader};
 use lofty::{prelude::*, probe::Probe};
 use rayon::prelude::*;
 use smallvec::smallvec;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
 use std::sync::Arc;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
@@ -249,8 +249,20 @@ impl Scanner {
             tracks: track_ids,
         };
 
-        let _ = self.tx.send(ScannerEvent::Tracks(tracks));
+        let _ = self.tx.send(ScannerEvent::Tracks(tracks.clone()));
         let _ = self.tx.send(ScannerEvent::Playlist(playlist));
+
+        let thumbnails: HashMap<TrackId, Arc<RenderImage>> =
+            tracks
+                .par_iter()
+                .filter_map(|t| {
+                    let image = self.get_track_image(t.path.clone()).ok()??;
+                    let img = self.render_album_art(image, true).ok()?;
+                    Some((t.id.clone(), img))
+                })
+                .collect();
+
+        let _ = self.tx.send(ScannerEvent::Thumbnails(thumbnails));
 
         Ok(())
     }

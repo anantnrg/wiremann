@@ -72,7 +72,12 @@ impl Wiremann {
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
         let player_page = cx.new(|cx| PlayerPage::new(cx, controlbar));
 
-        cx.global::<Controller>().load_audio("E:\\music\\$UMH4RD$HIT\\002 - Push Ups.mp3".into());
+        let controller = cx.global::<Controller>().clone();
+
+        controller.load_audio("E:\\music\\$UMH4RD$HIT\\002 - Push Ups.mp3".into());
+
+        let tracks = controller.state.read(cx).library.tracks.keys().cloned().collect();
+        cx.global::<Controller>().scan_folder(tracks, "E:\\music\\$UMH4RD$HIT".into());
 
         Self {
             titlebar,
