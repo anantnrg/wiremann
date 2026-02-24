@@ -193,20 +193,23 @@ impl Scanner {
 }
 
 fn render_album_art(bytes: &[u8], is_thumbnail: bool) -> Result<Arc<RenderImage>, ScannerError> {
-    let mut image = ImageReader::new(Cursor::new(bytes))
+    let image = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()?
-        .decode()?
-        .into_rgba8();
+        .decode()?;
 
-    for px in image.pixels_mut() {
-        px.0.swap(0, 2);
+    let mut image = if is_thumbnail {
+        thumbnail(&image.into_rgba8(), 64, 64)
+    } else {
+        image.into_rgba8()
+    };
+
+    let buf = image.as_mut();
+
+    for px in buf.chunks_exact_mut(4) {
+        px.swap(0, 2);
     }
 
-    let frame = if is_thumbnail {
-        Frame::new(thumbnail(&image, 64, 64))
-    } else {
-        Frame::new(image)
-    };
+    let frame = Frame::new(image);
 
     Ok(Arc::new(RenderImage::new(smallvec![frame])))
 }
