@@ -106,8 +106,6 @@ pub struct Queue {
     pub views: Entity<AHashMap<PathBuf, Entity<Item>>>,
     pub scroll_handle: UniformListScrollHandle,
     pub stop_auto_scroll: Entity<bool>,
-    pub queue_order: Entity<Vec<usize>>,
-    pub tracks: Arc<Vec<Track>>,
 }
 
 impl Queue {
@@ -116,8 +114,6 @@ impl Queue {
             views: cx.new(|_| AHashMap::new()),
             scroll_handle,
             stop_auto_scroll: cx.new(|_| false),
-            queue_order: cx.new(|_| Vec::new()),
-            tracks: Arc::new(Vec::new()),
         })
     }
 
@@ -163,9 +159,11 @@ impl Render for Queue {
         let views = self.views.clone();
         let stop_auto_scroll = self.stop_auto_scroll.clone();
 
-        let tracks = self.tracks.clone();
-        let queue_order = self.queue_order.clone();
-        let len = queue_order.read(cx).len();
+        let state = cx.global::<Controller>().state.read(cx).clone();
+
+        let tracks = state.queue.tracks.clone();
+        let queue_order = state.queue.order.clone();
+        let len = queue_order.len();
         let scroll_handle = self.scroll_handle.clone();
 
         div()
@@ -177,8 +175,10 @@ impl Render for Queue {
                     let visible_paths: Vec<PathBuf> = range
                         .clone()
                         .map(|i| {
-                            let real_index = queue_order.read(cx)[i];
-                            tracks[real_index].path.clone()
+                            let real_index = &tracks[queue_order[i]];
+                            if let Some(track) = state.library.tracks.get(real_index) {
+                                track.path.clone()
+                            } else { PathBuf::new() }
                         })
                         .collect();
 
@@ -188,17 +188,18 @@ impl Render for Queue {
 
                     range
                         .map(|i| {
-                            let real_index = queue_order.read(cx)[i];
-                            let track = Arc::new(tracks[real_index].clone());
-                            let path = track.path.clone();
+                            let real_index = &tracks[queue_order[i]];
+                            if let Some(track) = state.library.tracks.get(real_index) {
+                                let path = track.path.clone();
 
-                            div()
-                                .id(format!("track_{}", path.to_string_lossy().to_string()))
-                                .child(Queue::get_or_create_item(&views, track, cx))
-                                .on_click(move |_, _, cx| {
-                                    cx.global::<Controller>()
-                                        .load_audio(path.clone())
-                                })
+                                div()
+                                    .id(format!("track_{}", path.to_string_lossy().to_string()))
+                                    .child(Queue::get_or_create_item(&views, track.clone(), cx))
+                                    .on_click(move |_, _, cx| {
+                                        cx.global::<Controller>()
+                                            .load_audio(path.clone())
+                                    })
+                            } else { div().id("undefined").flex().items_center().justify_center().child("Track not loaded...") }
                         })
                         .collect()
                 })

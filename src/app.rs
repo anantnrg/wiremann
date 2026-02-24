@@ -115,7 +115,7 @@ pub fn run() -> Result<(), AppError> {
                                 }
 
                                 Event::Scanner(event) => {
-                                    controller_resclone.handle_scanner_event(cx, event)
+                                    controller_resclone.handle_scanner_event(cx, event, view_clone.clone())
                                 }
                             } {
                                 eprintln!("controller error: {e:?}");

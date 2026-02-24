@@ -22,4 +22,5 @@ pub enum ScannerCommand {
         path: PathBuf,
         tracks: HashSet<TrackId>,
     },
+    GetCurrentAlbumArt(PathBuf),
 }

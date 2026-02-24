@@ -105,6 +105,7 @@ impl Controller {
         &mut self,
         cx: &mut App,
         event: &ScannerEvent,
+        _view: Entity<Wiremann>,
     ) -> Result<(), ControllerError> {
         match event {
             ScannerEvent::Tracks(tracks) => {
@@ -124,6 +125,8 @@ impl Controller {
                     .insert(playlist.id.clone(), playlist.clone());
                 this.playback.current_playlist = Some(playlist.id.clone());
                 this.queue.tracks = playlist.tracks.clone();
+                this.queue.order = (0..playlist.tracks.len()).collect();
+
                 cx.notify();
             }),
             ScannerEvent::AlbumArt(image) => {
@@ -141,7 +144,8 @@ impl Controller {
     }
 
     pub fn load_audio(&self, path: PathBuf) {
-        let _ = self.audio_tx.send(AudioCommand::Load(path));
+        let _ = self.audio_tx.send(AudioCommand::Load(path.clone()));
+        let _ = self.scanner_tx.send(ScannerCommand::GetCurrentAlbumArt(path));
     }
 
     pub fn get_pos(&self) {
@@ -182,7 +186,7 @@ impl Controller {
         let _ = self.audio_tx.send(AudioCommand::SetVolume(vol));
     }
 
-    pub fn set_shuffle(&self, cx: &mut App) {}
+    pub fn set_shuffle(&self, _cx: &mut App) {}
 
     pub fn next(&self) {}
     pub fn prev(&self) {}
