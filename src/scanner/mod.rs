@@ -53,15 +53,17 @@ impl Scanner {
     pub fn run(&mut self) -> Result<(), ScannerError> {
         let (meta_tx, meta_rx) = crossbeam_channel::unbounded();
         let (thumb_tx, thumb_rx) = crossbeam_channel::unbounded();
+        let (album_art_tx, album_art_rx) = crossbeam_channel::unbounded();
 
         self.spawn_metadata_worker(meta_rx, thumb_tx.clone())?;
         self.spawn_thumbnail_workers(thumb_rx)?;
+        self.spawn_album_art_worker(album_art_rx)?;
 
         loop {
             match self.rx.recv()? {
                 ScannerCommand::GetTrackMetadata { path, track_id } => self.enqueue_track(path, track_id, meta_tx.clone())?,
                 ScannerCommand::ScanFolder { tracks, path } => self.enqueue_folder(tracks, path, meta_tx.clone())?,
-                ScannerCommand::GetCurrentAlbumArt(path) => { let _ = thumb_tx.send(ScanJob::AlbumArt(path)); }
+                ScannerCommand::GetCurrentAlbumArt(path) => { let _ = album_art_tx.send(ScanJob::AlbumArt(path)); }
             }
         }
     }
@@ -122,57 +124,97 @@ impl Scanner {
         &self,
         thumb_rx: Receiver<ScanJob>,
     ) -> Result<(), ScannerError> {
-        let events_tx = self.tx.clone();
+        let ticker = tick(Duration::from_millis(128));
+        let threads = num_cpus::get() - 2;
+        
+        for _ in 0..threads {
+            let events_tx = self.tx.clone();
+            let ticker= ticker.clone();
+            let thumb_rx = thumb_rx.clone();
 
-        std::thread::spawn(move || {
-            let ticker = tick(Duration::from_millis(128));
-            let mut batch = HashMap::with_capacity(16);
+            std::thread::spawn(move || {
+                let mut batch = HashMap::with_capacity(16);
 
-            loop {
-                select! {
-                recv(thumb_rx) -> job => {
-                    match job {
-                        Ok(ScanJob::Thumbnail(id, bytes)) => {
-                            if let Ok(image) = render_album_art(&bytes, true) {
-                                batch.insert(id, image);
-
-                                if batch.len() >= 16 {
-                                    let _ = events_tx.send(
-                                        ScannerEvent::Thumbnails(std::mem::take(&mut batch))
-                                    );
-                                }
-                            }
-                        }
-
-                        Ok(ScanJob::AlbumArt(path)) => {
-                            match get_album_art(path) {
-                                Ok(Some(image)) => {
-                                    if let Ok(album_art) = render_album_art(&image, false) {
-                                        let _ = events_tx.send(
-                                            ScannerEvent::AlbumArt(album_art)
-                                        );
+                loop {
+                    select! {
+                        recv(thumb_rx) -> job => {
+                            match job {
+                                Ok(ScanJob::Thumbnail(id, bytes)) => {
+                                    if let Ok(image) = render_album_art(&bytes, true) {
+                                        batch.insert(id, image);
+        
+                                        if batch.len() >= 16 {
+                                            let _ = events_tx.send(
+                                                ScannerEvent::Thumbnails(std::mem::take(&mut batch))
+                                            );
+                                        }
                                     }
                                 }
-                                Ok(None) => {}
-                                Err(err) => eprintln!("Failed album art: {}", err),
+                                _ => {}
                             }
                         }
-
-                        _ => {}
-                    }
-                }
-
-                recv(ticker) -> _ => {
-                    if !batch.is_empty() {
-                        let _ = events_tx.send(
-                            ScannerEvent::Thumbnails(std::mem::take(&mut batch))
-                        );
-                    }
-                }
+        
+                        recv(ticker) -> _ => {
+                            if !batch.is_empty() {
+                                let _ = events_tx.send(
+                                    ScannerEvent::Thumbnails(std::mem::take(&mut batch))
+                                );
+                            }
+                        }
             }
+                }
+            });
+            
+        }
+
+        Ok(())
+    }
+
+    fn spawn_album_art_worker(
+        &self,
+        album_art_rx: Receiver<ScanJob>,
+    ) -> Result<(), ScannerError> {
+        let ticker = tick(Duration::from_millis(128));
+        let events_tx = self.tx.clone();
+
+        std::thread::spawn({
+            move || {
+                let mut batch = HashMap::with_capacity(16);
+
+                loop {
+                    select! {
+                        recv(album_art_rx) -> job => {
+                            match job {
+                                Ok(ScanJob::AlbumArt(path)) => {
+                                    match get_album_art(path) {
+                                        Ok(Some(image)) => {
+                                            if let Ok(album_art) = render_album_art(&image, false) {
+                                                let _ = events_tx.send(
+                                                    ScannerEvent::AlbumArt(album_art)
+                                                );
+                                            }
+                                        }
+                                        Ok(None) => {}
+                                        Err(err) => eprintln!("Failed album art: {}", err),
+                                    }
+                                }
+        
+                                _ => {}
+                            }
+                        }
+        
+                        recv(ticker) -> _ => {
+                            if !batch.is_empty() {
+                                let _ = events_tx.send(
+                                    ScannerEvent::Thumbnails(std::mem::take(&mut batch))
+                                );
+                            }
+                        }
+            }
+                }
             }
         });
-
+        
         Ok(())
     }
 
