@@ -4,7 +4,7 @@ use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::helpers::slider_to_secs;
 use crate::ui::theme::Theme;
-use components::{image_cache::ImageCache, pages::player::PlayerPage, titlebar::Titlebar, Page};
+use components::{Page, image_cache::ImageCache, pages::player::PlayerPage, titlebar::Titlebar};
 use gpui::*;
 
 pub struct Wiremann {
@@ -39,7 +39,7 @@ impl Wiremann {
                 }
             },
         )
-            .detach();
+        .detach();
 
         cx.subscribe(
             &playback_slider_state,
@@ -49,11 +49,15 @@ impl Wiremann {
                     let state = controller.state.read(cx);
                     let current = if let Some(id) = state.playback.current {
                         state.library.tracks.get(&id)
-                    } else { None };
+                    } else {
+                        None
+                    };
 
                     let duration = if let Some(track) = current {
                         track.duration
-                    } else { 0 };
+                    } else {
+                        0
+                    };
 
                     controller.seek(slider_to_secs(value.start(), duration));
 
@@ -61,12 +65,11 @@ impl Wiremann {
                 }
             },
         )
-            .detach();
+        .detach();
 
         cx.set_global(Theme::default());
         cx.set_global(Page::Player);
         cx.set_global(ImageCache::default());
-
 
         let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
@@ -76,8 +79,16 @@ impl Wiremann {
 
         controller.load_audio("E:\\music\\$UMH4RD$HIT\\002 - Push Ups.mp3".into());
 
-        let tracks = controller.state.read(cx).library.tracks.keys().cloned().collect();
-        cx.global::<Controller>().scan_folder(tracks, "E:\\music\\$UMH4RD$HIT".into());
+        let tracks = controller
+            .state
+            .read(cx)
+            .library
+            .tracks
+            .keys()
+            .cloned()
+            .collect();
+        cx.global::<Controller>()
+            .scan_folder(tracks, "E:\\music\\$UMH4RD$HIT".into());
 
         Self {
             titlebar,

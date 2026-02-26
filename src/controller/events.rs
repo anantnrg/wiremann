@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use crate::controller::state::PlaybackStatus;
 use crate::library::playlists::Playlist;
 use crate::library::{Track, TrackId};
+use gpui::RenderImage;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use gpui::RenderImage;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AudioEvent {

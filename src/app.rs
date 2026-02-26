@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     audio::engine::Audio,
-    controller::{state::AppState, Controller},
+    controller::{Controller, state::AppState},
     errors::AppError,
     scanner::Scanner,
     ui::{
@@ -104,24 +104,27 @@ pub fn run() -> Result<(), AppError> {
                                     .await;
                             }
                         })
-                            .detach();
+                        .detach();
 
                         let view_clone = view.clone();
 
                         cx.subscribe(&res_handler, move |_, _, event, cx| {
-                            if let Err(e) = match event {
-                                Event::Audio(event) => {
-                                    controller_resclone.handle_audio_event(cx, event, view_clone.clone())
-                                }
+                            if let Err(e) =
+                                match event {
+                                    Event::Audio(event) => controller_resclone.handle_audio_event(
+                                        cx,
+                                        event,
+                                        view_clone.clone(),
+                                    ),
 
-                                Event::Scanner(event) => {
-                                    controller_resclone.handle_scanner_event(cx, event, view_clone.clone())
+                                    Event::Scanner(event) => controller_resclone
+                                        .handle_scanner_event(cx, event, view_clone.clone()),
                                 }
-                            } {
+                            {
                                 eprintln!("controller error: {e:?}");
                             }
                         })
-                            .detach();
+                        .detach();
 
                         Root::new(view, window, cx)
                     })
@@ -130,7 +133,7 @@ pub fn run() -> Result<(), AppError> {
 
             Ok::<_, AppError>(())
         })
-            .detach();
+        .detach();
     });
 
     Ok(())

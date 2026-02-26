@@ -4,7 +4,10 @@ pub mod state;
 use crate::library::TrackId;
 use crate::ui::helpers::secs_to_slider;
 use crate::ui::wiremann::Wiremann;
-use crate::{controller::state::AppState, errors::ControllerError, library::gen_track_id, ui::components::image_cache::ImageCache};
+use crate::{
+    controller::state::AppState, errors::ControllerError, library::gen_track_id,
+    ui::components::image_cache::ImageCache,
+};
 use commands::{AudioCommand, ScannerCommand};
 use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
@@ -57,11 +60,15 @@ impl Controller {
                                 let state = cx.global::<Controller>().state.read(cx);
                                 let current = if let Some(id) = state.playback.current {
                                     state.library.tracks.get(&id)
-                                } else { None };
+                                } else {
+                                    None
+                                };
 
                                 let duration = if let Some(track) = current {
                                     track.duration
-                                } else { 0 };
+                                } else {
+                                    0
+                                };
                                 this.set_value(secs_to_slider(pos.clone(), duration), cx);
                             });
                         });
@@ -91,12 +98,10 @@ impl Controller {
                 cx.notify()
             }),
             AudioEvent::TrackEnded => {}
-            AudioEvent::Volume(volume) => {
-                self.state.update(cx, |this, cx| {
-                    this.playback.volume = *volume;
-                    cx.notify()
-                })
-            }
+            AudioEvent::Volume(volume) => self.state.update(cx, |this, cx| {
+                this.playback.volume = *volume;
+                cx.notify()
+            }),
         }
         Ok(())
     }
@@ -133,7 +138,7 @@ impl Controller {
                 let mut image_cache = cx.global_mut::<ImageCache>();
 
                 image_cache.current = Some(image.clone());
-                
+
                 cx.notify(view.entity_id());
             }
             ScannerEvent::Thumbnails(thumbnails) => {
@@ -147,7 +152,9 @@ impl Controller {
 
     pub fn load_audio(&self, path: PathBuf) {
         let _ = self.audio_tx.send(AudioCommand::Load(path.clone()));
-        let _ = self.scanner_tx.send(ScannerCommand::GetCurrentAlbumArt(path));
+        let _ = self
+            .scanner_tx
+            .send(ScannerCommand::GetCurrentAlbumArt(path));
     }
 
     pub fn get_pos(&self) {

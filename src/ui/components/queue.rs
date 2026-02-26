@@ -46,16 +46,17 @@ impl Render for Item {
         let thumbnail = cx.global::<ImageCache>().get(&self.data.id);
         let current = if let Some(id) = state.playback.current {
             state.library.tracks.get(&id)
-        } else { None };
+        } else {
+            None
+        };
 
         let path = if let Some(track) = current {
             track.path.clone()
-        } else { PathBuf::new() };
+        } else {
+            PathBuf::new()
+        };
         div()
-            .id(format!(
-                "track_item_{}",
-                path.to_string_lossy().to_string()
-            ))
+            .id(format!("track_item_{}", path.to_string_lossy().to_string()))
             .h(px(64.))
             .w_full()
             .flex()
@@ -134,9 +135,7 @@ impl Queue {
         let controller = cx.global::<Controller>();
         let state = controller.state.read(cx);
 
-        let idx = if let Some(current) =
-            &state.playback.current
-        {
+        let idx = if let Some(current) = &state.playback.current {
             state
                 .queue
                 .order
@@ -178,7 +177,9 @@ impl Render for Queue {
                             let real_index = &tracks[queue_order[i]];
                             if let Some(track) = state.library.tracks.get(real_index) {
                                 track.path.clone()
-                            } else { PathBuf::new() }
+                            } else {
+                                PathBuf::new()
+                            }
                         })
                         .collect();
 
@@ -196,18 +197,24 @@ impl Render for Queue {
                                     .id(format!("track_{}", path.to_string_lossy().to_string()))
                                     .child(Queue::get_or_create_item(&views, track.clone(), cx))
                                     .on_click(move |_, _, cx| {
-                                        cx.global::<Controller>()
-                                            .load_audio(path.clone())
+                                        cx.global::<Controller>().load_audio(path.clone())
                                     })
-                            } else { div().id("undefined").flex().items_center().justify_center().child("Track not loaded...") }
+                            } else {
+                                div()
+                                    .id("undefined")
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .child("Track not loaded...")
+                            }
                         })
                         .collect()
                 })
-                    .w_full()
-                    .h_full()
-                    .flex()
-                    .flex_col()
-                    .track_scroll(&scroll_handle),
+                .w_full()
+                .h_full()
+                .flex()
+                .flex_col()
+                .track_scroll(&scroll_handle),
             )
     }
 }

@@ -7,7 +7,7 @@ use crate::{
     controller::{commands::AudioCommand, events::AudioEvent},
     errors::AudioError,
 };
-use rodio::{decoder::DecoderBuilder, OutputStream, OutputStreamBuilder, Sink};
+use rodio::{OutputStream, OutputStreamBuilder, Sink, decoder::DecoderBuilder};
 
 pub struct Audio {
     sink: Sink,
@@ -83,21 +83,27 @@ impl Audio {
 
     fn play(&self) -> Result<(), AudioError> {
         self.sink.play();
-        let _ = self.tx.send(AudioEvent::PlaybackStatus(PlaybackStatus::Playing));
+        let _ = self
+            .tx
+            .send(AudioEvent::PlaybackStatus(PlaybackStatus::Playing));
 
         Ok(())
     }
 
     fn pause(&self) -> Result<(), AudioError> {
         self.sink.pause();
-        let _ = self.tx.send(AudioEvent::PlaybackStatus(PlaybackStatus::Paused));
+        let _ = self
+            .tx
+            .send(AudioEvent::PlaybackStatus(PlaybackStatus::Paused));
 
         Ok(())
     }
 
     fn stop(&self) -> Result<(), AudioError> {
         self.sink.stop();
-        let _ = self.tx.send(AudioEvent::PlaybackStatus(PlaybackStatus::Stopped));
+        let _ = self
+            .tx
+            .send(AudioEvent::PlaybackStatus(PlaybackStatus::Stopped));
 
         Ok(())
     }
@@ -117,7 +123,9 @@ impl Audio {
     }
 
     fn check_track_ended(&mut self) -> Result<(), AudioError> {
-        if self.sink.is_paused() { return Ok(()); }
+        if self.sink.is_paused() {
+            return Ok(());
+        }
 
         if self.sink.empty() && !self.track_ended {
             self.track_ended = true;

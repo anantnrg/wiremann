@@ -1,10 +1,10 @@
 pub mod assets;
-pub mod res_handler;
-pub mod wiremann;
 pub mod components;
-mod theme;
-mod icons;
 pub mod helpers;
+mod icons;
+pub mod res_handler;
+mod theme;
+pub mod wiremann;
 
 use thiserror::Error;
 

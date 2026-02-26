@@ -1,11 +1,11 @@
-pub mod titlebar;
+pub mod controlbar;
+pub mod image_cache;
 pub mod navbar;
 pub mod pages;
-pub mod controlbar;
-pub mod slider;
-pub mod scrollbar;
 pub mod queue;
-pub mod image_cache;
+pub mod scrollbar;
+pub mod slider;
+pub mod titlebar;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Page {

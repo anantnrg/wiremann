@@ -61,9 +61,15 @@ impl Scanner {
 
         loop {
             match self.rx.recv()? {
-                ScannerCommand::GetTrackMetadata { path, track_id } => self.enqueue_track(path, track_id, meta_tx.clone())?,
-                ScannerCommand::ScanFolder { tracks, path } => self.enqueue_folder(tracks, path, meta_tx.clone())?,
-                ScannerCommand::GetCurrentAlbumArt(path) => { let _ = album_art_tx.send(ScanJob::AlbumArt(path)); }
+                ScannerCommand::GetTrackMetadata { path, track_id } => {
+                    self.enqueue_track(path, track_id, meta_tx.clone())?
+                }
+                ScannerCommand::ScanFolder { tracks, path } => {
+                    self.enqueue_folder(tracks, path, meta_tx.clone())?
+                }
+                ScannerCommand::GetCurrentAlbumArt(path) => {
+                    let _ = album_art_tx.send(ScanJob::AlbumArt(path));
+                }
             }
         }
     }
@@ -120,10 +126,7 @@ impl Scanner {
         Ok(())
     }
 
-    fn spawn_thumbnail_workers(
-        &self,
-        thumb_rx: Receiver<ScanJob>,
-    ) -> Result<(), ScannerError> {
+    fn spawn_thumbnail_workers(&self, thumb_rx: Receiver<ScanJob>) -> Result<(), ScannerError> {
         let ticker = tick(Duration::from_millis(128));
         let threads = num_cpus::get() - 2;
 
@@ -161,7 +164,7 @@ impl Scanner {
                                 );
                             }
                         }
-            }
+                    }
                 }
             });
         }
@@ -169,10 +172,7 @@ impl Scanner {
         Ok(())
     }
 
-    fn spawn_album_art_worker(
-        &self,
-        album_art_rx: Receiver<ScanJob>,
-    ) -> Result<(), ScannerError> {
+    fn spawn_album_art_worker(&self, album_art_rx: Receiver<ScanJob>) -> Result<(), ScannerError> {
         let events_tx = self.tx.clone();
 
         std::thread::spawn(move || {
@@ -180,9 +180,7 @@ impl Scanner {
                 match get_album_art(path) {
                     Ok(Some(image)) => {
                         if let Ok(album_art) = render_album_art(&image, false) {
-                            let _ = events_tx.send(
-                                ScannerEvent::AlbumArt(album_art)
-                            );
+                            let _ = events_tx.send(ScannerEvent::AlbumArt(album_art));
                         }
                     }
                     Ok(None) => {}
@@ -194,7 +192,12 @@ impl Scanner {
         Ok(())
     }
 
-    fn enqueue_track(&self, path: PathBuf, track_id: TrackId, meta_tx: Sender<ScanJob>) -> Result<(), ScannerError> {
+    fn enqueue_track(
+        &self,
+        path: PathBuf,
+        track_id: TrackId,
+        meta_tx: Sender<ScanJob>,
+    ) -> Result<(), ScannerError> {
         let _ = meta_tx.send(ScanJob::Metadata(path, track_id));
         Ok(())
     }
@@ -217,7 +220,8 @@ impl Scanner {
             {
                 let file = entry.path().to_path_buf();
 
-                let ext_ok = file.extension()
+                let ext_ok = file
+                    .extension()
                     .and_then(|e| e.to_str())
                     .map(|e| supported.contains(&e.to_lowercase().as_str()))
                     .unwrap_or(false);
@@ -237,7 +241,8 @@ impl Scanner {
 
         let playlist = Playlist {
             id: PlaylistId(Uuid::new_v4()),
-            name: path.file_name()
+            name: path
+                .file_name()
                 .and_then(|s| s.to_str())
                 .unwrap_or("Unnamed Playlist")
                 .to_string(),
@@ -387,15 +392,13 @@ fn get_track_metadata(
     ))
 }
 
-fn get_album_art(
-    path: PathBuf,
-) -> Result<Option<Vec<u8>>, ScannerError> {
+fn get_album_art(path: PathBuf) -> Result<Option<Vec<u8>>, ScannerError> {
     let tagged_file = match Probe::open(path.clone())
         .and_then(|p| Ok(p.guess_file_type()?))
         .and_then(|p| p.read())
     {
         Ok(file) => file,
-        Err(e) => return Err(ScannerError::from(e))
+        Err(e) => return Err(ScannerError::from(e)),
     };
 
     let tag = tagged_file
@@ -413,7 +416,5 @@ fn get_album_art(
         thumbnail = None;
     }
 
-    Ok(
-        thumbnail,
-    )
+    Ok(thumbnail)
 }

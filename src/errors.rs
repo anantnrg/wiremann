@@ -1,8 +1,8 @@
 use crossbeam_channel::RecvError;
-use lofty::error::LoftyError;
-use std::time::SystemTimeError;
 use image::ImageError;
+use lofty::error::LoftyError;
 use rodio::source::SeekError;
+use std::time::SystemTimeError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

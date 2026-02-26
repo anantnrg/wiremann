@@ -1,11 +1,11 @@
 use crate::{
-    controller::state::PlaybackStatus,
     controller::Controller,
+    controller::state::PlaybackStatus,
     ui::{
         components::controlbar::ControlBar,
         components::image_cache::ImageCache,
         components::queue::Queue,
-        components::scrollbar::{floating_scrollbar, RightPad},
+        components::scrollbar::{RightPad, floating_scrollbar},
         icons::Icons,
         theme::Theme,
     },
@@ -48,7 +48,9 @@ impl Render for PlayerPage {
 
         let current = if let Some(id) = state.playback.current {
             state.library.tracks.get(&id)
-        } else { None };
+        } else {
+            None
+        };
 
         div()
             .size_full()
@@ -167,7 +169,13 @@ impl Render for PlayerPage {
                                     .bg(theme.accent)
                                     .hover(|this| this.bg(theme.accent_30))
                                     .on_click(|_, _, cx| {
-                                        match cx.global::<Controller>().state.read(cx).playback.status {
+                                        match cx
+                                            .global::<Controller>()
+                                            .state
+                                            .read(cx)
+                                            .playback
+                                            .status
+                                        {
                                             PlaybackStatus::Paused | PlaybackStatus::Stopped => {
                                                 cx.global::<Controller>().play()
                                             }
@@ -207,9 +215,10 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .hover(|this| this.bg(theme.white_05))
-                                    .when(cx.global::<Controller>().state.read(cx).playback.repeat, |this| {
-                                        this.text_color(theme.accent)
-                                    })
+                                    .when(
+                                        cx.global::<Controller>().state.read(cx).playback.repeat,
+                                        |this| this.text_color(theme.accent),
+                                    )
                                     .on_click({
                                         let controller = controller.clone();
                                         move |_, _, cx| controller.set_repeat(cx)

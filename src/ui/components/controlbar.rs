@@ -33,11 +33,15 @@ impl Render for ControlBar {
 
         let current = if let Some(id) = state.playback.current {
             state.library.tracks.get(&id)
-        } else { None };
+        } else {
+            None
+        };
 
         let duration = if let Some(track) = current {
             track.duration
-        } else { 0 };
+        } else {
+            0
+        };
 
         div()
             .w_full()
@@ -124,7 +128,7 @@ impl Render for ControlBar {
                                                         _ => Icons::Volume2,
                                                     }
                                                 })
-                                                    .size_4(),
+                                                .size_4(),
                                             ),
                                     )
                                     .child(
