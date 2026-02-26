@@ -11,7 +11,6 @@ pub enum AudioEvent {
     TrackLoaded(PathBuf),
     Position(u64),
     PlaybackStatus(PlaybackStatus),
-    Volume(f32),
     TrackEnded,
 }
 

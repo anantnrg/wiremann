@@ -56,9 +56,9 @@ impl Audio {
 
     fn load_path(&mut self, path: PathBuf) -> Result<(), AudioError> {
         self.sink.stop();
-        
+
         let prev_vol = self.sink.volume();
-        
+
         self.sink = Sink::connect_new(self.stream_handle.mixer());
 
         let file = File::open(path.clone()).unwrap();
@@ -71,7 +71,7 @@ impl Audio {
             .unwrap();
 
         self.sink.append(source);
-        
+
         self.sink.set_volume(prev_vol);
 
         let _ = self.tx.send(AudioEvent::TrackLoaded(path));
@@ -118,7 +118,6 @@ impl Audio {
     fn set_volume(&self, volume: f32) -> Result<(), AudioError> {
         let volume = volume.clamp(0.0, 1.0);
         self.sink.set_volume(volume);
-        let _ = self.tx.send(AudioEvent::Volume(volume));
 
         Ok(())
     }

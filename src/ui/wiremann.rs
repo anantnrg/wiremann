@@ -4,7 +4,7 @@ use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::helpers::slider_to_secs;
 use crate::ui::theme::Theme;
-use components::{Page, image_cache::ImageCache, pages::player::PlayerPage, titlebar::Titlebar};
+use components::{image_cache::ImageCache, pages::player::PlayerPage, titlebar::Titlebar, Page};
 use gpui::*;
 
 pub struct Wiremann {
@@ -34,12 +34,14 @@ impl Wiremann {
             &vol_slider_state,
             |_, _, event: &SliderEvent, cx| match event {
                 SliderEvent::Change(value) => {
-                    cx.global::<Controller>().set_volume(value.start() / 100.0);
+                    let controller = cx.global::<Controller>().clone();
+
+                    controller.set_volume(value.start() / 100.0, cx);
                     cx.notify();
                 }
             },
         )
-        .detach();
+            .detach();
 
         cx.subscribe(
             &playback_slider_state,
@@ -65,7 +67,7 @@ impl Wiremann {
                 }
             },
         )
-        .detach();
+            .detach();
 
         cx.set_global(Theme::default());
         cx.set_global(Page::Player);

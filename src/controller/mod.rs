@@ -98,10 +98,6 @@ impl Controller {
                 cx.notify()
             }),
             AudioEvent::TrackEnded => {}
-            AudioEvent::Volume(volume) => self.state.update(cx, |this, cx| {
-                this.playback.volume = *volume;
-                cx.notify()
-            }),
         }
         Ok(())
     }
@@ -188,11 +184,19 @@ impl Controller {
     pub fn set_mute(&self, cx: &mut App) {
         self.state.update(cx, |this, cx| {
             this.playback.mute = !this.playback.mute;
+
+            let _ = self.audio_tx.send(AudioCommand::SetVolume(if this.playback.mute { 0.0 } else { this.playback.volume }));
         })
     }
 
-    pub fn set_volume(&self, vol: f32) {
-        let _ = self.audio_tx.send(AudioCommand::SetVolume(vol));
+    pub fn set_volume(&self, vol: f32, cx: &mut App) {
+        self.state.update(cx, |this, _| {
+            this.playback.volume = vol;
+        });
+
+        let muted = self.state.read(cx).playback.mute;
+
+        let _ = self.audio_tx.send(AudioCommand::SetVolume(if muted { 0.0 } else { vol }));
     }
 
     pub fn set_shuffle(&self, _cx: &mut App) {}
