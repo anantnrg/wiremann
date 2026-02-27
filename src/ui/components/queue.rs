@@ -104,7 +104,7 @@ impl Render for Item {
 
 #[derive(Clone)]
 pub struct Queue {
-    pub views: Entity<AHashMap<PathBuf, Entity<Item>>>,
+    pub views: Entity<AHashMap<TrackId, Entity<Item>>>,
     pub scroll_handle: UniformListScrollHandle,
     pub stop_auto_scroll: Entity<bool>,
 
@@ -125,11 +125,11 @@ impl Queue {
     }
 
     fn get_or_create_item(
-        views: &Entity<AHashMap<PathBuf, Entity<Item>>>,
+        views: &Entity<AHashMap<TrackId, Entity<Item>>>,
         track: Arc<Track>,
         cx: &mut App,
     ) -> Entity<Item> {
-        let key = track.path.clone();
+        let key = track.id.clone();
         views.update(cx, |this, cx| {
             this.entry(key)
                 .or_insert_with(|| Item::new(cx, track, 0))
@@ -192,20 +192,20 @@ impl Render for Queue {
             .size_full()
             .child(
                 uniform_list("queue", len, move |range, _, cx| {
-                    let visible_paths: Vec<PathBuf> = range
+                    let visible_paths: Vec<TrackId> = range
                         .clone()
                         .map(|i| {
                             let real_index = &tracks[queue_order[i]];
                             if let Some(track) = state.library.tracks.get(real_index) {
-                                track.path.clone()
+                                track.id.clone()
                             } else {
-                                PathBuf::new()
+                                TrackId::default()
                             }
                         })
                         .collect();
 
                     views.update(cx, |map, _| {
-                        map.retain(|path, _| visible_paths.contains(path));
+                        map.retain(|id, _| visible_paths.contains(id));
                     });
 
                     range
