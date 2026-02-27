@@ -72,6 +72,8 @@ impl Audio {
 
         self.sink.append(source);
 
+        self.track_ended = false;
+
         self.sink.set_volume(prev_vol);
 
         let _ = self.tx.send(AudioEvent::TrackLoaded(path));
@@ -129,10 +131,6 @@ impl Audio {
     }
 
     fn check_track_ended(&mut self) -> Result<(), AudioError> {
-        if self.sink.is_paused() {
-            return Ok(());
-        }
-
         if self.sink.empty() && !self.track_ended {
             self.track_ended = true;
 

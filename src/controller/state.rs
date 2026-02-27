@@ -26,7 +26,7 @@ pub enum PlaybackStatus {
     Paused,
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PlaybackState {
     pub current: Option<TrackId>,
     pub current_playlist: Option<PlaylistId>,
@@ -45,4 +45,19 @@ pub struct QueueState {
     pub tracks: Vec<TrackId>,
     pub order: Vec<usize>,
     pub index: usize,
+}
+
+impl Default for PlaybackState {
+    fn default() -> Self {
+        PlaybackState {
+            current: None,
+            current_playlist: None,
+            status: PlaybackStatus::Stopped,
+            position: 0,
+            volume: 1.0,
+            mute: false,
+            shuffling: false,
+            repeat: false,
+        }
+    }
 }

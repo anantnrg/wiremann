@@ -102,7 +102,15 @@ impl Controller {
                 this.playback.status = *status;
                 cx.notify()
             }),
-            AudioEvent::TrackEnded => {}
+            AudioEvent::TrackEnded => {
+                let repeat = self.state.read(cx).playback.repeat;
+
+                if repeat {
+                    self.load_queue_current(cx)
+                } else {
+                    self.next(cx)
+                }
+            }
         }
         Ok(())
     }
@@ -238,6 +246,10 @@ impl Controller {
 
     pub fn seek(&self, pos: u64) {
         let _ = self.audio_tx.send(AudioCommand::Seek(pos));
+    }
+
+    pub fn check_track_ended(&self) {
+        let _ = self.audio_tx.send(AudioCommand::CheckTrackEnded);
     }
 }
 

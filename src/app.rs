@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     audio::engine::Audio,
-    controller::{Controller, state::AppState},
+    controller::{state::AppState, Controller},
     errors::AppError,
     scanner::Scanner,
     ui::{
@@ -79,6 +79,7 @@ pub fn run() -> Result<(), AppError> {
 
                         cx.spawn(async move |_, cx| {
                             let mut last_pos_request = Instant::now();
+                            let mut last_track_ended_request = Instant::now();
 
                             loop {
                                 while let Ok(e) = controller.audio_rx.try_recv() {
@@ -99,12 +100,18 @@ pub fn run() -> Result<(), AppError> {
                                     last_pos_request = Instant::now();
                                 }
 
+                                if last_track_ended_request.elapsed() >= Duration::from_millis(512) {
+                                    let _ = controller.check_track_ended();
+
+                                    last_track_ended_request = Instant::now();
+                                }
+
                                 cx.background_executor()
                                     .timer(Duration::from_millis(16))
                                     .await;
                             }
                         })
-                        .detach();
+                            .detach();
 
                         let view_clone = view.clone();
 
@@ -124,7 +131,7 @@ pub fn run() -> Result<(), AppError> {
                                 eprintln!("controller error: {e:?}");
                             }
                         })
-                        .detach();
+                            .detach();
 
                         Root::new(view, window, cx)
                     })
@@ -133,7 +140,7 @@ pub fn run() -> Result<(), AppError> {
 
             Ok::<_, AppError>(())
         })
-        .detach();
+            .detach();
     });
 
     Ok(())
