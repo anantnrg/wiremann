@@ -12,6 +12,8 @@ use commands::{AudioCommand, ScannerCommand};
 use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
 use gpui::{App, Entity, Global};
+use rand::rng;
+use rand::seq::SliceRandom;
 use std::collections::HashSet;
 use std::{path::PathBuf, sync::Arc};
 
@@ -227,7 +229,37 @@ impl Controller {
         let _ = self.audio_tx.send(AudioCommand::SetVolume(if muted { 0.0 } else { vol }));
     }
 
-    pub fn set_shuffle(&self, _cx: &mut App) {}
+    pub fn set_shuffle(&self, cx: &mut App) {
+        self.state.update(cx, |this, cx| {
+            this.playback.shuffling = !this.playback.shuffling;
+
+            if this.queue.tracks.is_empty() {
+                return;
+            }
+
+            let current = this.queue.order[this.queue.index];
+
+            if this.playback.shuffling {
+                let mut rng = rng();
+                this.queue.order =
+                    (0..this.queue.tracks.len()).collect();
+
+                this.queue.order.shuffle(&mut rng);
+
+                if let Some(pos) =
+                    this.queue.order.iter().position(|&x| x == current)
+                {
+                    this.queue.order.swap(0, pos);
+                }
+
+                this.queue.index = 0;
+            } else {
+                this.queue.order = (0..this.queue.tracks.len()).collect();
+
+                this.queue.index = current;
+            }
+        });
+    }
 
     pub fn next(&self, cx: &mut App) {
         self.state.update(cx, |this, cx| {
