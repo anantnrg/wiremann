@@ -24,3 +24,12 @@ pub enum ScannerCommand {
     },
     GetCurrentAlbumArt(PathBuf),
 }
+
+pub enum CacherCommand {
+    GetAppState,
+    GetThumbnail(TrackId),
+    GetAlbumArt(TrackId),
+    WriteAppState,
+    WriteThumbnail,
+    WriteAlbumArt,
+}

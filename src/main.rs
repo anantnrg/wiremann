@@ -8,6 +8,7 @@ pub mod library;
 pub mod scanner;
 pub mod ui;
 mod queue;
+mod cacher;
 
 use errors::AppError;
 

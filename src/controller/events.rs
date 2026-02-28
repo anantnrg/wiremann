@@ -21,3 +21,10 @@ pub enum ScannerEvent {
     AlbumArt(Arc<RenderImage>),
     Thumbnails(HashMap<TrackId, Arc<RenderImage>>),
 }
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum CacherEvent {
+    AppState,
+    AlbumArt(Arc<RenderImage>),
+    Thumbnails(HashMap<TrackId, Arc<RenderImage>>),
+}
