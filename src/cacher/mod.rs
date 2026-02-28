@@ -6,6 +6,7 @@ use crate::library::playlists::PlaylistId;
 use crate::library::{Track, TrackId};
 use bitcode::{Decode, Encode};
 use crossbeam_channel::{Receiver, Sender};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
@@ -66,7 +67,7 @@ struct CachedPlaylists {
     pub playlists: HashMap<String, CachedPlaylist>,
 }
 
-#[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 struct CachedPlaybackState {
     pub current: Option<[u8; 32]>,
     pub current_playlist: Option<String>,
@@ -218,7 +219,11 @@ impl Cacher {
     pub fn run(&self) -> Result<(), CacherError> {
         loop {
             match self.rx.recv()? {
-                CacherCommand::WriteAppState(app_state) => {}
+                CacherCommand::WriteAppState(app_state) => {
+                    self.write_library_state(app_state.library)?;
+                    self.write_playback_state(app_state.playback)?;
+                    self.write_queue_state(app_state.queue)?;
+                }
                 _ => {}
             }
         }
@@ -226,14 +231,49 @@ impl Cacher {
 
     fn write_library_state(&self, state: LibraryState) -> Result<(), CacherError> {
         let dir = self.base_dir.join("library");
+        fs::create_dir_all(&dir)?;
 
-        fs::create_dir_all(dir.clone())?;
+        let tracks = CachedTracks::from(&state);
 
-        let tracks_tmp_path = dir.join("tracks.tmp");
-        let tracks_final_path = dir.join("tracks.bin");
+        write_cache(
+            &dir.join("tracks.tmp"),
+            &dir.join("tracks.bin"),
+            tracks,
+        )?;
 
-        let playlists_tmp_path = dir.join("playlists.tmp");
-        let playlists_final_path = dir.join("playlists.bin");
+        Ok(())
+    }
+
+    fn write_playback_state(&self, state: PlaybackState) -> Result<(), CacherError> {
+        let tmp_path = self.base_dir.join("session.tmp");
+        let final_path = self.base_dir.join("session.bin");
+
+        let payload = CachedPlaybackState::from(&state);
+
+        let ron = ron::ser::to_string_pretty(&payload, Default::default())?;
+
+        {
+            let mut file = fs::File::create(tmp_path.clone())?;
+            file.write_all(&ron.as_bytes())?;
+            file.sync_all()?;
+        }
+
+        fs::rename(tmp_path, final_path)?;
+
+        Ok(())
+    }
+
+    fn write_queue_state(&self, state: QueueState) -> Result<(), CacherError> {
+        let tmp_path = self.base_dir.join("queue.tmp");
+        let final_path = self.base_dir.join("queue.bin");
+
+        let queue = CachedQueueState::from(&state);
+
+        write_cache(
+            &tmp_path,
+            &final_path,
+            queue,
+        )?;
 
         Ok(())
     }
