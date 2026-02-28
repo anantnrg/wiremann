@@ -49,4 +49,6 @@ pub enum CacherError {
     RecvError(#[from] RecvError),
     #[error("I/O Error occurred: `{0}`")]
     IoError(#[from] std::io::Error),
+    #[error("Bitcode Error occurred: `{0}`")]
+    BitcodeError(#[from] bitcode::Error),
 }

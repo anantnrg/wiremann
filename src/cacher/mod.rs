@@ -8,6 +8,7 @@ use bitcode::{Decode, Encode};
 use crossbeam_channel::{Receiver, Sender};
 use std::collections::HashMap;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -19,45 +20,10 @@ pub struct Cacher {
     base_dir: PathBuf,
 }
 
-impl Cacher {
-    pub fn new() -> (Self, Sender<CacherCommand>, Receiver<CacherEvent>) {
-        let (cmd_tx, cmd_rx) = crossbeam_channel::unbounded();
-        let (event_tx, event_rx) = crossbeam_channel::unbounded();
-
-        let base_dir = dirs::audio_dir().unwrap_or_default().join("wiremann").join("cache");
-        fs::create_dir_all(base_dir.clone()).expect("failed to create cache directory");
-
-        let cacher = Cacher {
-            tx: event_tx,
-            rx: cmd_rx,
-            base_dir,
-        };
-
-        (cacher, cmd_tx, event_rx)
-    }
-
-    pub fn run(&self) -> Result<(), CacherError> {
-        loop {
-            match self.rx.recv()? {
-                CacherCommand::WriteAppState(app_state) => {}
-                _ => {}
-            }
-        }
-    }
-
-    fn write_library_state(&self, state: LibraryState) -> Result<(), CacherError> {
-        let dir = self.base_dir.join("library");
-
-        fs::create_dir_all(dir.clone())?;
-
-        let tracks_tmp_path = dir.join("tracks.tmp");
-        let tracks_final_path = dir.join("tracks.bin");
-
-        let playlists_tmp_path = dir.join("playlists.tmp");
-        let playlists_final_path = dir.join("playlists.bin");
-
-        Ok(())
-    }
+#[derive(Encode, Decode)]
+struct CacheFile<T> {
+    version: u32,
+    payload: T,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
@@ -230,4 +196,86 @@ impl From<CachedQueueState> for QueueState {
             index: c.index,
         }
     }
+}
+
+impl Cacher {
+    pub fn new() -> (Self, Sender<CacherCommand>, Receiver<CacherEvent>) {
+        let (cmd_tx, cmd_rx) = crossbeam_channel::unbounded();
+        let (event_tx, event_rx) = crossbeam_channel::unbounded();
+
+        let base_dir = dirs::audio_dir().unwrap_or_default().join("wiremann").join("cache");
+        fs::create_dir_all(base_dir.clone()).expect("failed to create cache directory");
+
+        let cacher = Cacher {
+            tx: event_tx,
+            rx: cmd_rx,
+            base_dir,
+        };
+
+        (cacher, cmd_tx, event_rx)
+    }
+
+    pub fn run(&self) -> Result<(), CacherError> {
+        loop {
+            match self.rx.recv()? {
+                CacherCommand::WriteAppState(app_state) => {}
+                _ => {}
+            }
+        }
+    }
+
+    fn write_library_state(&self, state: LibraryState) -> Result<(), CacherError> {
+        let dir = self.base_dir.join("library");
+
+        fs::create_dir_all(dir.clone())?;
+
+        let tracks_tmp_path = dir.join("tracks.tmp");
+        let tracks_final_path = dir.join("tracks.bin");
+
+        let playlists_tmp_path = dir.join("playlists.tmp");
+        let playlists_final_path = dir.join("playlists.bin");
+
+        Ok(())
+    }
+}
+
+fn write_cache<T: Encode>(
+    tmp: &PathBuf,
+    final_path: &PathBuf,
+    payload: T,
+) -> Result<(), CacherError> {
+    let wrapped = CacheFile {
+        version: 1,
+        payload,
+    };
+
+    let bytes = bitcode::encode(&wrapped);
+
+    {
+        let mut file = fs::File::create(tmp)?;
+        file.write_all(&bytes)?;
+        file.sync_all()?;
+    }
+
+    fs::rename(tmp, final_path)?;
+
+    Ok(())
+}
+
+fn read_cache<T: Decode>(
+    path: &PathBuf,
+) -> Result<Option<T>, CacherError> {
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let bytes = fs::read(path)?;
+
+    let file: CacheFile<T> = bitcode::decode(&bytes)?;
+
+    if file.version != 1 {
+        return Ok(None);
+    }
+
+    Ok(Some(file.payload))
 }
