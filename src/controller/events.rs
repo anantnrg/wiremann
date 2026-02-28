@@ -1,4 +1,4 @@
-use crate::controller::state::PlaybackStatus;
+use crate::controller::state::{AppState, PlaybackStatus};
 use crate::library::playlists::Playlist;
 use crate::library::{Track, TrackId};
 use gpui::RenderImage;
@@ -24,7 +24,7 @@ pub enum ScannerEvent {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum CacherEvent {
-    AppState,
+    AppState(AppState),
     AlbumArt(Arc<RenderImage>),
     Thumbnails(HashMap<TrackId, Arc<RenderImage>>),
 }

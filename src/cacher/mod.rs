@@ -1,5 +1,6 @@
 use crate::controller::commands::CacherCommand;
 use crate::controller::events::CacherEvent;
+use crate::errors::CacherError;
 use crossbeam_channel::{Receiver, Sender};
 
 pub struct Cacher {
@@ -18,5 +19,13 @@ impl Cacher {
         };
 
         (cacher, cmd_tx, event_rx)
+    }
+
+    pub fn run(&self) -> Result<(), CacherError> {
+        loop {
+            match self.rx.recv()? {
+                _ => {}
+            }
+        }
     }
 }

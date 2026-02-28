@@ -1,3 +1,4 @@
+use crate::controller::state::AppState;
 use crate::library::TrackId;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -29,7 +30,7 @@ pub enum CacherCommand {
     GetAppState,
     GetThumbnail(TrackId),
     GetAlbumArt(TrackId),
-    WriteAppState,
-    WriteThumbnail,
-    WriteAlbumArt,
+    WriteAppState(AppState),
+    WriteThumbnail(Vec<u8>),
+    WriteAlbumArt(Vec<u8>),
 }

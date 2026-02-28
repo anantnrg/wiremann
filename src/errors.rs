@@ -42,3 +42,9 @@ pub enum ControllerError {
     #[error("Scanner Error occurred: `{0}`")]
     ScannerError(#[from] ScannerError),
 }
+
+#[derive(Error, Debug)]
+pub enum CacherError {
+    #[error("Recv Error occurred: `{0}`")]
+    RecvError(#[from] RecvError),
+}
