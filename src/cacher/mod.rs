@@ -1,13 +1,17 @@
 use crate::controller::commands::CacherCommand;
 use crate::controller::events::CacherEvent;
-use crate::controller::state::{LibraryState, PlaybackStatus};
+use crate::controller::state::{LibraryState, PlaybackState, PlaybackStatus, QueueState};
 use crate::errors::CacherError;
-use crate::library::playlists::Playlist;
+use crate::library::playlists::PlaylistId;
+use crate::library::{Track, TrackId};
 use bitcode::{Decode, Encode};
 use crossbeam_channel::{Receiver, Sender};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
+use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct Cacher {
     pub tx: Sender<CacherEvent>,
@@ -93,7 +97,7 @@ struct CachedTracks {
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
 struct CachedPlaylists {
-    pub playlists: HashMap<String, Playlist>,
+    pub playlists: HashMap<String, CachedPlaylist>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
@@ -115,4 +119,115 @@ pub struct CachedQueueState {
     pub tracks: Vec<[u8; 32]>,
     pub order: Vec<usize>,
     pub index: usize,
+}
+
+impl From<&Track> for CachedTrack {
+    fn from(track: &Track) -> Self {
+        Self {
+            id: track.id.0,
+            path: track.path.to_string_lossy().to_string(),
+            title: track.title.clone(),
+            artist: track.artist.clone(),
+            album: track.album.clone(),
+            duration: track.duration,
+            size: track.size,
+            modified: track.modified,
+        }
+    }
+}
+
+impl From<CachedTrack> for Track {
+    fn from(c: CachedTrack) -> Self {
+        Self {
+            id: TrackId(c.id),
+            path: PathBuf::from(c.path),
+            title: c.title,
+            artist: c.artist,
+            album: c.album,
+            duration: c.duration,
+            size: c.size,
+            modified: c.modified,
+        }
+    }
+}
+
+impl From<&LibraryState> for CachedTracks {
+    fn from(state: &LibraryState) -> Self {
+        let tracks = state
+            .tracks
+            .iter()
+            .map(|(id, track)| (*id.0, CachedTrack::from(track.as_ref())))
+            .collect();
+
+        Self { tracks }
+    }
+}
+
+impl From<CachedTracks> for LibraryState {
+    fn from(cache: CachedTracks) -> Self {
+        let tracks = cache
+            .tracks
+            .into_iter()
+            .map(|(id, track)| {
+                let track: Track = track.into();
+                (TrackId(id), Arc::new(track))
+            })
+            .collect();
+
+        Self {
+            tracks,
+            playlists: HashMap::new(),
+        }
+    }
+}
+
+impl From<&PlaybackState> for CachedPlaybackState {
+    fn from(p: &PlaybackState) -> Self {
+        Self {
+            current: p.current.map(|id| id.0),
+            current_playlist: p.current_playlist.map(|id| id.to_string()),
+            status: p.status,
+            position: p.position,
+            volume: p.volume,
+            mute: p.mute,
+            shuffling: p.shuffling,
+            repeat: p.repeat,
+        }
+    }
+}
+
+impl From<CachedPlaybackState> for PlaybackState {
+    fn from(c: CachedPlaybackState) -> Self {
+        Self {
+            current: c.current.map(TrackId),
+            current_playlist: c.current_playlist
+                .and_then(|s| Some(PlaylistId(Uuid::from_str(&s).unwrap_or_default()))),
+            status: c.status,
+            position: c.position,
+            volume: c.volume,
+            mute: c.mute,
+            shuffling: c.shuffling,
+            repeat: c.repeat,
+        }
+    }
+}
+
+impl From<&QueueState> for CachedQueueState {
+    fn from(q: &QueueState) -> Self {
+        Self {
+            tracks: q.tracks.iter().map(|id| id.0).collect(),
+            order: q.order.clone(),
+            index: q.index,
+        }
+    }
+}
+
+impl From<CachedQueueState> for QueueState {
+    fn from(c: CachedQueueState) -> Self {
+        Self {
+            tracks: c.tracks.into_iter().map(TrackId).collect(),
+            order: c.order,
+            index: c.index,
+        }
+    }
 }
