@@ -21,6 +21,21 @@ pub struct Cacher {
     base_dir: PathBuf,
 }
 
+enum CacheJob {
+    WriteLibrary(LibraryState),
+    WritePlayback(PlaybackState),
+    WriteQueue(QueueState),
+
+    WriteImage {
+        id: TrackId,
+        kind: ImageKind,
+        bytes: Vec<u8>,
+    },
+
+    LoadAppState,
+    LoadThumbnails(Vec<TrackId>),
+}
+
 #[derive(Encode, Decode)]
 struct CacheFile<T> {
     version: u32,
