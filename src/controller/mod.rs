@@ -1,6 +1,8 @@
 pub mod commands;
 pub mod events;
 pub mod state;
+use crate::controller::commands::CacherCommand;
+use crate::controller::events::CacherEvent;
 use crate::library::TrackId;
 use crate::ui::helpers::secs_to_slider;
 use crate::ui::wiremann::Wiremann;
@@ -28,6 +30,10 @@ pub struct Controller {
     // Scanner channel
     pub scanner_tx: Sender<ScannerCommand>,
     pub scanner_rx: Receiver<ScannerEvent>,
+
+    // Cacher channel
+    pub cacher_tx: Sender<CacherCommand>,
+    pub cacher_rx: Receiver<CacherEvent>,
 }
 
 impl Controller {
@@ -37,6 +43,8 @@ impl Controller {
         audio_rx: Receiver<AudioEvent>,
         scanner_tx: Sender<ScannerCommand>,
         scanner_rx: Receiver<ScannerEvent>,
+        cacher_tx: Sender<CacherCommand>,
+        cacher_rx: Receiver<CacherEvent>,
     ) -> Self {
         Controller {
             state,
@@ -44,6 +52,8 @@ impl Controller {
             audio_rx,
             scanner_tx,
             scanner_rx,
+            cacher_tx,
+            cacher_rx,
         }
     }
 
@@ -157,6 +167,19 @@ impl Controller {
 
                 thumbnail_cache.thumbs.extend(thumbnails.clone());
             }
+        }
+        Ok(())
+    }
+
+    pub fn handle_cacher_event(
+        &mut self,
+        cx: &mut App,
+        event: &CacherEvent,
+        view: Entity<Wiremann>,
+    ) -> Result<(), ControllerError> {
+        match event {
+            CacherEvent::AppState(state) => self.state.update(cx, |this, cx| *this = state.clone()),
+            _ => {}
         }
         Ok(())
     }

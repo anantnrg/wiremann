@@ -246,7 +246,7 @@ impl Scanner {
                 .and_then(|s| s.to_str())
                 .unwrap_or("Unnamed Playlist")
                 .to_string(),
-            source: PlaylistSource::Folder(path),
+            source: PlaylistSource::Folder,
             tracks: track_ids,
         };
 

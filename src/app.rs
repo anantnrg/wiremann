@@ -4,6 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::cacher::Cacher;
 use crate::{
     audio::engine::Audio,
     controller::{state::AppState, Controller},
@@ -29,6 +30,7 @@ pub fn run() -> Result<(), AppError> {
 
         let (mut audio, audio_tx, audio_rx) = Audio::new();
         let (mut scanner, scanner_tx, scanner_rx) = Scanner::new();
+        let (mut cacher, cacher_tx, cacher_rx) = Cacher::new();
 
         let mut controller = Controller::new(
             cx.new(|_| AppState::default()),
@@ -36,6 +38,8 @@ pub fn run() -> Result<(), AppError> {
             audio_rx,
             scanner_tx,
             scanner_rx,
+            cacher_tx,
+            cacher_rx,
         );
 
         thread::spawn(move || {
@@ -47,6 +51,12 @@ pub fn run() -> Result<(), AppError> {
         thread::spawn(move || {
             if let Err(e) = scanner.run() {
                 eprintln!("Scanner thread crashed with error: {:?}", e);
+            }
+        });
+
+        thread::spawn(move || {
+            if let Err(e) = cacher.run() {
+                eprintln!("Cacher thread crashed with error: {:?}", e);
             }
         });
 
@@ -94,6 +104,12 @@ pub fn run() -> Result<(), AppError> {
                                     });
                                 }
 
+                                while let Ok(e) = controller.cacher_rx.try_recv() {
+                                    arc_res.update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, Event::Cacher(e));
+                                    });
+                                }
+
                                 if last_pos_request.elapsed() >= Duration::from_millis(256) {
                                     let _ = controller.get_pos();
 
@@ -126,6 +142,8 @@ pub fn run() -> Result<(), AppError> {
 
                                     Event::Scanner(event) => controller_resclone
                                         .handle_scanner_event(cx, event, view_clone.clone()),
+
+                                    Event::Cacher(event) => controller_resclone.handle_cacher_event(cx, event, view_clone.clone())
                                 }
                             {
                                 eprintln!("controller error: {e:?}");

@@ -2,7 +2,7 @@ use crate::controller::commands::CacherCommand;
 use crate::controller::events::CacherEvent;
 use crate::controller::state::{AppState, LibraryState, PlaybackState, PlaybackStatus, QueueState};
 use crate::errors::CacherError;
-use crate::library::playlists::PlaylistId;
+use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
 use crate::library::{Track, TrackId};
 use bitcode::{Decode, Encode};
 use crossbeam_channel::{Receiver, Sender};
@@ -62,12 +62,8 @@ struct CachedPlaylist {
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
-struct CachedTracks {
+struct CachedLibraryState {
     pub tracks: HashMap<[u8; 32], CachedTrack>,
-}
-
-#[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
-struct CachedPlaylists {
     pub playlists: HashMap<String, CachedPlaylist>,
 }
 
@@ -122,7 +118,37 @@ impl From<CachedTrack> for Track {
     }
 }
 
-impl From<&LibraryState> for CachedTracks {
+impl From<&Playlist> for CachedPlaylist {
+    fn from(playlist: &Playlist) -> Self {
+        CachedPlaylist {
+            id: playlist.id.0.to_string(),
+            name: playlist.name.clone(),
+            source: match playlist.source {
+                PlaylistSource::Folder => CachedPlaylistSource::Folder,
+                PlaylistSource::Generated => CachedPlaylistSource::Generated,
+                PlaylistSource::User => CachedPlaylistSource::User,
+            },
+            tracks: playlist.tracks.iter().map(|t| t.0).collect(),
+        }
+    }
+}
+
+impl From<CachedPlaylist> for Playlist {
+    fn from(cached_playlist: CachedPlaylist) -> Self {
+        Playlist {
+            id: PlaylistId(Uuid::from_str(cached_playlist.id.as_str()).unwrap_or_default()),
+            name: cached_playlist.name,
+            source: match cached_playlist.source {
+                CachedPlaylistSource::Folder => PlaylistSource::Folder,
+                CachedPlaylistSource::Generated => PlaylistSource::Generated,
+                CachedPlaylistSource::User => PlaylistSource::User,
+            },
+            tracks: cached_playlist.tracks.iter().map(|t| TrackId(*t)).collect(),
+        }
+    }
+}
+
+impl From<&LibraryState> for CachedLibraryState {
     fn from(state: &LibraryState) -> Self {
         let tracks = state
             .tracks
@@ -130,12 +156,18 @@ impl From<&LibraryState> for CachedTracks {
             .map(|(id, track)| (id.0, CachedTrack::from(track.as_ref())))
             .collect();
 
-        Self { tracks }
+        let playlists = state
+            .playlists
+            .iter()
+            .map(|(id, playlist)| (id.0.to_string(), CachedPlaylist::from(playlist)))
+            .collect();
+
+        Self { tracks, playlists }
     }
 }
 
-impl From<CachedTracks> for LibraryState {
-    fn from(cache: CachedTracks) -> Self {
+impl From<CachedLibraryState> for LibraryState {
+    fn from(cache: CachedLibraryState) -> Self {
         let tracks = cache
             .tracks
             .into_iter()
@@ -145,9 +177,18 @@ impl From<CachedTracks> for LibraryState {
             })
             .collect();
 
+        let playlists = cache
+            .playlists
+            .into_iter()
+            .map(|(id, playlist)| {
+                let playlist: Playlist = playlist.into();
+                (PlaylistId(Uuid::from_str(id.as_str()).unwrap_or_default()), playlist)
+            })
+            .collect();
+
         Self {
             tracks,
-            playlists: HashMap::new(),
+            playlists,
         }
     }
 }
@@ -240,15 +281,15 @@ impl Cacher {
     }
 
     fn write_library_state(&self, state: &LibraryState) -> Result<(), CacherError> {
-        let dir = self.base_dir.join("library");
-        fs::create_dir_all(&dir)?;
+        let tmp_path = self.base_dir.join("library.tmp");
+        let final_path = self.base_dir.join("library.bin");
 
-        let tracks = CachedTracks::from(state);
+        let library = CachedLibraryState::from(state);
 
         write_cache(
-            &dir.join("tracks.tmp"),
-            &dir.join("tracks.bin"),
-            tracks,
+            &tmp_path,
+            &final_path,
+            library,
         )?;
 
         Ok(())
@@ -338,6 +379,21 @@ impl Cacher {
         })
     }
 
+    fn read_library_state(&self) -> Result<LibraryState, CacherError> {
+        let path = self.base_dir
+            .join("library")
+            .join("tracks.bin");
+
+        if !path.exists() {
+            return Ok(LibraryState::default());
+        }
+
+        match read_cache::<CachedLibraryState>(&path)? {
+            Some(cached_state) => Ok(LibraryState::from(cached_state)),
+            None => Ok(LibraryState::default()),
+        }
+    }
+
     fn read_queue_state(&self) -> Result<QueueState, CacherError> {
         let path = self.base_dir.join("queue.bin");
 
@@ -345,8 +401,10 @@ impl Cacher {
             return Ok(QueueState::default());
         }
 
-        let cached: CachedQueueState = read_cache(&path)?;
-        Ok(cached.into())
+        match read_cache::<CachedQueueState>(&path)? {
+            Some(cached_state) => Ok(QueueState::from(cached_state)),
+            None => Ok(QueueState::default()),
+        }
     }
 
     fn read_playback_state(&self) -> Result<PlaybackState, CacherError> {
@@ -388,7 +446,7 @@ fn write_cache<T: Encode>(
 
 fn read_cache<T>(
     path: &PathBuf,
-) -> Result<T, CacherError>
+) -> Result<Option<T>, CacherError>
 where
     T: for<'a> Decode<'a>,
 {
@@ -404,5 +462,5 @@ where
         return Ok(None);
     }
 
-    Ok(file.payload)
+    Ok(Some(file.payload))
 }
