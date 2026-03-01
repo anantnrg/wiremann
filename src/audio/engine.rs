@@ -61,14 +61,13 @@ impl Audio {
 
         self.player = Player::connect_new(self.stream_handle.mixer());
 
-        let file = File::open(path.clone()).unwrap();
-        let len = file.metadata().unwrap().len();
+        let file = File::open(path.clone())?;
+        let len = file.metadata()?.len();
         let source = DecoderBuilder::new()
             .with_data(file)
             .with_byte_len(len)
             .with_seekable(true)
-            .build()
-            .unwrap();
+            .build()?;
 
         self.player.append(source);
 

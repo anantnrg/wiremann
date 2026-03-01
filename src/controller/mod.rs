@@ -313,6 +313,10 @@ impl Controller {
     pub fn check_track_ended(&self) {
         let _ = self.audio_tx.send(AudioCommand::CheckTrackEnded);
     }
+
+    pub fn load_cached_app_state(&self) {
+        let _ = self.cacher_tx.send(CacherCommand::GetAppState);
+    }
 }
 
 impl Global for Controller {}

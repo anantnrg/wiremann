@@ -79,7 +79,7 @@ impl Wiremann {
 
         let controller = cx.global::<Controller>().clone();
 
-        controller.load_audio("E:\\music\\$UMH4RD$HIT\\002 - Push Ups.mp3".into());
+        controller.load_audio("E:\\music\\$UMH4RD$H1T\\002 - Push Ups.mp3".into());
 
         let tracks = controller
             .state
@@ -90,7 +90,8 @@ impl Wiremann {
             .cloned()
             .collect();
         cx.global::<Controller>()
-            .scan_folder(tracks, "E:\\music\\$UMH4RD$HIT".into());
+            .scan_folder(tracks, "E:\\music\\$UMH4RD$H1T".into());
+
 
         Self {
             titlebar,

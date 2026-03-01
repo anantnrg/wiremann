@@ -19,6 +19,10 @@ pub enum AudioError {
     LoadFile(String),
     #[error("Error occurred while seeking: `{0}`")]
     SeekError(#[from] SeekError),
+    #[error("I/O Error occurred: `{0}`")]
+    IoError(#[from] std::io::Error),
+    #[error("Rodio Decoder Error occurred: `{0}`")]
+    RodioDecoderError(#[from] rodio::decoder::DecoderError),
 }
 
 #[derive(Error, Debug)]
