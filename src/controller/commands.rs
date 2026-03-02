@@ -1,3 +1,4 @@
+use crate::cacher::ImageKind;
 use crate::controller::state::AppState;
 use crate::library::TrackId;
 use std::collections::HashSet;
@@ -28,15 +29,14 @@ pub enum ScannerCommand {
 
 pub enum CacherCommand {
     GetAppState,
-    GetThumbnail(TrackId),
-    GetAlbumArt(Vec<TrackId>),
+    GetAlbumArt(TrackId),
+    GetThumbnails(Vec<TrackId>),
     WriteAppState(AppState),
-    WriteThumbnail {
+    WriteImage {
         id: TrackId,
-        image: Vec<u8>,
-    },
-    WriteAlbumArt {
-        id: TrackId,
+        kind: ImageKind,
+        width: u32,
+        height: u32,
         image: Vec<u8>,
     },
 }

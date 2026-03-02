@@ -6,7 +6,10 @@ use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
 use crate::library::{Track, TrackId};
 use bitcode::{Decode, Encode};
 use crossbeam_channel::{select, tick, Receiver, Sender};
+use gpui::RenderImage;
+use image::Frame;
 use serde::{Deserialize, Serialize};
+use smallvec::smallvec;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
@@ -27,6 +30,8 @@ enum CacheJob {
     WriteImage {
         id: TrackId,
         kind: ImageKind,
+        width: u32,
+        height: u32,
         image: Vec<u8>,
     },
     LoadAppState,
@@ -40,7 +45,7 @@ struct CacheFile<T> {
     payload: T,
 }
 
-enum ImageKind {
+pub enum ImageKind {
     Thumbnail,
     AlbumArt,
 }
@@ -64,6 +69,13 @@ enum CachedPlaylistSource {
     #[default]
     Folder,
     Generated,
+}
+
+#[derive(Encode, Decode)]
+struct CachedImage {
+    width: u32,
+    height: u32,
+    image: Vec<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
@@ -288,11 +300,15 @@ impl Cacher {
                 CacherCommand::WriteAppState(app_state) => {
                     let _ = app_state_tx.send(CacheJob::WriteAppState(app_state));
                 }
-                CacherCommand::WriteAlbumArt { id, image } => {
-                    let _ = album_art_tx.send(CacheJob::WriteImage { id, kind: ImageKind::AlbumArt, image });
-                }
-                CacherCommand::WriteThumbnail { id, image } => {
-                    let _ = thumb_tx.send(CacheJob::WriteImage { id, kind: ImageKind::Thumbnail, image });
+                CacherCommand::WriteImage { id, kind, width, height, image } => {
+                    match kind {
+                        ImageKind::AlbumArt => {
+                            let _ = album_art_tx.send(CacheJob::WriteImage { id, kind: ImageKind::AlbumArt, width, height, image });
+                        }
+                        ImageKind::Thumbnail => {
+                            let _ = thumb_tx.send(CacheJob::WriteImage { id, kind: ImageKind::Thumbnail, width, height, image });
+                        }
+                    }
                 }
                 CacherCommand::GetAppState => {
                     let _ = app_state_tx.send(CacheJob::LoadAppState);
@@ -366,7 +382,7 @@ impl Cacher {
             .join(name)
     }
 
-    fn write_cached_image(&self, id: TrackId, kind: ImageKind, bytes: &[u8]) -> Result<(), CacherError> {
+    fn write_cached_image(&self, id: TrackId, kind: ImageKind, cached_image: CachedImage) -> Result<(), CacherError> {
         let final_path = self.cached_image_path(id, kind);
         let tmp_path = final_path.with_extension("tmp");
 
@@ -376,7 +392,9 @@ impl Cacher {
 
         fs::create_dir_all(final_path.parent().unwrap())?;
 
-        let compressed = zstd::encode_all(bytes, 3)?;
+        let bytes = bitcode::encode(&cached_image);
+
+        let compressed = zstd::encode_all(&bytes, 4)?;
 
         {
             let mut file = fs::File::create(&tmp_path)?;
@@ -442,6 +460,26 @@ impl Cacher {
         Ok(cached.into())
     }
 
+    fn read_cached_image(&self, id: TrackId, kind: ImageKind) -> Result<Arc<RenderImage>, CacherError> {
+        let path = self.cached_image_path(id.clone(), kind);
+
+        let bytes = fs::read(path)?;
+
+        let decompressed = zstd::decode_all(&bytes)?;
+
+        let cached_image: CachedImage = bitcode::decode(&decompressed)?;
+
+        match image::RgbaImage::from_raw(cached_image.width, cached_image.height, cached_image.image) {
+            Some(image) => {
+                let frame = Frame::new(image);
+
+                Ok(Arc::new(RenderImage::new(smallvec![frame])))
+            }
+            None => Err("failed to decode image")?,
+        }
+    }
+
+
     fn spawn_app_state_worker(&self, rx: Receiver<CacheJob>) -> Result<(), CacherError> {
         let cacher = self.clone();
 
@@ -484,8 +522,13 @@ impl Cacher {
                     select! {
                         recv(thumb_rx) -> job => {
                             match job {
-                                Ok(CacheJob::WriteImage {id, kind, image}) => {
-                                    cacher.write_cached_image(id, kind, &image)?;
+                                Ok(CacheJob::WriteImage {id, kind, width, height, image}) => {
+                                    let cached_image = CachedImage {
+                                        width,
+                                        height,
+                                        image
+                                    };
+                                    cacher.write_cached_image(id, kind, cached_image)?;
                                 }
                                 Ok(CacheJob::LoadThumbnails(ids)) => {
                                     for id in ids {
