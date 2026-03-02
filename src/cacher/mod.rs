@@ -12,13 +12,14 @@ use serde::{Deserialize, Serialize};
 use smallvec::smallvec;
 use std::collections::HashMap;
 use std::fs;
-use std::io::Write;
+use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct Cacher {
     pub tx: Sender<CacherEvent>,
     pub rx: Receiver<CacherCommand>,
@@ -394,7 +395,7 @@ impl Cacher {
 
         let bytes = bitcode::encode(&cached_image);
 
-        let compressed = zstd::encode_all(&bytes, 4)?;
+        let compressed = zstd::encode_all(Cursor::new(bytes), 4)?;
 
         {
             let mut file = fs::File::create(&tmp_path)?;
@@ -460,12 +461,12 @@ impl Cacher {
         Ok(cached.into())
     }
 
-    fn read_cached_image(&self, id: TrackId, kind: ImageKind) -> Result<Arc<RenderImage>, CacherError> {
+    fn read_cached_image(&self, id: TrackId, kind: ImageKind) -> Result<Option<Arc<RenderImage>>, CacherError> {
         let path = self.cached_image_path(id.clone(), kind);
 
         let bytes = fs::read(path)?;
 
-        let decompressed = zstd::decode_all(&bytes)?;
+        let decompressed = zstd::decode_all(Cursor::new(bytes))?;
 
         let cached_image: CachedImage = bitcode::decode(&decompressed)?;
 
@@ -473,9 +474,9 @@ impl Cacher {
             Some(image) => {
                 let frame = Frame::new(image);
 
-                Ok(Arc::new(RenderImage::new(smallvec![frame])))
+                Ok(Some(Arc::new(RenderImage::new(smallvec![frame]))))
             }
-            None => Err("failed to decode image")?,
+            None => Ok(None),
         }
     }
 
@@ -486,18 +487,27 @@ impl Cacher {
         std::thread::spawn(move || {
             loop {
                 while let Ok(job) = rx.recv() {
-                    match job {
-                        CacheJob::WriteAppState(state) => {
-                            cacher.write_library_state(&state.library)?;
-                            cacher.write_playback_state(&state.playback)?;
-                            cacher.write_queue_state(&state.queue)?;
-                        }
-                        CacheJob::LoadAppState => {
-                            let state = cacher.load_app_state()?;
+                    let result: Result<(), CacherError> = (|| {
+                        match job {
+                            CacheJob::WriteAppState(state) => {
+                                cacher.write_library_state(&state.library)?;
+                                cacher.write_playback_state(&state.playback)?;
+                                cacher.write_queue_state(&state.queue)?;
+                            }
 
-                            let _ = cacher.tx.send(CacherEvent::AppState(state));
+                            CacheJob::LoadAppState => {
+                                let state = cacher.load_app_state()?;
+                                let _ = cacher.tx.send(CacherEvent::AppState(state));
+                            }
+
+                            _ => {}
                         }
-                        _ => {}
+
+                        Ok(())
+                    })();
+
+                    if let Err(err) = result {
+                        eprintln!("Error occurred: {:#?}", err);
                     }
                 }
             }
@@ -528,19 +538,55 @@ impl Cacher {
                                         height,
                                         image
                                     };
-                                    cacher.write_cached_image(id, kind, cached_image)?;
+                                    match cacher.write_cached_image(id, kind, cached_image) {
+                                        Ok(_) => {}
+                                        Err(err) => {eprintln!("Error occurred: {:#?}", err);}
+                                    }
                                 }
                                 Ok(CacheJob::LoadThumbnails(ids)) => {
                                     for id in ids {
+                                        match cacher.read_cached_image(id, ImageKind::Thumbnail) {
+                                            Ok(Some(image)) => {batch.insert(id, image);},
+                                            Err(err) => {eprintln!("Error occurred: {:#?}", err);}
+                                            _ => {}
+                                        }
+
+                                        if batch.len() >= 16 {
+                                            let _ = cacher.tx.send(CacherEvent::Thumbnails(std::mem::take(&mut batch)));
+                                        }
                                     }
                                 }
                                 _ => {}
+                            }
+                        }
+
+                        recv(ticker) -> _ => {
+                            if !batch.is_empty() {
+                                let _ = cacher.tx.send(CacherEvent::Thumbnails(std::mem::take(&mut batch)));
                             }
                         }
                     }
                 }
             });
         }
+
+        Ok(())
+    }
+
+    fn spawn_album_art_worker(&self, rx: Receiver<CacheJob>) -> Result<(), CacherError> {
+        let cacher = Arc::new(self.clone().to_owned());
+
+        std::thread::spawn(move || {
+            while let Ok(CacheJob::LoadAlbumArt(id)) = rx.recv() {
+                match cacher.read_cached_image(id, ImageKind::AlbumArt) {
+                    Ok(Some(image)) => {
+                        let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
+                    }
+                    Err(e) => eprintln!("Error loading album art: {}", e),
+                    _ => {}
+                }
+            }
+        });
 
         Ok(())
     }
