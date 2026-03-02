@@ -5,7 +5,7 @@ use crate::errors::CacherError;
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
 use crate::library::{Track, TrackId};
 use bitcode::{Decode, Encode};
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{select, tick, Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -13,6 +13,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use uuid::Uuid;
 
 pub struct Cacher {
@@ -285,9 +286,6 @@ impl Cacher {
         loop {
             match self.rx.recv()? {
                 CacherCommand::WriteAppState(app_state) => {
-                    // self.write_library_state(&app_state.library)?;
-                    // self.write_playback_state(&app_state.playback)?;
-                    // self.write_queue_state(&app_state.queue)?;
                     let _ = app_state_tx.send(CacheJob::WriteAppState(app_state));
                 }
                 CacherCommand::WriteAlbumArt { id, image } => {
@@ -442,6 +440,66 @@ impl Cacher {
         let cached: CachedPlaybackState = ron::de::from_str(&ron)?;
 
         Ok(cached.into())
+    }
+
+    fn spawn_app_state_worker(&self, rx: Receiver<CacheJob>) -> Result<(), CacherError> {
+        let cacher = self.clone();
+
+        std::thread::spawn(move || {
+            loop {
+                while let Ok(job) = rx.recv() {
+                    match job {
+                        CacheJob::WriteAppState(state) => {
+                            cacher.write_library_state(&state.library)?;
+                            cacher.write_playback_state(&state.playback)?;
+                            cacher.write_queue_state(&state.queue)?;
+                        }
+                        CacheJob::LoadAppState => {
+                            let state = cacher.load_app_state()?;
+
+                            let _ = cacher.tx.send(CacherEvent::AppState(state));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        });
+
+        Ok(())
+    }
+
+    fn spawn_thumbnail_workers(&self, rx: Receiver<CacheJob>) -> Result<(), CacherError> {
+        let ticker = tick(Duration::from_millis(128));
+        let threads = num_cpus::get() - 2;
+
+        for _ in 0..threads {
+            let cacher = self.clone();
+            let ticker = ticker.clone();
+            let thumb_rx = rx.clone();
+
+            std::thread::spawn(move || {
+                let mut batch = HashMap::with_capacity(16);
+
+                loop {
+                    select! {
+                        recv(thumb_rx) -> job => {
+                            match job {
+                                Ok(CacheJob::WriteImage {id, kind, image}) => {
+                                    cacher.write_cached_image(id, kind, &image)?;
+                                }
+                                Ok(CacheJob::LoadThumbnails(ids)) => {
+                                    for id in ids {
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        Ok(())
     }
 }
 
