@@ -30,9 +30,9 @@ pub fn run() -> Result<(), AppError> {
 
         let (mut audio, audio_tx, audio_rx) = Audio::new();
         let (mut scanner, scanner_tx, scanner_rx) = Scanner::new();
-        let (mut cacher, cacher_tx, cacher_rx) = Cacher::new();
+        let (cacher, cacher_tx, cacher_rx) = Cacher::new();
 
-        let mut controller = Controller::new(
+        let controller = Controller::new(
             cx.new(|_| AppState::default()),
             audio_tx,
             audio_rx,

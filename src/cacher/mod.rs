@@ -527,6 +527,7 @@ impl Cacher {
 
             std::thread::spawn(move || {
                 let mut batch = HashMap::with_capacity(16);
+                let mut missing = Vec::new();
 
                 loop {
                     select! {
@@ -547,12 +548,15 @@ impl Cacher {
                                     for id in ids {
                                         match cacher.read_cached_image(id, ImageKind::Thumbnail) {
                                             Ok(Some(image)) => {batch.insert(id, image);},
-                                            Err(err) => {eprintln!("Error occurred: {:#?}", err);}
-                                            _ => {}
+                                            Ok(None) | Err(_) => {missing.push(id);},
                                         }
 
                                         if batch.len() >= 16 {
                                             let _ = cacher.tx.send(CacherEvent::Thumbnails(std::mem::take(&mut batch)));
+                                        }
+
+                                        if missing.len() >= 16 {
+                                            let _ = cacher.tx.send(CacherEvent::MissingThumbnails(std::mem::take(&mut missing)));
                                         }
                                     }
                                 }
@@ -563,6 +567,10 @@ impl Cacher {
                         recv(ticker) -> _ => {
                             if !batch.is_empty() {
                                 let _ = cacher.tx.send(CacherEvent::Thumbnails(std::mem::take(&mut batch)));
+                            }
+
+                            if !missing.is_empty() {
+                                let _ = cacher.tx.send(CacherEvent::MissingThumbnails(std::mem::take(&mut missing)));
                             }
                         }
                     }

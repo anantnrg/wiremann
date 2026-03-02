@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod events;
 pub mod state;
+use crate::cacher::ImageKind;
 use crate::controller::commands::CacherCommand;
 use crate::controller::events::CacherEvent;
 use crate::library::TrackId;
@@ -135,6 +136,9 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         match event {
             ScannerEvent::Tracks(tracks) => {
+                let ids: HashSet<_> = tracks.iter().map(|t| t.id.clone()).collect();
+
+                let _ = self.cacher_tx.send(CacherCommand::GetThumbnails(ids));
                 self.state.update(cx, |this, cx| {
                     this.library.tracks.reserve(tracks.len());
                     for track in tracks {
@@ -170,6 +174,24 @@ impl Controller {
                 let mut thumbnail_cache = cx.global_mut::<ImageCache>();
 
                 thumbnail_cache.thumbs.extend(thumbnails.clone());
+
+                let thumbnails = thumbnails.clone();
+
+                let tx = self.cacher_tx.clone();
+
+                cx.background_executor().spawn(async move {
+                    for (id, image) in thumbnails {
+                        let width = image.size(0).width.0 as u32;
+                        let height = image.size(0).height.0 as u32;
+                        match image.as_bytes(0) {
+                            Some(image) => {
+                                let image = image.to_vec();
+                                let _ = tx.send(CacherCommand::WriteImage { id, kind: ImageKind::Thumbnail, width, height, image });
+                            }
+                            None => {}
+                        }
+                    }
+                }).detach();
             }
         }
         Ok(())
@@ -183,6 +205,22 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         match event {
             CacherEvent::AppState(state) => self.state.update(cx, |this, cx| *this = state.clone()),
+            CacherEvent::Thumbnails(thumbnails) => {
+                let mut thumbnail_cache = cx.global_mut::<ImageCache>();
+                thumbnail_cache.thumbs.extend(thumbnails.clone());
+            }
+            CacherEvent::MissingThumbnails(ids) => {
+                let tracks = self.state.read(cx).library.tracks.clone();
+
+                for id in ids {
+                    match tracks.get(&id) {
+                        Some(track) => {
+                            let _ = self.scanner_tx.send(ScannerCommand::GetThumbnail { path: track.path.clone(), track_id: id.clone() });
+                        }
+                        None => {}
+                    }
+                }
+            }
             _ => {}
         }
         Ok(())
@@ -217,7 +255,9 @@ impl Controller {
     pub fn scan_folder(&self, tracks: HashSet<TrackId>, path: PathBuf) {
         let _ = self
             .scanner_tx
-            .send(ScannerCommand::ScanFolder { path, tracks });
+            .send(ScannerCommand::ScanFolder { path, tracks: tracks.clone() });
+
+        let _ = self.cacher_tx.send(CacherCommand::GetThumbnails(tracks));
     }
 
     pub fn play(&self) {

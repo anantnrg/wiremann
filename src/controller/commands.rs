@@ -24,13 +24,17 @@ pub enum ScannerCommand {
         path: PathBuf,
         tracks: HashSet<TrackId>,
     },
+    GetThumbnail {
+        path: PathBuf,
+        track_id: TrackId,
+    },
     GetCurrentAlbumArt(PathBuf),
 }
 
 pub enum CacherCommand {
     GetAppState,
     GetAlbumArt(TrackId),
-    GetThumbnails(Vec<TrackId>),
+    GetThumbnails(HashSet<TrackId>),
     WriteAppState(AppState),
     WriteImage {
         id: TrackId,
