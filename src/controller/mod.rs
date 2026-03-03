@@ -236,6 +236,15 @@ impl Controller {
 
                 cx.notify(view.entity_id());
             }
+            CacherEvent::MissingAlbumArt(path) => {
+                let _ = self.scanner_tx.send(ScannerCommand::GetCurrentAlbumArt(path.clone()));
+            }
+            CacherEvent::MissingThumbnails(ids) => {
+                for id in ids {
+                    let path = self.state.read(cx).library.tracks.get(id).unwrap_or_default().path.clone();
+                    let _ = self.scanner_tx.send(ScannerCommand::GetTrackMetadata {path, track_id: id.clone()});
+                }
+            }
             _ => {}
         }
         Ok(())
@@ -244,8 +253,8 @@ impl Controller {
     pub fn load_audio(&self, path: PathBuf) {
         let _ = self.audio_tx.send(AudioCommand::Load(path.clone()));
         let _ = self
-            .scanner_tx
-            .send(ScannerCommand::GetCurrentAlbumArt(path));
+            .cacher_tx
+            .send(CacherCommand::GetAlbumArt(path));
     }
 
     pub fn load_queue_current(&self, cx: &App) {

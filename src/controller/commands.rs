@@ -29,7 +29,7 @@ pub enum ScannerCommand {
 
 pub enum CacherCommand {
     GetAppState,
-    GetAlbumArt(TrackId),
+    GetAlbumArt(PathBuf),
     GetThumbnails(HashSet<TrackId>),
     WriteAppState(AppState),
     WriteImage {

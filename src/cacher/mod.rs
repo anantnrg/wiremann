@@ -3,7 +3,7 @@ use crate::controller::events::CacherEvent;
 use crate::controller::state::{AppState, LibraryState, PlaybackState, PlaybackStatus, QueueState};
 use crate::errors::CacherError;
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{Track, TrackId};
+use crate::library::{gen_track_id, Track, TrackId};
 use bitcode::{Decode, Encode};
 use crossbeam_channel::{select, tick, Receiver, Sender};
 use gpui::RenderImage;
@@ -37,7 +37,7 @@ enum CacheJob {
     },
     LoadAppState,
     LoadThumbnails(HashSet<TrackId>),
-    LoadAlbumArt(TrackId),
+    LoadAlbumArt(PathBuf),
 }
 
 #[derive(Encode, Decode)]
@@ -317,10 +317,9 @@ impl Cacher {
                 CacherCommand::GetThumbnails(ids) => {
                     let _ = thumb_tx.send(CacheJob::LoadThumbnails(ids));
                 }
-                CacherCommand::GetAlbumArt(id) => {
-                    let _ = album_art_tx.send(CacheJob::LoadAlbumArt(id));
+                CacherCommand::GetAlbumArt(path) => {
+                    let _ = album_art_tx.send(CacheJob::LoadAlbumArt(path));
                 }
-                _ => {}
             }
         }
     }
@@ -591,12 +590,38 @@ impl Cacher {
         let cacher = Arc::new(self.clone().to_owned());
 
         std::thread::spawn(move || {
-            while let Ok(CacheJob::LoadAlbumArt(id)) = rx.recv() {
-                match cacher.read_cached_image(id, ImageKind::AlbumArt) {
-                    Ok(Some(image)) => {
-                        let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
+            while let Ok(job) = rx.recv() {
+                match job {
+                    CacheJob::LoadAlbumArt(path) =>
+                        {
+                            if let Ok(id) = gen_track_id(&path) {
+                                match cacher.read_cached_image(id, ImageKind::AlbumArt) {
+                                    Ok(Some(image)) => {
+                                        let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Error loading album art: {}", e);
+                                        let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(path));
+                                    }
+                                    _ => {
+                                        let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(path));
+                                    }
+                                }
+                            } else {
+                                let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(path));
+                            }
+                        }
+                    CacheJob::WriteImage { id, kind, width, height, image } => {
+                        let cached_image = CachedImage {
+                            width,
+                            height,
+                            image,
+                        };
+                        match cacher.write_cached_image(id, kind, cached_image) {
+                            Ok(_) => {}
+                            Err(err) => { eprintln!("Error occurred: {:#?}", err); }
+                        }
                     }
-                    Err(e) => eprintln!("Error loading album art: {}", e),
                     _ => {}
                 }
             }

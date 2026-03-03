@@ -28,4 +28,5 @@ pub enum CacherEvent {
     AlbumArt(Arc<RenderImage>),
     Thumbnails(HashMap<TrackId, Arc<RenderImage>>),
     MissingThumbnails(Vec<TrackId>),
+    MissingAlbumArt(PathBuf),
 }
