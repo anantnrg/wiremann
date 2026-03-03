@@ -448,7 +448,7 @@ impl Cacher {
     }
 
     fn read_library_state(&self) -> Result<LibraryState, CacherError> {
-        let path = self.base_dir.join("library").join("tracks.bin");
+        let path = self.base_dir.join("library.bin");
 
         if !path.exists() {
             return Ok(LibraryState::default());
@@ -474,7 +474,7 @@ impl Cacher {
     }
 
     fn read_playback_state(&self) -> Result<PlaybackState, CacherError> {
-        let path = self.base_dir.join("session.bin");
+        let path = self.base_dir.join("session.ron");
 
         if !path.exists() {
             return Ok(PlaybackState::default());

@@ -4,6 +4,7 @@ pub mod state;
 use crate::cacher::ImageKind;
 use crate::controller::commands::CacherCommand;
 use crate::controller::events::CacherEvent;
+use crate::controller::state::PlaybackStatus;
 use crate::library::TrackId;
 use crate::ui::helpers::secs_to_slider;
 use crate::ui::wiremann::Wiremann;
@@ -236,7 +237,26 @@ impl Controller {
         view: Entity<Wiremann>,
     ) -> Result<(), ControllerError> {
         match event {
-            CacherEvent::AppState(state) => self.state.update(cx, |this, _| *this = state.clone()),
+            CacherEvent::AppState(state) => {
+                println!("playback state: {:?}", state.playback);
+                let playback_state = state.playback.clone();
+                self.state.update(cx, |this, cx| {
+                    *this = state.clone();
+                });
+
+                self.load_queue_current(cx);
+                self.set_volume(playback_state.volume, cx);
+                if playback_state.mute {
+                    self.set_mute(cx);
+                }
+                self.seek(playback_state.position);
+
+                match playback_state.status {
+                    PlaybackStatus::Stopped => self.stop(),
+                    PlaybackStatus::Paused => self.pause(),
+                    PlaybackStatus::Playing => self.play(),
+                }
+            }
             CacherEvent::Thumbnails(thumbnails) => {
                 let thumbnail_cache = cx.global_mut::<ImageCache>();
                 thumbnail_cache.thumbs.extend(thumbnails.clone());
