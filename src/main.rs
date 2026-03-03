@@ -2,13 +2,13 @@
 
 pub mod app;
 pub mod audio;
+mod cacher;
 pub mod controller;
 pub mod errors;
 pub mod library;
+mod queue;
 pub mod scanner;
 pub mod ui;
-mod queue;
-mod cacher;
 
 use errors::AppError;
 

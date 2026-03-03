@@ -7,7 +7,7 @@ use crate::{
     controller::{commands::AudioCommand, events::AudioEvent},
     errors::AudioError,
 };
-use rodio::{decoder::DecoderBuilder, DeviceSinkBuilder, MixerDeviceSink, Player};
+use rodio::{DeviceSinkBuilder, MixerDeviceSink, Player, decoder::DecoderBuilder};
 
 pub struct Audio {
     player: Player,

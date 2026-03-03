@@ -1,11 +1,11 @@
 use crate::{
-    controller::state::PlaybackStatus,
     controller::Controller,
+    controller::state::PlaybackStatus,
     ui::{
         components::controlbar::ControlBar,
         components::image_cache::ImageCache,
         components::queue::Queue,
-        components::scrollbar::{floating_scrollbar, RightPad},
+        components::scrollbar::{RightPad, floating_scrollbar},
         icons::Icons,
         theme::Theme,
     },

@@ -1,11 +1,11 @@
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{gen_track_id, Track};
+use crate::library::{Track, gen_track_id};
 use crate::{
     controller::{commands::ScannerCommand, events::ScannerEvent},
     errors::ScannerError,
     library::TrackId,
 };
-use crossbeam_channel::{select, tick, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, select, tick};
 use gpui::RenderImage;
 use image::imageops::thumbnail;
 use image::{Frame, ImageReader};

@@ -3,9 +3,9 @@ use crate::controller::events::CacherEvent;
 use crate::controller::state::{AppState, LibraryState, PlaybackState, PlaybackStatus, QueueState};
 use crate::errors::CacherError;
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{gen_track_id, Track, TrackId};
+use crate::library::{Track, TrackId, gen_track_id};
 use bitcode::{Decode, Encode};
-use crossbeam_channel::{select, tick, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, select, tick};
 use gpui::RenderImage;
 use image::Frame;
 use serde::{Deserialize, Serialize};
@@ -208,14 +208,14 @@ impl From<CachedLibraryState> for LibraryState {
             .into_iter()
             .map(|(id, playlist)| {
                 let playlist: Playlist = playlist.into();
-                (PlaylistId(Uuid::from_str(id.as_str()).unwrap_or_default()), playlist)
+                (
+                    PlaylistId(Uuid::from_str(id.as_str()).unwrap_or_default()),
+                    playlist,
+                )
             })
             .collect();
 
-        Self {
-            tracks,
-            playlists,
-        }
+        Self { tracks, playlists }
     }
 }
 
@@ -238,7 +238,8 @@ impl From<CachedPlaybackState> for PlaybackState {
     fn from(c: CachedPlaybackState) -> Self {
         Self {
             current: c.current.map(TrackId),
-            current_playlist: c.current_playlist
+            current_playlist: c
+                .current_playlist
                 .and_then(|s| Some(PlaylistId(Uuid::from_str(&s).unwrap_or_default()))),
             status: c.status,
             position: c.position,
@@ -275,7 +276,10 @@ impl Cacher {
         let (cmd_tx, cmd_rx) = crossbeam_channel::unbounded();
         let (event_tx, event_rx) = crossbeam_channel::unbounded();
 
-        let base_dir = dirs::audio_dir().unwrap_or_default().join("wiremann").join("cache");
+        let base_dir = dirs::audio_dir()
+            .unwrap_or_default()
+            .join("wiremann")
+            .join("cache");
         fs::create_dir_all(base_dir.clone()).expect("failed to create cache directory");
 
         let cacher = Cacher {
@@ -301,16 +305,32 @@ impl Cacher {
                 CacherCommand::WriteAppState(app_state) => {
                     let _ = app_state_tx.send(CacheJob::WriteAppState(app_state));
                 }
-                CacherCommand::WriteImage { id, kind, width, height, image } => {
-                    match kind {
-                        ImageKind::AlbumArt => {
-                            let _ = album_art_tx.send(CacheJob::WriteImage { id, kind: ImageKind::AlbumArt, width, height, image });
-                        }
-                        ImageKind::Thumbnail => {
-                            let _ = thumb_tx.send(CacheJob::WriteImage { id, kind: ImageKind::Thumbnail, width, height, image });
-                        }
+                CacherCommand::WriteImage {
+                    id,
+                    kind,
+                    width,
+                    height,
+                    image,
+                } => match kind {
+                    ImageKind::AlbumArt => {
+                        let _ = album_art_tx.send(CacheJob::WriteImage {
+                            id,
+                            kind: ImageKind::AlbumArt,
+                            width,
+                            height,
+                            image,
+                        });
                     }
-                }
+                    ImageKind::Thumbnail => {
+                        let _ = thumb_tx.send(CacheJob::WriteImage {
+                            id,
+                            kind: ImageKind::Thumbnail,
+                            width,
+                            height,
+                            image,
+                        });
+                    }
+                },
                 CacherCommand::GetAppState => {
                     let _ = app_state_tx.send(CacheJob::LoadAppState);
                 }
@@ -330,11 +350,7 @@ impl Cacher {
 
         let library = CachedLibraryState::from(state);
 
-        write_cache(
-            &tmp_path,
-            &final_path,
-            library,
-        )?;
+        write_cache(&tmp_path, &final_path, library)?;
 
         Ok(())
     }
@@ -364,11 +380,7 @@ impl Cacher {
 
         let queue = CachedQueueState::from(state);
 
-        write_cache(
-            &tmp_path,
-            &final_path,
-            queue,
-        )?;
+        write_cache(&tmp_path, &final_path, queue)?;
 
         Ok(())
     }
@@ -382,13 +394,15 @@ impl Cacher {
             ImageKind::AlbumArt => format!("{hex}_art.bgra.zstd"),
         };
 
-        self.base_dir
-            .join("images")
-            .join(folder)
-            .join(name)
+        self.base_dir.join("images").join(folder).join(name)
     }
 
-    fn write_cached_image(&self, id: TrackId, kind: ImageKind, cached_image: CachedImage) -> Result<(), CacherError> {
+    fn write_cached_image(
+        &self,
+        id: TrackId,
+        kind: ImageKind,
+        cached_image: CachedImage,
+    ) -> Result<(), CacherError> {
         let final_path = self.cached_image_path(id, kind);
         let tmp_path = final_path.with_extension("tmp");
 
@@ -426,9 +440,7 @@ impl Cacher {
     }
 
     fn read_library_state(&self) -> Result<LibraryState, CacherError> {
-        let path = self.base_dir
-            .join("library")
-            .join("tracks.bin");
+        let path = self.base_dir.join("library").join("tracks.bin");
 
         if !path.exists() {
             return Ok(LibraryState::default());
@@ -466,7 +478,11 @@ impl Cacher {
         Ok(cached.into())
     }
 
-    fn read_cached_image(&self, id: TrackId, kind: ImageKind) -> Result<Option<Arc<RenderImage>>, CacherError> {
+    fn read_cached_image(
+        &self,
+        id: TrackId,
+        kind: ImageKind,
+    ) -> Result<Option<Arc<RenderImage>>, CacherError> {
         let path = self.cached_image_path(id.clone(), kind);
 
         let bytes = fs::read(path)?;
@@ -475,7 +491,11 @@ impl Cacher {
 
         let cached_image: CachedImage = bitcode::decode(&decompressed)?;
 
-        match image::RgbaImage::from_raw(cached_image.width, cached_image.height, cached_image.image) {
+        match image::RgbaImage::from_raw(
+            cached_image.width,
+            cached_image.height,
+            cached_image.image,
+        ) {
             Some(image) => {
                 let frame = Frame::new(image);
 
@@ -484,7 +504,6 @@ impl Cacher {
             None => Ok(None),
         }
     }
-
 
     fn spawn_app_state_worker(&self, rx: Receiver<CacheJob>) -> Result<(), CacherError> {
         let cacher = self.clone();
@@ -592,26 +611,31 @@ impl Cacher {
         std::thread::spawn(move || {
             while let Ok(job) = rx.recv() {
                 match job {
-                    CacheJob::LoadAlbumArt(path) =>
-                        {
-                            if let Ok(id) = gen_track_id(&path) {
-                                match cacher.read_cached_image(id, ImageKind::AlbumArt) {
-                                    Ok(Some(image)) => {
-                                        let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
-                                    }
-                                    Err(e) => {
-                                        eprintln!("Error loading album art: {}", e);
-                                        let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(path));
-                                    }
-                                    _ => {
-                                        let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(path));
-                                    }
+                    CacheJob::LoadAlbumArt(path) => {
+                        if let Ok(id) = gen_track_id(&path) {
+                            match cacher.read_cached_image(id, ImageKind::AlbumArt) {
+                                Ok(Some(image)) => {
+                                    let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
                                 }
-                            } else {
-                                let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(path));
+                                Err(e) => {
+                                    eprintln!("Error loading album art: {}", e);
+                                    let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(path));
+                                }
+                                _ => {
+                                    let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(path));
+                                }
                             }
+                        } else {
+                            let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(path));
                         }
-                    CacheJob::WriteImage { id, kind, width, height, image } => {
+                    }
+                    CacheJob::WriteImage {
+                        id,
+                        kind,
+                        width,
+                        height,
+                        image,
+                    } => {
                         let cached_image = CachedImage {
                             width,
                             height,
@@ -619,7 +643,9 @@ impl Cacher {
                         };
                         match cacher.write_cached_image(id, kind, cached_image) {
                             Ok(_) => {}
-                            Err(err) => { eprintln!("Error occurred: {:#?}", err); }
+                            Err(err) => {
+                                eprintln!("Error occurred: {:#?}", err);
+                            }
                         }
                     }
                     _ => {}
@@ -654,9 +680,7 @@ fn write_cache<T: Encode>(
     Ok(())
 }
 
-fn read_cache<T>(
-    path: &PathBuf,
-) -> Result<Option<T>, CacherError>
+fn read_cache<T>(path: &PathBuf) -> Result<Option<T>, CacherError>
 where
     T: for<'a> Decode<'a>,
 {
