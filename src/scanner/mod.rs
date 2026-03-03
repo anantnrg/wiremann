@@ -10,7 +10,6 @@ use gpui::RenderImage;
 use image::imageops::thumbnail;
 use image::{Frame, ImageReader};
 use lofty::{prelude::*, probe::Probe};
-use rayon::prelude::*;
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
@@ -29,12 +28,6 @@ struct ScanResult {
     id: TrackId,
     track: Option<Track>,
     image: Option<Vec<u8>>,
-}
-
-enum ScanJob {
-    Metadata(PathBuf, TrackId),
-    Thumbnail(TrackId, Vec<u8>),
-    AlbumArt(PathBuf),
 }
 
 impl Scanner {

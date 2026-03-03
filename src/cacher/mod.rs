@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use smallvec::smallvec;
 use std::collections::HashMap;
 use std::fs;
-use std::io::{Cursor, Write};
+use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -395,11 +395,9 @@ impl Cacher {
 
         let bytes = bitcode::encode(&cached_image);
 
-        let compressed = zstd::encode_all(Cursor::new(bytes), 4)?;
-
         {
             let mut file = fs::File::create(&tmp_path)?;
-            file.write_all(&compressed)?;
+            file.write_all(&bytes)?;
             file.sync_all()?;
         }
 
@@ -466,9 +464,7 @@ impl Cacher {
 
         let bytes = fs::read(path)?;
 
-        let decompressed = zstd::decode_all(Cursor::new(bytes))?;
-
-        let cached_image: CachedImage = bitcode::decode(&decompressed)?;
+        let cached_image: CachedImage = bitcode::decode(&bytes)?;
 
         match image::RgbaImage::from_raw(cached_image.width, cached_image.height, cached_image.image) {
             Some(image) => {
