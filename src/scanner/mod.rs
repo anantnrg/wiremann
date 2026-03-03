@@ -24,10 +24,10 @@ pub struct Scanner {
     pub rx: Receiver<ScannerCommand>,
 }
 
-struct ScanResult {
-    id: TrackId,
-    track: Option<Track>,
-    image: Option<Vec<u8>>,
+enum ScanJob {
+    Metadata(PathBuf, TrackId),
+    Thumbnail(TrackId, Vec<u8>),
+    AlbumArt(PathBuf),
 }
 
 impl Scanner {
@@ -171,13 +171,13 @@ impl Scanner {
         std::thread::spawn(move || {
             while let Ok(ScanJob::AlbumArt(path)) = album_art_rx.recv() {
                 match get_album_art(path) {
-                    Ok(Some(image)) => {
+                    Ok((id, Some(image))) => {
                         if let Ok(album_art) = render_album_art(&image, false) {
-                            let _ = events_tx.send(ScannerEvent::AlbumArt(album_art));
+                            let _ = events_tx.send(ScannerEvent::AlbumArt(id, album_art));
                         }
                     }
-                    Ok(None) => {}
                     Err(err) => eprintln!("Failed album art: {}", err),
+                    _ => {}
                 }
             }
         });
@@ -385,7 +385,7 @@ fn get_track_metadata(
     ))
 }
 
-fn get_album_art(path: PathBuf) -> Result<Option<Vec<u8>>, ScannerError> {
+fn get_album_art(path: PathBuf) -> Result<(TrackId, Option<Vec<u8>>), ScannerError> {
     let tagged_file = match Probe::open(path.clone())
         .and_then(|p| Ok(p.guess_file_type()?))
         .and_then(|p| p.read())
@@ -393,6 +393,8 @@ fn get_album_art(path: PathBuf) -> Result<Option<Vec<u8>>, ScannerError> {
         Ok(file) => file,
         Err(e) => return Err(ScannerError::from(e)),
     };
+
+    let id = gen_track_id(&path)?;
 
     let tag = tagged_file
         .primary_tag()
@@ -409,5 +411,5 @@ fn get_album_art(path: PathBuf) -> Result<Option<Vec<u8>>, ScannerError> {
         thumbnail = None;
     }
 
-    Ok(thumbnail)
+    Ok((id, thumbnail))
 }

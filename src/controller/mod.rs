@@ -164,15 +164,32 @@ impl Controller {
                 let state = self.state.read(cx).clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteAppState(state));
             }
-            ScannerEvent::AlbumArt(image) => {
-                let mut image_cache = cx.global_mut::<ImageCache>();
+            ScannerEvent::AlbumArt(id, image) => {
+                let image_cache = cx.global_mut::<ImageCache>();
 
                 image_cache.current = Some(image.clone());
+
+                let image = image.clone();
+                let width = image.size(0).width.0 as u32;
+                let height = image.size(0).height.0 as u32;
+                match image.as_bytes(0) {
+                    Some(image) => {
+                        let image = image.to_vec();
+                        let _ = self.cacher_tx.send(CacherCommand::WriteImage {
+                            id: id.clone(),
+                            kind: ImageKind::AlbumArt,
+                            width,
+                            height,
+                            image,
+                        });
+                    }
+                    None => {}
+                }
 
                 cx.notify(view.entity_id());
             }
             ScannerEvent::Thumbnails(thumbnails) => {
-                let mut thumbnail_cache = cx.global_mut::<ImageCache>();
+                let thumbnail_cache = cx.global_mut::<ImageCache>();
 
                 thumbnail_cache.thumbs.extend(thumbnails.clone());
 
@@ -204,13 +221,20 @@ impl Controller {
         &mut self,
         cx: &mut App,
         event: &CacherEvent,
-        _view: Entity<Wiremann>,
+        view: Entity<Wiremann>,
     ) -> Result<(), ControllerError> {
         match event {
-            CacherEvent::AppState(state) => self.state.update(cx, |this, cx| *this = state.clone()),
+            CacherEvent::AppState(state) => self.state.update(cx, |this, _| *this = state.clone()),
             CacherEvent::Thumbnails(thumbnails) => {
-                let mut thumbnail_cache = cx.global_mut::<ImageCache>();
+                let thumbnail_cache = cx.global_mut::<ImageCache>();
                 thumbnail_cache.thumbs.extend(thumbnails.clone());
+            }
+            CacherEvent::AlbumArt(image) => {
+                let image_cache = cx.global_mut::<ImageCache>();
+
+                image_cache.current = Some(image.clone());
+
+                cx.notify(view.entity_id());
             }
             _ => {}
         }
@@ -263,13 +287,13 @@ impl Controller {
     }
 
     pub fn set_repeat(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
+        self.state.update(cx, |this, _| {
             this.playback.repeat = !this.playback.repeat;
         })
     }
 
     pub fn set_mute(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
+        self.state.update(cx, |this, _| {
             this.playback.mute = !this.playback.mute;
 
             let _ = self
@@ -295,7 +319,7 @@ impl Controller {
     }
 
     pub fn set_shuffle(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
+        self.state.update(cx, |this, _| {
             this.playback.shuffling = !this.playback.shuffling;
 
             if this.queue.tracks.is_empty() {
@@ -327,14 +351,14 @@ impl Controller {
     }
 
     pub fn next(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
+        self.state.update(cx, |this, _| {
             this.queue.index = (this.queue.index + 1).clamp(0, this.library.tracks.len());
         });
 
         self.load_queue_current(cx);
     }
     pub fn prev(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
+        self.state.update(cx, |this, _| {
             this.queue.index = this.queue.index.saturating_sub(1);
         });
 

@@ -1,6 +1,7 @@
 use gpui::*;
 use gpui_component::{Icon, IconNamed};
 
+#[allow(dead_code)]
 #[derive(IntoElement)]
 pub enum Icons {
     Music,
@@ -47,7 +48,7 @@ impl IconNamed for Icons {
             Icons::Menu => "icons/menu.svg",
             Icons::Search => "icons/search.svg",
         }
-        .into()
+            .into()
     }
 }
 

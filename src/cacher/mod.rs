@@ -10,9 +10,9 @@ use gpui::RenderImage;
 use image::Frame;
 use serde::{Deserialize, Serialize};
 use smallvec::smallvec;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::io::Write;
+use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -36,7 +36,7 @@ enum CacheJob {
         image: Vec<u8>,
     },
     LoadAppState,
-    LoadThumbnails(Vec<TrackId>),
+    LoadThumbnails(HashSet<TrackId>),
     LoadAlbumArt(TrackId),
 }
 
@@ -314,6 +314,12 @@ impl Cacher {
                 CacherCommand::GetAppState => {
                     let _ = app_state_tx.send(CacheJob::LoadAppState);
                 }
+                CacherCommand::GetThumbnails(ids) => {
+                    let _ = thumb_tx.send(CacheJob::LoadThumbnails(ids));
+                }
+                CacherCommand::GetAlbumArt(id) => {
+                    let _ = album_art_tx.send(CacheJob::LoadAlbumArt(id));
+                }
                 _ => {}
             }
         }
@@ -395,9 +401,11 @@ impl Cacher {
 
         let bytes = bitcode::encode(&cached_image);
 
+        let compressed = zstd::encode_all(Cursor::new(bytes), 4)?;
+
         {
             let mut file = fs::File::create(&tmp_path)?;
-            file.write_all(&bytes)?;
+            file.write_all(&compressed)?;
             file.sync_all()?;
         }
 
@@ -464,7 +472,9 @@ impl Cacher {
 
         let bytes = fs::read(path)?;
 
-        let cached_image: CachedImage = bitcode::decode(&bytes)?;
+        let decompressed = zstd::decode_all(Cursor::new(bytes))?;
+
+        let cached_image: CachedImage = bitcode::decode(&decompressed)?;
 
         match image::RgbaImage::from_raw(cached_image.width, cached_image.height, cached_image.image) {
             Some(image) => {

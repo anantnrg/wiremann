@@ -18,7 +18,7 @@ pub enum AudioEvent {
 pub enum ScannerEvent {
     Tracks(Vec<Track>),
     Playlist(Playlist),
-    AlbumArt(Arc<RenderImage>),
+    AlbumArt(TrackId, Arc<RenderImage>),
     Thumbnails(HashMap<TrackId, Arc<RenderImage>>),
 }
 

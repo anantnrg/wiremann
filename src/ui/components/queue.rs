@@ -201,7 +201,7 @@ impl Render for Queue {
 
         div()
             .id("queue_container")
-            .on_hover(move |hovered, _, cx| stop_auto_scroll.update(cx, |this, cx| *this = *hovered))
+            .on_hover(move |hovered, _, cx| stop_auto_scroll.update(cx, |this, _| *this = *hovered))
             .size_full()
             .child(
                 uniform_list("queue", len, move |range, _, cx| {
