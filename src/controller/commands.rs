@@ -25,6 +25,7 @@ pub enum ScannerCommand {
         tracks: HashSet<TrackId>,
     },
     GetCurrentAlbumArt(PathBuf),
+    CheckScanEnded,
 }
 
 pub enum CacherCommand {

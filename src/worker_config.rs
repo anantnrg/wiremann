@@ -1,28 +1,26 @@
 pub struct WorkerConfig {
-    pub scanner_workers: usize,
+    pub metadata_workers: usize,
+    pub thumbnail_workers: usize,
     pub cacher_workers: usize,
 }
 
 pub fn calculate_worker_config() -> WorkerConfig {
-    let physical = num_cpus::get().max(1);
+    let logical = num_cpus::get().max(1);
 
-    let target_usage = 0.64; // noice
+    let usable_threads =
+        (((logical as f32) * 0.80).floor() as usize).max(2);
 
-    let max_active = ((physical as f32) * target_usage).floor() as usize;
+    let scanner_total = usable_threads;
 
-    let reserved = 2.min(max_active);
+    let cacher_workers = usable_threads;
 
-    let mut usable = max_active.saturating_sub(reserved);
-
-    if usable == 0 {
-        usable = 1;
-    }
-
-    let cacher_workers = if usable > 1 { 1 } else { 1 };
-    let scanner_workers = usable;
+    let metadata_workers = (scanner_total / 2).max(1).clamp(1, 4);
+    let thumbnail_workers =
+        (scanner_total - metadata_workers).max(1);
 
     WorkerConfig {
-        scanner_workers,
+        metadata_workers,
+        thumbnail_workers,
         cacher_workers,
     }
 }

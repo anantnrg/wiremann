@@ -89,7 +89,7 @@ impl Wiremann {
             .library
             .tracks
             .keys()
-            .cloned()
+            .copied()
             .collect();
         cx.global::<Controller>()
             .scan_folder(tracks, "E:\\music\\$UMH4RD$H1T".into());

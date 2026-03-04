@@ -13,7 +13,7 @@ use lofty::{prelude::*, probe::Probe};
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
@@ -23,6 +23,8 @@ use walkdir::WalkDir;
 pub struct Scanner {
     pub tx: Sender<ScannerEvent>,
     pub rx: Receiver<ScannerCommand>,
+    metadata_jobs: Arc<AtomicUsize>,
+    thumbnail_jobs: Arc<AtomicUsize>,
 }
 
 enum ScanJob {
@@ -39,34 +41,34 @@ impl Scanner {
         let scanner = Scanner {
             tx: event_tx,
             rx: cmd_rx,
+            metadata_jobs: Arc::new(AtomicUsize::new(0)),
+            thumbnail_jobs: Arc::new(AtomicUsize::new(0)),
         };
 
         (scanner, cmd_tx, event_rx)
     }
 
-    pub fn run(&mut self, workers: usize) -> Result<(), ScannerError> {
+    pub fn run(&mut self, metadata_workers: usize, thumbnail_workers: usize) -> Result<(), ScannerError> {
         let (meta_tx, meta_rx) = crossbeam_channel::unbounded();
         let (thumb_tx, thumb_rx) = crossbeam_channel::unbounded();
         let (album_art_tx, album_art_rx) = crossbeam_channel::unbounded();
 
-        let thumbs_remaining = Arc::new(AtomicUsize::new(0));
-        let metadata_done = Arc::new(AtomicBool::new(false));
-
-        self.spawn_metadata_worker(meta_rx, thumb_tx.clone(), metadata_done.clone(), thumbs_remaining.clone())?;
-        self.spawn_thumbnail_workers(thumb_rx, workers, metadata_done.clone(), thumbs_remaining.clone())?;
+        self.spawn_metadata_worker(meta_rx, thumb_tx.clone(), metadata_workers)?;
+        self.spawn_thumbnail_workers(thumb_rx, thumbnail_workers)?;
         self.spawn_album_art_worker(album_art_rx)?;
 
         loop {
             match self.rx.recv()? {
                 ScannerCommand::GetTrackMetadata { path, track_id } => {
-                    self.enqueue_track(path, track_id, meta_tx.clone())?
+                    self.enqueue_track(path, track_id, meta_tx.clone())?;
                 }
                 ScannerCommand::ScanFolder { tracks, path } => {
-                    self.enqueue_folder(tracks, path, meta_tx.clone())?
+                    self.enqueue_folder(tracks, path, meta_tx.clone())?;
                 }
                 ScannerCommand::GetCurrentAlbumArt(path) => {
                     let _ = album_art_tx.send(ScanJob::AlbumArt(path));
                 }
+                ScannerCommand::CheckScanEnded => {}
             }
         }
     }
@@ -75,17 +77,23 @@ impl Scanner {
         &self,
         meta_rx: Receiver<ScanJob>,
         thumb_tx: Sender<ScanJob>,
-        metadata_done: Arc<AtomicBool>,
-        thumbs_remaining: Arc<AtomicUsize>,
+        workers: usize,
     ) -> Result<(), ScannerError> {
-        let events_tx = self.tx.clone();
+        let ticker = tick(Duration::from_millis(128));
 
-        std::thread::spawn(move || {
-            let mut batch: Vec<Track> = Vec::with_capacity(16);
-            let ticker = tick(Duration::from_millis(128));
+        for _ in 0..workers {
+            let meta_rx = meta_rx.clone();
+            let thumb_tx = thumb_tx.clone();
+            let events_tx = self.tx.clone();
+            let metadata_jobs = self.metadata_jobs.clone();
+            let thumbnail_jobs = self.thumbnail_jobs.clone();
+            let ticker = ticker.clone();
 
-            loop {
-                select! {
+            std::thread::spawn(move || {
+                let mut batch: Vec<Track> = Vec::with_capacity(16);
+
+                loop {
+                    select! {
                     recv(meta_rx) -> job => {
                         match job {
                             Ok(ScanJob::Metadata(path, track_id)) => {
@@ -101,11 +109,14 @@ impl Scanner {
                                         }
 
                                         if let Some(bytes) = image {
-                                            thumbs_remaining.fetch_add(1, Ordering::Relaxed);
                                             let _ = thumb_tx.send(ScanJob::Thumbnail(id, bytes));
+                                            thumbnail_jobs.fetch_add(1, Ordering::AcqRel);
                                         }
                                     }
                                     Err(err) => eprintln!("Failed to get track metadata: {}", err),
+                                }
+                                if metadata_jobs.fetch_sub(1, Ordering::AcqRel) == 1  && thumbnail_jobs.load(Ordering::Relaxed) == 0 {
+                                    let _ = events_tx.send(ScannerEvent::ScanFinished);
                                 }
                             }
                             _ => {}
@@ -120,19 +131,22 @@ impl Scanner {
                         }
                     }
                 }
-            }
-        });
+                }
+            });
+        }
 
         Ok(())
     }
 
-    fn spawn_thumbnail_workers(&self, thumb_rx: Receiver<ScanJob>, workers: usize, metadata_done: Arc<AtomicBool>, thumbs_remaining: Arc<AtomicUsize>) -> Result<(), ScannerError> {
+    fn spawn_thumbnail_workers(&self, thumb_rx: Receiver<ScanJob>, workers: usize) -> Result<(), ScannerError> {
         let ticker = tick(Duration::from_millis(128));
 
         for _ in 0..workers {
             let events_tx = self.tx.clone();
             let ticker = ticker.clone();
             let thumb_rx = thumb_rx.clone();
+            let metadata_jobs = self.metadata_jobs.clone();
+            let thumbnail_jobs = self.thumbnail_jobs.clone();
 
             std::thread::spawn(move || {
                 let mut batch = HashMap::with_capacity(16);
@@ -140,19 +154,17 @@ impl Scanner {
                 loop {
                     select! {
                         recv(thumb_rx) -> job => {
-                            match job {
-                                Ok(ScanJob::Thumbnail(id, bytes)) => {
-                                    if let Ok(image) = render_album_art(&bytes, true) {
-                                        batch.insert(id, image);
+                            if let Ok(ScanJob::Thumbnail(id, bytes)) = job {
+                                if let Ok(image) = render_album_art(&bytes, true) {
+                                    batch.insert(id, image);
 
-                                        if batch.len() >= 16 {
-                                            let _ = events_tx.send(
-                                                ScannerEvent::Thumbnails(std::mem::take(&mut batch))
-                                            );
-                                        }
+                                    if batch.len() >= 16 {
+                                        let _ = events_tx.send(
+                                            ScannerEvent::Thumbnails(std::mem::take(&mut batch))
+                                        );
                                     }
                                 }
-                                _ => {}
+                                thumbnail_jobs.fetch_sub(1, Ordering::AcqRel);
                             }
                         }
 
@@ -163,6 +175,9 @@ impl Scanner {
                                 );
                             }
                         }
+                    }
+                    if thumbnail_jobs.fetch_sub(1, Ordering::AcqRel) == 1 && metadata_jobs.load(Ordering::Relaxed) == 0 {
+                        let _ = events_tx.send(ScannerEvent::ScanFinished);
                     }
                 }
             });
@@ -198,6 +213,7 @@ impl Scanner {
         meta_tx: Sender<ScanJob>,
     ) -> Result<(), ScannerError> {
         let _ = meta_tx.send(ScanJob::Metadata(path, track_id));
+        self.metadata_jobs.fetch_add(1, Ordering::AcqRel);
         Ok(())
     }
 
@@ -234,6 +250,7 @@ impl Scanner {
 
                 if !existing_tracks.contains(&id) {
                     let _ = meta_tx.send(ScanJob::Metadata(file, id));
+                    self.metadata_jobs.fetch_add(1, Ordering::AcqRel);
                 }
             }
         }
