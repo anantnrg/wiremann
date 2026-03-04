@@ -4,7 +4,7 @@ use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::helpers::slider_to_secs;
 use crate::ui::theme::Theme;
-use components::{image_cache::ImageCache, pages::player::PlayerPage, titlebar::Titlebar, Page};
+use components::{Page, image_cache::ImageCache, pages::player::PlayerPage, titlebar::Titlebar};
 use gpui::*;
 
 pub struct Wiremann {
@@ -41,7 +41,7 @@ impl Wiremann {
                 }
             },
         )
-            .detach();
+        .detach();
 
         cx.subscribe(
             &playback_slider_state,
@@ -67,7 +67,7 @@ impl Wiremann {
                 }
             },
         )
-            .detach();
+        .detach();
 
         cx.set_global(Theme::default());
         cx.set_global(Page::Player);
@@ -77,9 +77,11 @@ impl Wiremann {
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
         let player_page = cx.new(|cx| PlayerPage::new(cx, controlbar));
 
+        // cx.global::<Controller>().load_cached_app_state();
+
         let controller = cx.global::<Controller>().clone();
 
-        controller.load_audio("E:\\music\\$UMH4RD$HIT\\002 - Push Ups.mp3".into());
+        controller.load_audio("E:\\music\\$UMH4RD$H1T\\002 - Push Ups.mp3".into());
 
         let tracks = controller
             .state
@@ -87,10 +89,10 @@ impl Wiremann {
             .library
             .tracks
             .keys()
-            .cloned()
+            .copied()
             .collect();
         cx.global::<Controller>()
-            .scan_folder(tracks, "E:\\music\\$UMH4RD$HIT".into());
+            .scan_folder(tracks, "E:\\music\\$UMH4RD$H1T".into());
 
         Self {
             titlebar,

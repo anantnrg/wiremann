@@ -1,6 +1,7 @@
 use gpui::*;
 use gpui_component::{Icon, IconNamed};
 
+#[allow(dead_code)]
 #[derive(IntoElement)]
 pub enum Icons {
     Music,

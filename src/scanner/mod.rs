@@ -1,20 +1,20 @@
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{gen_track_id, Track};
+use crate::library::{Track, gen_track_id};
 use crate::{
     controller::{commands::ScannerCommand, events::ScannerEvent},
     errors::ScannerError,
     library::TrackId,
 };
-use crossbeam_channel::{select, tick, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, select, tick};
 use gpui::RenderImage;
 use image::imageops::thumbnail;
 use image::{Frame, ImageReader};
 use lofty::{prelude::*, probe::Probe};
-use rayon::prelude::*;
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 use uuid::Uuid;
@@ -23,12 +23,8 @@ use walkdir::WalkDir;
 pub struct Scanner {
     pub tx: Sender<ScannerEvent>,
     pub rx: Receiver<ScannerCommand>,
-}
-
-struct ScanResult {
-    id: TrackId,
-    track: Option<Track>,
-    image: Option<Vec<u8>>,
+    metadata_jobs: Arc<AtomicUsize>,
+    thumbnail_jobs: Arc<AtomicUsize>,
 }
 
 enum ScanJob {
@@ -45,31 +41,38 @@ impl Scanner {
         let scanner = Scanner {
             tx: event_tx,
             rx: cmd_rx,
+            metadata_jobs: Arc::new(AtomicUsize::new(0)),
+            thumbnail_jobs: Arc::new(AtomicUsize::new(0)),
         };
 
         (scanner, cmd_tx, event_rx)
     }
 
-    pub fn run(&mut self) -> Result<(), ScannerError> {
+    pub fn run(
+        &mut self,
+        metadata_workers: usize,
+        thumbnail_workers: usize,
+    ) -> Result<(), ScannerError> {
         let (meta_tx, meta_rx) = crossbeam_channel::unbounded();
         let (thumb_tx, thumb_rx) = crossbeam_channel::unbounded();
         let (album_art_tx, album_art_rx) = crossbeam_channel::unbounded();
 
-        self.spawn_metadata_worker(meta_rx, thumb_tx.clone())?;
-        self.spawn_thumbnail_workers(thumb_rx)?;
+        self.spawn_metadata_worker(meta_rx, thumb_tx.clone(), metadata_workers)?;
+        self.spawn_thumbnail_workers(thumb_rx, thumbnail_workers)?;
         self.spawn_album_art_worker(album_art_rx)?;
 
         loop {
             match self.rx.recv()? {
                 ScannerCommand::GetTrackMetadata { path, track_id } => {
-                    self.enqueue_track(path, track_id, meta_tx.clone())?
+                    self.enqueue_track(path, track_id, meta_tx.clone())?;
                 }
                 ScannerCommand::ScanFolder { tracks, path } => {
-                    self.enqueue_folder(tracks, path, meta_tx.clone())?
+                    self.enqueue_folder(tracks, path, meta_tx.clone())?;
                 }
                 ScannerCommand::GetCurrentAlbumArt(path) => {
                     let _ = album_art_tx.send(ScanJob::AlbumArt(path));
                 }
+                ScannerCommand::CheckScanEnded => {}
             }
         }
     }
@@ -78,62 +81,80 @@ impl Scanner {
         &self,
         meta_rx: Receiver<ScanJob>,
         thumb_tx: Sender<ScanJob>,
+        workers: usize,
     ) -> Result<(), ScannerError> {
-        let events_tx = self.tx.clone();
+        let ticker = tick(Duration::from_millis(128));
 
-        std::thread::spawn(move || {
-            let mut batch: Vec<Track> = Vec::with_capacity(16);
-            let ticker = tick(Duration::from_millis(128));
+        for _ in 0..workers {
+            let meta_rx = meta_rx.clone();
+            let thumb_tx = thumb_tx.clone();
+            let events_tx = self.tx.clone();
+            let metadata_jobs = self.metadata_jobs.clone();
+            let thumbnail_jobs = self.thumbnail_jobs.clone();
+            let ticker = ticker.clone();
 
-            loop {
-                select! {
-                    recv(meta_rx) -> job => {
-                        match job {
-                            Ok(ScanJob::Metadata(path, track_id)) => {
-                                match get_track_metadata(path, track_id) {
-                                    Ok((track, image)) => {
-                                        let id = track.id.clone();
-                                        batch.push(track);
+            std::thread::spawn(move || {
+                let mut batch: Vec<Track> = Vec::with_capacity(16);
 
-                                        if batch.len() >= 16 {
-                                            let _ = events_tx.send(
-                                                ScannerEvent::Tracks(std::mem::take(&mut batch))
-                                            );
+                loop {
+                    select! {
+                        recv(meta_rx) -> job => {
+                            match job {
+                                Ok(ScanJob::Metadata(path, track_id)) => {
+                                    match get_track_metadata(path, track_id) {
+                                        Ok((track, image)) => {
+                                            let id = track.id.clone();
+                                            batch.push(track);
+
+                                            if batch.len() >= 16 {
+                                                let _ = events_tx.send(
+                                                    ScannerEvent::Tracks(std::mem::take(&mut batch))
+                                                );
+                                            }
+
+                                            if let Some(bytes) = image {
+                                                let _ = thumb_tx.send(ScanJob::Thumbnail(id, bytes));
+                                                thumbnail_jobs.fetch_add(1, Ordering::AcqRel);
+                                            }
                                         }
-
-                                        if let Some(bytes) = image {
-                                            let _ = thumb_tx.send(ScanJob::Thumbnail(id, bytes));
-                                        }
+                                        Err(err) => eprintln!("Failed to get track metadata: {}", err),
                                     }
-                                    Err(err) => eprintln!("Failed to get track metadata: {}", err),
+                                    if metadata_jobs.fetch_sub(1, Ordering::AcqRel) == 1  && thumbnail_jobs.load(Ordering::Relaxed) == 0 {
+                                        let _ = events_tx.send(ScannerEvent::ScanFinished);
+                                    }
                                 }
+                                _ => {}
                             }
-                            _ => {}
                         }
-                    }
 
-                     recv(ticker) -> _ => {
-                        if !batch.is_empty() {
-                            let _ = events_tx.send(
-                                ScannerEvent::Tracks(std::mem::take(&mut batch))
-                            );
+                         recv(ticker) -> _ => {
+                            if !batch.is_empty() {
+                                let _ = events_tx.send(
+                                    ScannerEvent::Tracks(std::mem::take(&mut batch))
+                                );
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
 
         Ok(())
     }
 
-    fn spawn_thumbnail_workers(&self, thumb_rx: Receiver<ScanJob>) -> Result<(), ScannerError> {
+    fn spawn_thumbnail_workers(
+        &self,
+        thumb_rx: Receiver<ScanJob>,
+        workers: usize,
+    ) -> Result<(), ScannerError> {
         let ticker = tick(Duration::from_millis(128));
-        let threads = num_cpus::get() - 2;
 
-        for _ in 0..threads {
+        for _ in 0..workers {
             let events_tx = self.tx.clone();
             let ticker = ticker.clone();
             let thumb_rx = thumb_rx.clone();
+            let metadata_jobs = self.metadata_jobs.clone();
+            let thumbnail_jobs = self.thumbnail_jobs.clone();
 
             std::thread::spawn(move || {
                 let mut batch = HashMap::with_capacity(16);
@@ -141,19 +162,17 @@ impl Scanner {
                 loop {
                     select! {
                         recv(thumb_rx) -> job => {
-                            match job {
-                                Ok(ScanJob::Thumbnail(id, bytes)) => {
-                                    if let Ok(image) = render_album_art(&bytes, true) {
-                                        batch.insert(id, image);
+                            if let Ok(ScanJob::Thumbnail(id, bytes)) = job {
+                                if let Ok(image) = render_album_art(&bytes, true) {
+                                    batch.insert(id, image);
 
-                                        if batch.len() >= 16 {
-                                            let _ = events_tx.send(
-                                                ScannerEvent::Thumbnails(std::mem::take(&mut batch))
-                                            );
-                                        }
+                                    if batch.len() >= 16 {
+                                        let _ = events_tx.send(
+                                            ScannerEvent::Thumbnails(std::mem::take(&mut batch))
+                                        );
                                     }
                                 }
-                                _ => {}
+                                thumbnail_jobs.fetch_sub(1, Ordering::AcqRel);
                             }
                         }
 
@@ -164,6 +183,11 @@ impl Scanner {
                                 );
                             }
                         }
+                    }
+                    if thumbnail_jobs.fetch_sub(1, Ordering::AcqRel) == 1
+                        && metadata_jobs.load(Ordering::Relaxed) == 0
+                    {
+                        let _ = events_tx.send(ScannerEvent::ScanFinished);
                     }
                 }
             });
@@ -178,13 +202,13 @@ impl Scanner {
         std::thread::spawn(move || {
             while let Ok(ScanJob::AlbumArt(path)) = album_art_rx.recv() {
                 match get_album_art(path) {
-                    Ok(Some(image)) => {
+                    Ok((id, Some(image))) => {
                         if let Ok(album_art) = render_album_art(&image, false) {
-                            let _ = events_tx.send(ScannerEvent::AlbumArt(album_art));
+                            let _ = events_tx.send(ScannerEvent::AlbumArt(id, album_art));
                         }
                     }
-                    Ok(None) => {}
                     Err(err) => eprintln!("Failed album art: {}", err),
+                    _ => {}
                 }
             }
         });
@@ -199,6 +223,7 @@ impl Scanner {
         meta_tx: Sender<ScanJob>,
     ) -> Result<(), ScannerError> {
         let _ = meta_tx.send(ScanJob::Metadata(path, track_id));
+        self.metadata_jobs.fetch_add(1, Ordering::AcqRel);
         Ok(())
     }
 
@@ -235,6 +260,7 @@ impl Scanner {
 
                 if !existing_tracks.contains(&id) {
                     let _ = meta_tx.send(ScanJob::Metadata(file, id));
+                    self.metadata_jobs.fetch_add(1, Ordering::AcqRel);
                 }
             }
         }
@@ -246,7 +272,7 @@ impl Scanner {
                 .and_then(|s| s.to_str())
                 .unwrap_or("Unnamed Playlist")
                 .to_string(),
-            source: PlaylistSource::Folder(path),
+            source: PlaylistSource::Folder,
             tracks: track_ids,
         };
 
@@ -392,7 +418,7 @@ fn get_track_metadata(
     ))
 }
 
-fn get_album_art(path: PathBuf) -> Result<Option<Vec<u8>>, ScannerError> {
+fn get_album_art(path: PathBuf) -> Result<(TrackId, Option<Vec<u8>>), ScannerError> {
     let tagged_file = match Probe::open(path.clone())
         .and_then(|p| Ok(p.guess_file_type()?))
         .and_then(|p| p.read())
@@ -400,6 +426,8 @@ fn get_album_art(path: PathBuf) -> Result<Option<Vec<u8>>, ScannerError> {
         Ok(file) => file,
         Err(e) => return Err(ScannerError::from(e)),
     };
+
+    let id = gen_track_id(&path)?;
 
     let tag = tagged_file
         .primary_tag()
@@ -416,5 +444,5 @@ fn get_album_art(path: PathBuf) -> Result<Option<Vec<u8>>, ScannerError> {
         thumbnail = None;
     }
 
-    Ok(thumbnail)
+    Ok((id, thumbnail))
 }

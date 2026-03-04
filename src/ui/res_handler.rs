@@ -1,9 +1,10 @@
-use crate::controller::events::{AudioEvent, ScannerEvent};
+use crate::controller::events::{AudioEvent, CacherEvent, ScannerEvent};
 use gpui::*;
 
 pub enum Event {
     Audio(AudioEvent),
     Scanner(ScannerEvent),
+    Cacher(CacherEvent),
 }
 
 #[derive(Clone, Copy)]

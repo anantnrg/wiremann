@@ -19,6 +19,10 @@ pub enum AudioError {
     LoadFile(String),
     #[error("Error occurred while seeking: `{0}`")]
     SeekError(#[from] SeekError),
+    #[error("I/O Error occurred: `{0}`")]
+    IoError(#[from] std::io::Error),
+    #[error("Rodio Decoder Error occurred: `{0}`")]
+    RodioDecoderError(#[from] rodio::decoder::DecoderError),
 }
 
 #[derive(Error, Debug)]
@@ -41,4 +45,18 @@ pub enum ScannerError {
 pub enum ControllerError {
     #[error("Scanner Error occurred: `{0}`")]
     ScannerError(#[from] ScannerError),
+}
+
+#[derive(Error, Debug)]
+pub enum CacherError {
+    #[error("Recv Error occurred: `{0}`")]
+    RecvError(#[from] RecvError),
+    #[error("I/O Error occurred: `{0}`")]
+    IoError(#[from] std::io::Error),
+    #[error("Bitcode Error occurred: `{0}`")]
+    BitcodeError(#[from] bitcode::Error),
+    #[error("RON Error occurred: `{0}`")]
+    RonError(#[from] ron::Error),
+    #[error("RON Spanned Error occurred: `{0}`")]
+    RonSpannedError(#[from] ron::de::SpannedError),
 }

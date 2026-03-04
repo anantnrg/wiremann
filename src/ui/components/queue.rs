@@ -172,10 +172,7 @@ impl Render for Queue {
         let order = state.queue.order.clone();
         let current = state.playback.current.clone();
 
-        let queue_changed =
-            self.last_tracks != tracks
-                ||
-                self.last_order != order;
+        let queue_changed = self.last_tracks != tracks || self.last_order != order;
         let current_changed = self.last_current != current;
 
         if queue_changed {
@@ -201,7 +198,7 @@ impl Render for Queue {
 
         div()
             .id("queue_container")
-            .on_hover(move |hovered, _, cx| stop_auto_scroll.update(cx, |this, cx| *this = *hovered))
+            .on_hover(move |hovered, _, cx| stop_auto_scroll.update(cx, |this, _| *this = *hovered))
             .size_full()
             .child(
                 uniform_list("queue", len, move |range, _, cx| {
@@ -244,11 +241,11 @@ impl Render for Queue {
                         })
                         .collect()
                 })
-                    .w_full()
-                    .h_full()
-                    .flex()
-                    .flex_col()
-                    .track_scroll(&scroll_handle),
+                .w_full()
+                .h_full()
+                .flex()
+                .flex_col()
+                .track_scroll(&scroll_handle),
             )
     }
 }

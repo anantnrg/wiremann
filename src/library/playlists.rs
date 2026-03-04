@@ -1,6 +1,5 @@
 use super::TrackId;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use uuid::Uuid;
 
 #[derive(Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize, Debug)]
@@ -9,7 +8,7 @@ pub struct PlaylistId(pub Uuid);
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum PlaylistSource {
     User,
-    Folder(PathBuf),
+    Folder,
     Generated,
 }
 

@@ -2,6 +2,7 @@ use crate::{
     library::playlists::{Playlist, PlaylistId},
     library::{Track, TrackId},
 };
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -17,7 +18,7 @@ pub struct LibraryState {
     pub playlists: HashMap<PlaylistId, Playlist>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub enum PlaybackStatus {
     #[default]
     Stopped,
@@ -29,6 +30,7 @@ pub enum PlaybackStatus {
 pub struct PlaybackState {
     pub current: Option<TrackId>,
     pub current_playlist: Option<PlaylistId>,
+    pub current_index: usize,
 
     pub status: PlaybackStatus,
     pub position: u64,
@@ -43,7 +45,6 @@ pub struct PlaybackState {
 pub struct QueueState {
     pub tracks: Vec<TrackId>,
     pub order: Vec<usize>,
-    pub index: usize,
 }
 
 impl Default for PlaybackState {
@@ -51,6 +52,7 @@ impl Default for PlaybackState {
         PlaybackState {
             current: None,
             current_playlist: None,
+            current_index: 0,
             status: PlaybackStatus::Stopped,
             position: 0,
             volume: 1.0,

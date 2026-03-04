@@ -1,6 +1,10 @@
 pub mod commands;
 pub mod events;
 pub mod state;
+use crate::cacher::ImageKind;
+use crate::controller::commands::CacherCommand;
+use crate::controller::events::CacherEvent;
+use crate::controller::state::PlaybackStatus;
 use crate::library::TrackId;
 use crate::ui::helpers::secs_to_slider;
 use crate::ui::wiremann::Wiremann;
@@ -28,6 +32,10 @@ pub struct Controller {
     // Scanner channel
     pub scanner_tx: Sender<ScannerCommand>,
     pub scanner_rx: Receiver<ScannerEvent>,
+
+    // Cacher channel
+    pub cacher_tx: Sender<CacherCommand>,
+    pub cacher_rx: Receiver<CacherEvent>,
 }
 
 impl Controller {
@@ -37,6 +45,8 @@ impl Controller {
         audio_rx: Receiver<AudioEvent>,
         scanner_tx: Sender<ScannerCommand>,
         scanner_rx: Receiver<ScannerEvent>,
+        cacher_tx: Sender<CacherCommand>,
+        cacher_rx: Receiver<CacherEvent>,
     ) -> Self {
         Controller {
             state,
@@ -44,6 +54,8 @@ impl Controller {
             audio_rx,
             scanner_tx,
             scanner_rx,
+            cacher_tx,
+            cacher_rx,
         }
     }
 
@@ -80,6 +92,11 @@ impl Controller {
                     this.playback.position = *pos;
                     cx.notify();
                 });
+
+                let state = self.state.read(cx).playback.clone();
+                let _ = self
+                    .cacher_tx
+                    .send(CacherCommand::WritePlaybackState(state));
             }
             AudioEvent::TrackLoaded(path) => {
                 let track_id = gen_track_id(path)?;
@@ -94,16 +111,27 @@ impl Controller {
                     this.playback.current = Some(track_id);
 
                     if let Some(idx) = this.queue.get_index(track_id) {
-                        this.queue.index = idx;
+                        this.playback.current_index = idx;
                     }
 
                     cx.notify();
                 });
+
+                let state = self.state.read(cx).playback.clone();
+                let _ = self
+                    .cacher_tx
+                    .send(CacherCommand::WritePlaybackState(state));
             }
-            AudioEvent::PlaybackStatus(status) => self.state.update(cx, |this, cx| {
-                this.playback.status = *status;
-                cx.notify()
-            }),
+            AudioEvent::PlaybackStatus(status) => {
+                self.state.update(cx, |this, cx| {
+                    this.playback.status = *status;
+                    cx.notify()
+                });
+                let state = self.state.read(cx).playback.clone();
+                let _ = self
+                    .cacher_tx
+                    .send(CacherCommand::WritePlaybackState(state));
+            }
             AudioEvent::TrackEnded => {
                 let repeat = self.state.read(cx).playback.repeat;
 
@@ -134,28 +162,147 @@ impl Controller {
                     }
                     cx.notify();
                 });
+                let state = self.state.read(cx).library.clone();
+                let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
-            ScannerEvent::Playlist(playlist) => self.state.update(cx, |this, cx| {
-                this.library
-                    .playlists
-                    .insert(playlist.id.clone(), playlist.clone());
-                this.playback.current_playlist = Some(playlist.id.clone());
-                this.queue.tracks = playlist.tracks.clone();
-                this.queue.order = (0..playlist.tracks.len()).collect();
+            ScannerEvent::Playlist(playlist) => {
+                self.state.update(cx, |this, cx| {
+                    this.library
+                        .playlists
+                        .insert(playlist.id.clone(), playlist.clone());
+                    this.playback.current_playlist = Some(playlist.id.clone());
+                    this.queue.tracks = playlist.tracks.clone();
+                    this.queue.order = (0..playlist.tracks.len()).collect();
 
-                cx.notify();
-            }),
-            ScannerEvent::AlbumArt(image) => {
-                let mut image_cache = cx.global_mut::<ImageCache>();
+                    let ids: HashSet<_> = this.queue.tracks.iter().map(|t| t.clone()).collect();
+
+                    let _ = self.cacher_tx.send(CacherCommand::GetThumbnails(ids));
+
+                    cx.notify();
+                });
+                let state = self.state.read(cx).queue.clone();
+                let _ = self.cacher_tx.send(CacherCommand::WriteQueueState(state));
+            }
+            ScannerEvent::AlbumArt(id, image) => {
+                let image_cache = cx.global_mut::<ImageCache>();
+
+                image_cache.current = Some(image.clone());
+
+                let image = image.clone();
+                let width = image.size(0).width.0 as u32;
+                let height = image.size(0).height.0 as u32;
+                match image.as_bytes(0) {
+                    Some(image) => {
+                        let image = image.to_vec();
+                        let _ = self.cacher_tx.send(CacherCommand::WriteImage {
+                            id: id.clone(),
+                            kind: ImageKind::AlbumArt,
+                            width,
+                            height,
+                            image,
+                        });
+                    }
+                    None => {}
+                }
+
+                cx.notify(view.entity_id());
+            }
+            ScannerEvent::Thumbnails(thumbnails) => {
+                let thumbnail_cache = cx.global_mut::<ImageCache>();
+
+                thumbnail_cache.thumbs.extend(thumbnails.clone());
+            }
+            ScannerEvent::ScanFinished => {
+                let thumbnails = cx.global::<ImageCache>().thumbs.clone();
+
+                for (id, image) in thumbnails {
+                    let width = image.size(0).width.0 as u32;
+                    let height = image.size(0).height.0 as u32;
+                    match image.as_bytes(0) {
+                        Some(image) => {
+                            let image = image.to_vec();
+                            let _ = self.cacher_tx.send(CacherCommand::WriteImage {
+                                id,
+                                kind: ImageKind::Thumbnail,
+                                width,
+                                height,
+                                image,
+                            });
+                        }
+                        None => {}
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn handle_cacher_event(
+        &mut self,
+        cx: &mut App,
+        event: &CacherEvent,
+        view: Entity<Wiremann>,
+    ) -> Result<(), ControllerError> {
+        match event {
+            CacherEvent::AppState(state) => {
+                let playback_state = state.playback.clone();
+                self.state.update(cx, |this, _| {
+                    *this = state.clone();
+
+                    let ids: HashSet<_> = this.queue.tracks.iter().map(|t| t.clone()).collect();
+                    let _ = self.cacher_tx.send(CacherCommand::GetThumbnails(ids));
+                });
+
+                self.load_queue_current(cx);
+                self.set_volume(playback_state.volume, cx);
+                self.seek(playback_state.position);
+
+                match playback_state.status {
+                    PlaybackStatus::Stopped => self.stop(),
+                    PlaybackStatus::Paused => self.pause(),
+                    PlaybackStatus::Playing => self.play(),
+                }
+
+                view.update(cx, |this, cx| {
+                    this.player_page.update(cx, |this, cx| {
+                        this.controlbar.update(cx, |this, cx| {
+                            this.vol_slider_state.update(cx, |this, cx| {
+                                this.set_value(playback_state.volume * 100.0, cx);
+                            });
+                        });
+                    });
+                });
+            }
+            CacherEvent::Thumbnails(thumbnails) => {
+                let thumbnail_cache = cx.global_mut::<ImageCache>();
+                thumbnail_cache.thumbs.extend(thumbnails.clone());
+            }
+            CacherEvent::AlbumArt(image) => {
+                let image_cache = cx.global_mut::<ImageCache>();
 
                 image_cache.current = Some(image.clone());
 
                 cx.notify(view.entity_id());
             }
-            ScannerEvent::Thumbnails(thumbnails) => {
-                let mut thumbnail_cache = cx.global_mut::<ImageCache>();
-
-                thumbnail_cache.thumbs.extend(thumbnails.clone());
+            CacherEvent::MissingAlbumArt(path) => {
+                let _ = self
+                    .scanner_tx
+                    .send(ScannerCommand::GetCurrentAlbumArt(path.clone()));
+            }
+            CacherEvent::MissingThumbnails(ids) => {
+                let tracks = self.state.read(cx).library.tracks.clone();
+                for id in ids {
+                    match tracks.get(id) {
+                        Some(track) => {
+                            let path = track.path.clone();
+                            let _ = self.scanner_tx.send(ScannerCommand::GetTrackMetadata {
+                                path,
+                                track_id: id.clone(),
+                            });
+                        }
+                        None => {}
+                    }
+                }
             }
         }
         Ok(())
@@ -163,17 +310,14 @@ impl Controller {
 
     pub fn load_audio(&self, path: PathBuf) {
         let _ = self.audio_tx.send(AudioCommand::Load(path.clone()));
-        let _ = self
-            .scanner_tx
-            .send(ScannerCommand::GetCurrentAlbumArt(path));
+        let _ = self.cacher_tx.send(CacherCommand::GetAlbumArt(path));
     }
 
     pub fn load_queue_current(&self, cx: &App) {
-        let queue = &self.state.read(cx).queue;
-        let library = &self.state.read(cx).library;
+        let state = self.state.read(cx);
 
-        if let Some(track_id) = queue.get_id() {
-            if let Some(track) = library.tracks.get(&track_id) {
+        if let Some(track_id) = state.queue.get_id(state.playback.current_index) {
+            if let Some(track) = state.library.tracks.get(&track_id) {
                 let path = track.path.clone();
                 let _ = self.audio_tx.send(AudioCommand::Load(path.clone()));
                 let _ = self
@@ -188,9 +332,10 @@ impl Controller {
     }
 
     pub fn scan_folder(&self, tracks: HashSet<TrackId>, path: PathBuf) {
-        let _ = self
-            .scanner_tx
-            .send(ScannerCommand::ScanFolder { path, tracks });
+        let _ = self.scanner_tx.send(ScannerCommand::ScanFolder {
+            path,
+            tracks: tracks.clone(),
+        });
     }
 
     pub fn play(&self) {
@@ -206,17 +351,31 @@ impl Controller {
     }
 
     pub fn set_repeat(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
+        self.state.update(cx, |this, _| {
             this.playback.repeat = !this.playback.repeat;
-        })
+        });
+        let state = self.state.read(cx).playback.clone();
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state));
     }
 
     pub fn set_mute(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
+        self.state.update(cx, |this, _| {
             this.playback.mute = !this.playback.mute;
 
-            let _ = self.audio_tx.send(AudioCommand::SetVolume(if this.playback.mute { 0.0 } else { this.playback.volume }));
-        })
+            let _ = self
+                .audio_tx
+                .send(AudioCommand::SetVolume(if this.playback.mute {
+                    0.0
+                } else {
+                    this.playback.volume
+                }));
+        });
+        let state = self.state.read(cx).playback.clone();
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state));
     }
 
     pub fn set_volume(&self, vol: f32, cx: &mut App) {
@@ -226,54 +385,83 @@ impl Controller {
 
         let muted = self.state.read(cx).playback.mute;
 
-        let _ = self.audio_tx.send(AudioCommand::SetVolume(if muted { 0.0 } else { vol }));
+        let _ = self
+            .audio_tx
+            .send(AudioCommand::SetVolume(if muted { 0.0 } else { vol }));
+
+        let state = self.state.read(cx).playback.clone();
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state));
     }
 
     pub fn set_shuffle(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
+        self.state.update(cx, |this, _| {
             this.playback.shuffling = !this.playback.shuffling;
 
             if this.queue.tracks.is_empty() {
                 return;
             }
 
-            let current = this.queue.order[this.queue.index];
+            let current = this.queue.order[this.playback.current_index];
 
             if this.playback.shuffling {
                 let mut rng = rng();
-                this.queue.order =
-                    (0..this.queue.tracks.len()).collect();
+                this.queue.order = (0..this.queue.tracks.len()).collect();
 
                 this.queue.order.shuffle(&mut rng);
 
-                if let Some(pos) =
-                    this.queue.order.iter().position(|&x| x == current)
-                {
+                if let Some(pos) = this.queue.order.iter().position(|&x| x == current) {
                     this.queue.order.swap(0, pos);
                 }
 
-                this.queue.index = 0;
+                this.playback.current_index = 0;
             } else {
                 this.queue.order = (0..this.queue.tracks.len()).collect();
 
-                this.queue.index = current;
+                this.playback.current_index = current;
             }
         });
+
+        let state = self.state.read(cx).clone();
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WriteQueueState(state.queue));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state.playback));
     }
 
     pub fn next(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
-            this.queue.index = (this.queue.index + 1).clamp(0, this.library.tracks.len());
+        self.state.update(cx, |this, _| {
+            this.playback.current_index =
+                (this.playback.current_index + 1).clamp(0, this.library.tracks.len());
         });
 
         self.load_queue_current(cx);
+
+        let state = self.state.read(cx).clone();
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WriteQueueState(state.queue));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state.playback));
     }
     pub fn prev(&self, cx: &mut App) {
-        self.state.update(cx, |this, cx| {
-            this.queue.index = this.queue.index.saturating_sub(1);
+        self.state.update(cx, |this, _| {
+            this.playback.current_index = this.playback.current_index.saturating_sub(1);
         });
 
         self.load_queue_current(cx);
+
+        let state = self.state.read(cx).clone();
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WriteQueueState(state.queue));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state.playback));
     }
 
     pub fn seek(&self, pos: u64) {
@@ -282,6 +470,10 @@ impl Controller {
 
     pub fn check_track_ended(&self) {
         let _ = self.audio_tx.send(AudioCommand::CheckTrackEnded);
+    }
+
+    pub fn load_cached_app_state(&self) {
+        let _ = self.cacher_tx.send(CacherCommand::GetAppState);
     }
 }
 

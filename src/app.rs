@@ -4,9 +4,11 @@ use std::{
     time::{Duration, Instant},
 };
 
+use crate::cacher::Cacher;
+use crate::worker_config::{WorkerConfig, calculate_worker_config};
 use crate::{
     audio::engine::Audio,
-    controller::{state::AppState, Controller},
+    controller::{Controller, state::AppState},
     errors::AppError,
     scanner::Scanner,
     ui::{
@@ -15,8 +17,10 @@ use crate::{
         wiremann::Wiremann,
     },
 };
-use gpui::*;
-use gpui_component::*;
+use gpui::{
+    AppContext, Application, Bounds, Result, TitlebarOptions, WindowBounds, WindowOptions, px, size,
+};
+use gpui_component::Root;
 
 pub fn run() -> Result<(), AppError> {
     let assets = Assets {};
@@ -27,26 +31,41 @@ pub fn run() -> Result<(), AppError> {
         let bounds = Bounds::centered(None, size(px(1280.0), px(760.0)), cx);
         assets.load_fonts(cx).expect("Could not load fonts");
 
+        let WorkerConfig {
+            metadata_workers,
+            thumbnail_workers,
+            cacher_workers,
+        } = calculate_worker_config();
+
         let (mut audio, audio_tx, audio_rx) = Audio::new();
         let (mut scanner, scanner_tx, scanner_rx) = Scanner::new();
+        let (cacher, cacher_tx, cacher_rx) = Cacher::new();
 
-        let mut controller = Controller::new(
+        let controller = Controller::new(
             cx.new(|_| AppState::default()),
             audio_tx,
             audio_rx,
             scanner_tx,
             scanner_rx,
+            cacher_tx,
+            cacher_rx,
         );
 
         thread::spawn(move || {
             if let Err(e) = audio.run() {
-                eprintln!("Audio thread crashed with error: {:?}", e);
+                eprintln!("Audio thread crashed with error: {e:?}");
             }
         });
 
         thread::spawn(move || {
-            if let Err(e) = scanner.run() {
-                eprintln!("Scanner thread crashed with error: {:?}", e);
+            if let Err(e) = scanner.run(metadata_workers, thumbnail_workers) {
+                eprintln!("Scanner thread crashed with error: {e:?}");
+            }
+        });
+
+        thread::spawn(move || {
+            if let Err(e) = cacher.run(cacher_workers) {
+                eprintln!("Cacher thread crashed with error: {e:?}");
             }
         });
 
@@ -70,7 +89,7 @@ pub fn run() -> Result<(), AppError> {
                 |window, cx| {
                     cx.set_global(controller.clone());
 
-                    let view = cx.new(|cx| Wiremann::new(cx));
+                    let view = cx.new(Wiremann::new);
 
                     cx.new(|cx| {
                         let res_handler = cx.new(|_| ResHandler {});
@@ -94,14 +113,21 @@ pub fn run() -> Result<(), AppError> {
                                     });
                                 }
 
+                                while let Ok(e) = controller.cacher_rx.try_recv() {
+                                    arc_res.update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, Event::Cacher(e));
+                                    });
+                                }
+
                                 if last_pos_request.elapsed() >= Duration::from_millis(256) {
-                                    let _ = controller.get_pos();
+                                    controller.get_pos();
 
                                     last_pos_request = Instant::now();
                                 }
 
-                                if last_track_ended_request.elapsed() >= Duration::from_millis(512) {
-                                    let _ = controller.check_track_ended();
+                                if last_track_ended_request.elapsed() >= Duration::from_millis(512)
+                                {
+                                    controller.check_track_ended();
 
                                     last_track_ended_request = Instant::now();
                                 }
@@ -111,7 +137,7 @@ pub fn run() -> Result<(), AppError> {
                                     .await;
                             }
                         })
-                            .detach();
+                        .detach();
 
                         let view_clone = view.clone();
 
@@ -126,12 +152,15 @@ pub fn run() -> Result<(), AppError> {
 
                                     Event::Scanner(event) => controller_resclone
                                         .handle_scanner_event(cx, event, view_clone.clone()),
+
+                                    Event::Cacher(event) => controller_resclone
+                                        .handle_cacher_event(cx, event, view_clone.clone()),
                                 }
                             {
                                 eprintln!("controller error: {e:?}");
                             }
                         })
-                            .detach();
+                        .detach();
 
                         Root::new(view, window, cx)
                     })
@@ -140,7 +169,7 @@ pub fn run() -> Result<(), AppError> {
 
             Ok::<_, AppError>(())
         })
-            .detach();
+        .detach();
     });
 
     Ok(())

@@ -1,5 +1,6 @@
 use gpui::{Rgba, rgb, rgba};
 
+#[allow(dead_code)]
 pub struct Theme {
     // Backgrounds
     pub bg_main: Rgba,
