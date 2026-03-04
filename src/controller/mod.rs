@@ -94,7 +94,9 @@ impl Controller {
                 });
 
                 let state = self.state.read(cx).playback.clone();
-                let _ = self.cacher_tx.send(CacherCommand::WritePlaybackState(state));
+                let _ = self
+                    .cacher_tx
+                    .send(CacherCommand::WritePlaybackState(state));
             }
             AudioEvent::TrackLoaded(path) => {
                 let track_id = gen_track_id(path)?;
@@ -116,7 +118,9 @@ impl Controller {
                 });
 
                 let state = self.state.read(cx).playback.clone();
-                let _ = self.cacher_tx.send(CacherCommand::WritePlaybackState(state));
+                let _ = self
+                    .cacher_tx
+                    .send(CacherCommand::WritePlaybackState(state));
             }
             AudioEvent::PlaybackStatus(status) => {
                 self.state.update(cx, |this, cx| {
@@ -124,7 +128,9 @@ impl Controller {
                     cx.notify()
                 });
                 let state = self.state.read(cx).playback.clone();
-                let _ = self.cacher_tx.send(CacherCommand::WritePlaybackState(state));
+                let _ = self
+                    .cacher_tx
+                    .send(CacherCommand::WritePlaybackState(state));
             }
             AudioEvent::TrackEnded => {
                 let repeat = self.state.read(cx).playback.repeat;
@@ -348,7 +354,9 @@ impl Controller {
             this.playback.repeat = !this.playback.repeat;
         });
         let state = self.state.read(cx).playback.clone();
-        let _ = self.cacher_tx.send(CacherCommand::WritePlaybackState(state));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state));
     }
 
     pub fn set_mute(&self, cx: &mut App) {
@@ -364,7 +372,9 @@ impl Controller {
                 }));
         });
         let state = self.state.read(cx).playback.clone();
-        let _ = self.cacher_tx.send(CacherCommand::WritePlaybackState(state));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state));
     }
 
     pub fn set_volume(&self, vol: f32, cx: &mut App) {
@@ -379,7 +389,9 @@ impl Controller {
             .send(AudioCommand::SetVolume(if muted { 0.0 } else { vol }));
 
         let state = self.state.read(cx).playback.clone();
-        let _ = self.cacher_tx.send(CacherCommand::WritePlaybackState(state));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state));
     }
 
     pub fn set_shuffle(&self, cx: &mut App) {
@@ -411,20 +423,29 @@ impl Controller {
         });
 
         let state = self.state.read(cx).clone();
-        let _ = self.cacher_tx.send(CacherCommand::WriteQueueState(state.queue));
-        let _ = self.cacher_tx.send(CacherCommand::WritePlaybackState(state.playback));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WriteQueueState(state.queue));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state.playback));
     }
 
     pub fn next(&self, cx: &mut App) {
         self.state.update(cx, |this, _| {
-            this.playback.current_index = (this.playback.current_index + 1).clamp(0, this.library.tracks.len());
+            this.playback.current_index =
+                (this.playback.current_index + 1).clamp(0, this.library.tracks.len());
         });
 
         self.load_queue_current(cx);
 
         let state = self.state.read(cx).clone();
-        let _ = self.cacher_tx.send(CacherCommand::WriteQueueState(state.queue));
-        let _ = self.cacher_tx.send(CacherCommand::WritePlaybackState(state.playback));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WriteQueueState(state.queue));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state.playback));
     }
     pub fn prev(&self, cx: &mut App) {
         self.state.update(cx, |this, _| {
@@ -434,8 +455,12 @@ impl Controller {
         self.load_queue_current(cx);
 
         let state = self.state.read(cx).clone();
-        let _ = self.cacher_tx.send(CacherCommand::WriteQueueState(state.queue));
-        let _ = self.cacher_tx.send(CacherCommand::WritePlaybackState(state.playback));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WriteQueueState(state.queue));
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WritePlaybackState(state.playback));
     }
 
     pub fn seek(&self, pos: u64) {
