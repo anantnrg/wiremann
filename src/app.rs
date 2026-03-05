@@ -22,6 +22,7 @@ use gpui::{
 };
 use gpui_component::Root;
 
+#[allow(clippy::too_many_lines, clippy::missing_panics_doc, clippy::missing_errors_doc)]
 pub fn run() -> Result<(), AppError> {
     let assets = Assets {};
     let app = Application::new().with_assets(assets.clone());
@@ -32,9 +33,9 @@ pub fn run() -> Result<(), AppError> {
         assets.load_fonts(cx).expect("Could not load fonts");
 
         let WorkerConfig {
-            metadata_workers,
-            thumbnail_workers,
-            cacher_workers,
+            metadata,
+            thumbnail,
+            cacher: cacher_workers,
         } = calculate_worker_config();
 
         let (mut audio, audio_tx, audio_rx) = Audio::new();
@@ -58,7 +59,7 @@ pub fn run() -> Result<(), AppError> {
         });
 
         thread::spawn(move || {
-            if let Err(e) = scanner.run(metadata_workers, thumbnail_workers) {
+            if let Err(e) = scanner.run(metadata, thumbnail) {
                 eprintln!("Scanner thread crashed with error: {e:?}");
             }
         });
