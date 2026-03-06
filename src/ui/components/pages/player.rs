@@ -135,6 +135,7 @@ impl Render for PlayerPage {
                                     .flex()
                                     .items_center()
                                     .justify_center()
+                                    .text_color(theme.text_primary)
                                     .when(
                                         cx.global::<Controller>().state.read(cx).playback.shuffling,
                                         |this| this.text_color(theme.accent),
@@ -144,7 +145,6 @@ impl Render for PlayerPage {
                                         let controller = controller.clone();
                                         move |_, _, cx| controller.set_shuffle(cx)
                                     })
-                                    .text_color(theme.text_primary)
                                     .child(Icon::new(Icons::Shuffle).size_4()),
                             )
                             .child(
@@ -219,6 +219,7 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .hover(|this| this.bg(theme.white_05))
+                                    .text_color(theme.text_primary)
                                     .when(
                                         cx.global::<Controller>().state.read(cx).playback.repeat,
                                         |this| this.text_color(theme.accent),
@@ -227,7 +228,6 @@ impl Render for PlayerPage {
                                         let controller = controller.clone();
                                         move |_, _, cx| controller.set_repeat(cx)
                                     })
-                                    .text_color(theme.text_primary)
                                     .child(Icon::new(Icons::Repeat).size_4()),
                             ),
                     )
