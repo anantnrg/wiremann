@@ -2,9 +2,8 @@ use crate::controller::Controller;
 use crate::ui::theme::Theme;
 
 use super::slider::{Slider, SliderState};
-use crate::ui::icons::Icons;
+use crate::ui::components::icons::{Icons, Icon};
 use gpui::{Entity, Render, Window, Context, IntoElement, ParentElement, Styled, div, StatefulInteractiveElement, InteractiveElement};
-use gpui_component::Icon;
 
 #[derive(Clone)]
 pub struct ControlBar {

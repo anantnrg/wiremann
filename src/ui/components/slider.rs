@@ -1,12 +1,9 @@
+// Ref: https://github.com/longbridge/gpui-component/blob/main/crates/ui/src/slider.rs
 use std::ops::Range;
 
-use gpui::{
-    div, prelude::FluentBuilder as _, px, relative, Along, App, AppContext as _, Axis, Bounds,
-    Context, DefiniteLength, DragMoveEvent, Empty, Entity, EntityId, EventEmitter,
-    InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement as _, Pixels,
-    Point, Render, RenderOnce, StatefulInteractiveElement as _, StyleRefinement, Styled, Window,
-};
-use gpui_component::{h_flex, ActiveTheme, AxisExt, ElementExt, StyledExt};
+use crate::ui::components::element_ext::ElementExt;
+use gpui::{div, prelude::FluentBuilder as _, px, relative, transparent_black, white, Along, App, AppContext as _, Axis, Bounds, Context, DefiniteLength, Div, DragMoveEvent, Empty, Entity, EntityId, EventEmitter, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement as _, Pixels, Point, Refineable, Render, RenderOnce, StatefulInteractiveElement as _, StyleRefinement, Styled, Window};
+use gpui_component::StyledExt;
 
 #[derive(Clone)]
 struct DragThumb((EntityId, bool));
@@ -358,7 +355,7 @@ impl SliderState {
         let bounds = self.bounds;
         let step = self.step;
 
-        let inner_pos = if axis.is_horizontal() {
+        let inner_pos = if axis == Axis::Horizontal {
             position.x - bounds.left()
         } else {
             bounds.bottom() - position.y
@@ -440,7 +437,7 @@ impl Slider {
         start: DefiniteLength,
         is_start: bool,
         window: &mut Window,
-        cx: &mut App,
+        _: &mut App,
     ) -> impl gpui::IntoElement {
         let entity_id = self.state.entity_id();
         let axis = self.axis;
@@ -453,17 +450,16 @@ impl Slider {
         div()
             .id(id)
             .absolute()
-            .when(axis.is_horizontal(), |this| {
+            .when(axis == Axis::Horizontal, |this| {
                 this.top(px(-5.)).left(start).ml(-px(12.))
             })
-            .when(axis.is_vertical(), |this| {
+            .when(axis == Axis::Vertical, |this| {
                 this.bottom(start).left(px(-5.)).mb(-px(8.))
             })
             .flex()
             .items_center()
             .justify_center()
             .flex_shrink_0()
-            .when(cx.theme().shadow, Styled::shadow_md)
             .size_3()
             .child(div().flex_shrink_0().size_full())
             .on_mouse_down(MouseButton::Left, |_, _, cx| {
@@ -519,26 +515,29 @@ impl RenderOnce for Slider {
             .background
             .clone()
             .and_then(|bg| bg.color())
-            .unwrap_or(cx.theme().slider_bar.into());
+            .unwrap_or(white().into());
         let thumb_color = self
             .style
             .text
             .color
-            .unwrap_or_else(|| cx.theme().slider_thumb);
+            .unwrap_or_else(|| white().into());
 
-        div()
+        let mut slider_div = div()
             .id(("slider", self.state.entity_id()))
             .flex()
             .flex_1()
             .items_center()
             .justify_center()
-            .when(axis.is_vertical(), |this| this.h(px(120.)))
-            .when(axis.is_horizontal(), Styled::w_full)
-            .refine_style(&self.style)
-            .bg(cx.theme().transparent)
-            .text_color(cx.theme().foreground)
+            .when(axis == Axis::Vertical, |this| this.h(px(120.)))
+            .when(axis == Axis::Horizontal, Styled::w_full)
+            .bg(transparent_black())
+            .text_color(white());
+        slider_div
+            .style().refine_style(&self.style);
+        slider_div
             .child(
-                h_flex()
+                div()
+                    .flex()
                     .id("slider-bar-container")
                     .when(!self.disabled, |this| {
                         this.on_mouse_down(
@@ -549,7 +548,7 @@ impl RenderOnce for Slider {
                                     let mut is_start = false;
                                     if is_range {
                                         let bar_size = state.bounds.size.along(axis);
-                                        let inner_pos = if axis.is_horizontal() {
+                                        let inner_pos = if axis == Axis::Horizontal {
                                             e.position.x - state.bounds.left()
                                         } else {
                                             state.bounds.bottom() - e.position.y
@@ -592,10 +591,10 @@ impl RenderOnce for Slider {
                                 },
                             ))
                     })
-                    .when(axis.is_horizontal(), |this| {
+                    .when(axis == Axis::Horizontal, |this| {
                         this.items_center().h_6().w_full()
                     })
-                    .when(axis.is_vertical(), |this| {
+                    .when(axis == Axis::Vertical, |this| {
                         this.justify_center().w_6().h_full()
                     })
                     .flex_shrink_0()
@@ -603,8 +602,8 @@ impl RenderOnce for Slider {
                         div()
                             .id("slider-bar")
                             .relative()
-                            .when(axis.is_horizontal(), |this| this.w_full().h_1())
-                            .when(axis.is_vertical(), |this| this.h_full().w_2())
+                            .when(axis == Axis::Horizontal, |this| this.w_full().h_1())
+                            .when(axis == Axis::Vertical, |this| this.h_full().w_2())
                             .bg(bar_color)
                             .hover(|this| this.bg(bar_color).h_1())
                             .active(|this| this.bg(bar_color).h_1())
@@ -612,10 +611,10 @@ impl RenderOnce for Slider {
                             .child(
                                 div()
                                     .absolute()
-                                    .when(axis.is_horizontal(), |this| {
+                                    .when(axis == Axis::Horizontal, |this| {
                                         this.h_full().left(bar_start).right(bar_end)
                                     })
-                                    .when(axis.is_vertical(), |this| {
+                                    .when(axis == Axis::Vertical, |this| {
                                         this.w_full().bottom(bar_start).top(bar_end)
                                     })
                                     .bg(thumb_color)
@@ -637,4 +636,9 @@ impl RenderOnce for Slider {
                     ),
             )
     }
+}
+
+fn refine_style(element: &mut Div, style: &StyleRefinement) -> Div {
+    element.style().refine(style);
+    *element
 }

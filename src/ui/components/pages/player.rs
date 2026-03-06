@@ -6,13 +6,12 @@ use crate::{
         components::image_cache::ImageCache,
         components::queue::Queue,
         components::scrollbar::{floating_scrollbar, RightPad},
-        icons::Icons,
+        components::icons::{Icon, Icons},
         theme::Theme,
     },
 };
 use gpui::prelude::FluentBuilder;
 use gpui::{div, img, px, App, AppContext, Context, Entity, FontWeight, ImageFormat, InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window};
-use gpui_component::Icon;
 
 #[derive(Clone)]
 pub struct PlayerPage {
