@@ -529,11 +529,13 @@ impl RenderOnce for Slider {
             .justify_center()
             .when(axis == Axis::Vertical, |this| this.h(px(120.)))
             .when(axis == Axis::Horizontal, Styled::w_full)
-            .bg(transparent_black())
             .text_color(white());
+
         slider_div
             .style().refine(&self.style);
+
         slider_div
+            .bg(transparent_black())
             .child(
                 div()
                     .flex()
