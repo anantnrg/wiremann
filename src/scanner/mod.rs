@@ -13,11 +13,11 @@ use lofty::{prelude::*, probe::Probe};
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
-use std::path::Path;
 use uuid::Uuid;
 use walkdir::WalkDir;
 
@@ -32,6 +32,7 @@ enum ScanJob {
     Metadata(PathBuf, TrackId),
     Thumbnail(TrackId, Vec<u8>),
     AlbumArt(PathBuf),
+    PlaylistThumbnail(Uuid, Vec<TrackId>),
 }
 
 impl Scanner {
@@ -193,6 +194,24 @@ impl Scanner {
     }
 
     fn spawn_album_art_worker(&self, album_art_rx: Receiver<ScanJob>) {
+        let events_tx = self.tx.clone();
+
+        std::thread::spawn(move || {
+            while let Ok(ScanJob::AlbumArt(path)) = album_art_rx.recv() {
+                match get_album_art(&path) {
+                    Ok((id, Some(image))) => {
+                        if let Ok(album_art) = render_album_art(&image, false) {
+                            let _ = events_tx.send(ScannerEvent::AlbumArt(id, album_art));
+                        }
+                    }
+                    Err(err) => eprintln!("Failed album art: {err}"),
+                    _ => {}
+                }
+            }
+        });
+    }
+
+    fn spawn_playlist_thumbnail_worker(&self, album_art_rx: Receiver<ScanJob>) {
         let events_tx = self.tx.clone();
 
         std::thread::spawn(move || {

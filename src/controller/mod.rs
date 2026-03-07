@@ -17,7 +17,7 @@ use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
 use gpui::{App, Entity, Global};
 use rand::rng;
-use rand::seq::SliceRandom;
+use rand::seq::{IteratorRandom, SliceRandom};
 use std::collections::HashSet;
 use std::{path::PathBuf, sync::Arc};
 
@@ -169,6 +169,51 @@ impl Controller {
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
             ScannerEvent::Playlist(playlist) => {
+                let id = playlist.id;
+                let playlist_tracks = playlist.tracks.clone();
+
+                let thumb_tracks = {
+                    let state = self.state.read(cx);
+                    let library_tracks = &state.library.tracks;
+
+                    let mut rng = rand::rng();
+                    let mut chosen = Vec::with_capacity(4);
+                    let mut albums = HashSet::with_capacity(4);
+
+                    let candidates = playlist_tracks
+                        .iter()
+                        .copied()
+                        .sample(&mut rng, 12);
+
+                    for id in candidates {
+                        if let Some(track) = library_tracks.get(&id) {
+                            if albums.insert(track.album.clone()) {
+                                chosen.push(track.path.clone());
+                            }
+                        }
+
+                        if chosen.len() == 4 {
+                            break;
+                        }
+                    }
+
+                    if chosen.len() < 4 {
+                        for id in &playlist_tracks {
+                            if chosen.len() == 4 {
+                                break;
+                            }
+
+                            if let Some(track) = library_tracks.get(id) {
+                                if albums.insert(track.album.clone()) {
+                                    chosen.push(track.path.clone());
+                                }
+                            }
+                        }
+                    }
+
+                    chosen
+                };
+
                 self.state.update(cx, |this, cx| {
                     this.library
                         .playlists
@@ -183,6 +228,9 @@ impl Controller {
 
                     cx.notify();
                 });
+                
+                let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnail {id, tracks: thumb_tracks});
+                
                 let state = self.state.read(cx).queue.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteQueueState(state));
             }
