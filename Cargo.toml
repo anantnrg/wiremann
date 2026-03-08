@@ -27,6 +27,7 @@ blake3 = "1.8.3"
 hex = "0.4.3"
 zstd = "0.13.3"
 lru = "0.16.3"
+fast_image_resize = "6.0.0"
 
 [profile.dev]
 opt-level = 0

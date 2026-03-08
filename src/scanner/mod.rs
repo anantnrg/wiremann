@@ -6,9 +6,9 @@ use crate::{
     library::TrackId,
 };
 use crossbeam_channel::{select, tick, Receiver, Sender};
+use fast_image_resize as fr;
 use gpui::RenderImage;
-use image::imageops::thumbnail;
-use image::{imageops, DynamicImage, Frame, ImageReader};
+use image::{imageops, DynamicImage, Frame, ImageReader, RgbaImage};
 use lofty::{prelude::*, probe::Probe};
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
@@ -319,19 +319,41 @@ impl Scanner {
 }
 
 fn render_album_art(bytes: &[u8], is_thumbnail: bool) -> Result<Arc<RenderImage>, ScannerError> {
-    let image = ImageReader::new(Cursor::new(bytes))
+    let img = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()?
         .decode()?;
 
-    let mut image = if is_thumbnail {
-        thumbnail(&image.into_rgba8(), 64, 64)
+    let rgba = img.into_rgba8();
+
+    let image = if is_thumbnail {
+        let (src_w, src_h) = rgba.dimensions();
+
+        let src = fr::images::Image::from_vec_u8(
+            src_w,
+            src_h,
+            rgba.into_raw(),
+            fr::PixelType::U8x4,
+        )?;
+
+        let mut dst = fr::images::Image::new(128, 128, fr::PixelType::U8x4);
+
+        let mut resizer = fr::Resizer::new();
+
+        resizer.resize(
+            &src,
+            &mut dst,
+            &fr::ResizeOptions::new()
+                .resize_alg(fr::ResizeAlg::Convolution(fr::FilterType::Bilinear)),
+        )?;
+
+        RgbaImage::from_raw(196, 196, dst.into_vec()).unwrap()
     } else {
-        image.into_rgba8()
+        rgba
     };
 
-    let buf: &mut [u8] = image.as_mut();
+    let mut image = image;
 
-    for px in buf.chunks_exact_mut(4) {
+    for px in <[u8] as AsMut<[u8]>>::as_mut(&mut image).chunks_exact_mut(4) {
         px.swap(0, 2);
     }
 

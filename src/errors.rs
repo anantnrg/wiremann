@@ -1,4 +1,5 @@
 use crossbeam_channel::RecvError;
+use fast_image_resize::{ImageBufferError, ResizeError};
 use image::ImageError;
 use lofty::error::LoftyError;
 use rodio::source::SeekError;
@@ -39,6 +40,10 @@ pub enum ScannerError {
     SystemTimeError(#[from] SystemTimeError),
     #[error("Recv Error occurred: `{0}`")]
     RecvError(#[from] RecvError),
+    #[error("Image Buffer Error occurred: `{0}`")]
+    ImageBufferError(#[from] ImageBufferError),
+    #[error("Image Resize Error occurred: `{0}`")]
+    ImageResizeError(#[from] ResizeError),
 }
 
 #[derive(Error, Debug)]
