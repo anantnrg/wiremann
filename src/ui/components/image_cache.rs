@@ -1,9 +1,11 @@
+use crate::controller::commands::CacherCommand;
 use crate::library::playlists::PlaylistId;
 use crate::library::TrackId;
+use crossbeam_channel::Sender;
 use gpui::RenderImage;
 use lru::LruCache;
 use std::collections::HashSet;
-use std::num::NonZero;
+use std::num::{NonZeroUsize};
 use std::sync::Arc;
 
 pub struct ImageCache {
@@ -18,8 +20,8 @@ impl Default for ImageCache {
     fn default() -> Self {
         ImageCache {
             current: None,
-            track_thumbs: LruCache::new(NonZero(128)),
-            playlist_thumbs: LruCache::new(NonZero(64)),
+            track_thumbs: LruCache::new(NonZeroUsize::new(128).unwrap()),
+            playlist_thumbs: LruCache::new(NonZeroUsize::new(128).unwrap()),
             inflight: HashSet::new(),
         }
     }
@@ -37,6 +39,32 @@ impl ImageCache {
 
     pub fn add_track(&mut self, id: TrackId, thumbnail: Arc<RenderImage>) {
         self.track_thumbs.put(id, thumbnail);
+        self.inflight.remove(&id);
+    }
+
+    pub fn request_track(
+        &mut self,
+        ids: HashSet<TrackId>,
+        tx: &Sender<CacherCommand>,
+    ) {
+        let mut to_request = HashSet::new();
+
+        for id in ids {
+            if self.track_thumbs.contains(&id) {
+                continue;
+            }
+
+            if self.inflight.contains(&id) {
+                continue;
+            }
+
+            self.inflight.insert(id);
+            to_request.insert(id);
+        }
+
+        if !to_request.is_empty() {
+            let _ = tx.send(CacherCommand::GetThumbnails(to_request));
+        }
     }
 }
 

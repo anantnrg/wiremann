@@ -5,8 +5,11 @@ use crate::{controller::Controller, library::Track};
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use gpui::{div, img, px, uniform_list, App, AppContext, Context, Entity, InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, ScrollStrategy, StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window};
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+const THUMBNAIL_MARGIN: usize = 16;
 
 struct ItemData {
     id: TrackId,
@@ -38,12 +41,12 @@ impl Item {
 
 impl Render for Item {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let thumbnail = cx.global_mut::<ImageCache>().get_track(&self.data.id);
         let theme = cx.global::<Theme>();
         let state = cx.global::<Controller>().state.read(cx);
 
         let is_current = Some(&self.data.id) == state.playback.current.as_ref();
 
-        let thumbnail = cx.global::<ImageCache>().get_track(&self.data.id);
         let current = if let Some(id) = state.playback.current {
             state.library.tracks.get(&id)
         } else {
@@ -202,7 +205,7 @@ impl Render for Queue {
             .size_full()
             .child(
                 uniform_list("queue", len, move |range, _, cx| {
-                    let visible_paths: Vec<TrackId> = range
+                    let visible_tracks: Vec<TrackId> = range
                         .clone()
                         .map(|i| {
                             let real_index = &tracks[queue_order[i]];
@@ -214,8 +217,23 @@ impl Render for Queue {
                         })
                         .collect();
 
+                    let start = range.start.saturating_sub(THUMBNAIL_MARGIN);
+                    let end = (range.end + THUMBNAIL_MARGIN).min(len);
+
+                    let mut request_ids = HashSet::new();
+
+                    for i in start..end {
+                        let track_id = tracks[queue_order[i]];
+
+                        request_ids.insert(track_id);
+                    }
+
+                    let tx = &cx.global::<Controller>().cacher_tx.clone();
+
+                    cx.global_mut::<ImageCache>().request_track(request_ids, tx);
+
                     views.update(cx, |map, _| {
-                        map.retain(|id, _| visible_paths.contains(id));
+                        map.retain(|id, _| visible_tracks.contains(id));
                     });
 
                     range

@@ -222,10 +222,6 @@ impl Controller {
                     this.queue.tracks.clone_from(&playlist.tracks);
                     this.queue.order = (0..playlist.tracks.len()).collect();
 
-                    let ids: HashSet<_> = this.queue.tracks.iter().copied().collect();
-
-                    let _ = self.cacher_tx.send(CacherCommand::GetThumbnails(ids));
-
                     cx.notify();
                 });
 
@@ -258,7 +254,9 @@ impl Controller {
             ScannerEvent::Thumbnails(thumbnails) => {
                 let thumbnail_cache = cx.global_mut::<ImageCache>();
 
-                thumbnail_cache.track_thumbs.extend(thumbnails.clone());
+                for (id, image) in thumbnails {
+                    thumbnail_cache.add_track(id.clone(), image.clone());
+                }
             }
             ScannerEvent::ScanFinished => {
                 let thumbnails = cx.global::<ImageCache>().track_thumbs.clone();
@@ -280,8 +278,8 @@ impl Controller {
             }
             ScannerEvent::PlaylistThumbnail(id, thumbnail) => {
                 let thumbnail_cache = cx.global_mut::<ImageCache>();
-                
-                thumbnail_cache.playlist_thumbs.insert(id.clone(), thumbnail.clone());
+
+                thumbnail_cache.playlist_thumbs.put(id.clone(), thumbnail.clone());
             }
         }
         Ok(())
@@ -326,7 +324,10 @@ impl Controller {
             }
             CacherEvent::Thumbnails(thumbnails) => {
                 let thumbnail_cache = cx.global_mut::<ImageCache>();
-                thumbnail_cache.track_thumbs.extend(thumbnails.clone());
+
+                for (id, image) in thumbnails {
+                    thumbnail_cache.add_track(id.clone(), image.clone());
+                }
             }
             CacherEvent::AlbumArt(image) => {
                 let image_cache = cx.global_mut::<ImageCache>();
