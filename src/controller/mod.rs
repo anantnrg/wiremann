@@ -6,7 +6,7 @@ use crate::controller::commands::CacherCommand;
 use crate::controller::events::CacherEvent;
 use crate::controller::state::PlaybackStatus;
 use crate::library::TrackId;
-use crate::ui::helpers::secs_to_slider;
+use crate::ui::helpers::{drop_image_from_app, secs_to_slider};
 use crate::ui::wiremann::Wiremann;
 use crate::{
     controller::state::AppState, errors::ControllerError, library::gen_track_id,
@@ -252,10 +252,15 @@ impl Controller {
                 cx.notify(view.entity_id());
             }
             ScannerEvent::Thumbnails(thumbnails) => {
-                let thumbnail_cache = cx.global_mut::<ImageCache>();
-
                 for (id, image) in thumbnails {
-                    thumbnail_cache.add_track(id.clone(), image.clone());
+                    let evicted = {
+                        let thumbnail_cache = cx.global_mut::<ImageCache>();
+                        thumbnail_cache.add_track(id.clone(), image.clone())
+                    };
+
+                    if let Some(img) = evicted {
+                        drop_image_from_app(cx, img);
+                    }
                 }
             }
             ScannerEvent::ScanFinished => {
@@ -323,10 +328,15 @@ impl Controller {
                 });
             }
             CacherEvent::Thumbnails(thumbnails) => {
-                let thumbnail_cache = cx.global_mut::<ImageCache>();
-
                 for (id, image) in thumbnails {
-                    thumbnail_cache.add_track(id.clone(), image.clone());
+                    let evicted = {
+                        let thumbnail_cache = cx.global_mut::<ImageCache>();
+                        thumbnail_cache.add_track(id.clone(), image.clone())
+                    };
+
+                    if let Some(img) = evicted {
+                        drop_image_from_app(cx, img);
+                    }
                 }
             }
             CacherEvent::AlbumArt(image) => {

@@ -5,7 +5,7 @@ use crossbeam_channel::Sender;
 use gpui::RenderImage;
 use lru::LruCache;
 use std::collections::HashSet;
-use std::num::{NonZeroUsize};
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 pub struct ImageCache {
@@ -37,9 +37,15 @@ impl ImageCache {
         self.track_thumbs.clear();
     }
 
-    pub fn add_track(&mut self, id: TrackId, thumbnail: Arc<RenderImage>) {
-        self.track_thumbs.put(id, thumbnail);
+    pub fn add_track(
+        &mut self,
+        id: TrackId,
+        thumbnail: Arc<RenderImage>,
+    ) -> Option<Arc<RenderImage>> {
+        let evicted = self.track_thumbs.put(id, thumbnail);
         self.inflight.remove(&id);
+
+        evicted
     }
 
     pub fn request_track(

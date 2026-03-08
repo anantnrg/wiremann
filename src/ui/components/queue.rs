@@ -228,9 +228,9 @@ impl Render for Queue {
                         request_ids.insert(track_id);
                     }
 
-                    let tx = &cx.global::<Controller>().cacher_tx.clone();
+                    let tx = cx.global::<Controller>().cacher_tx.clone();
 
-                    cx.global_mut::<ImageCache>().request_track(request_ids, tx);
+                    cx.global_mut::<ImageCache>().request_track(request_ids, &tx);
 
                     views.update(cx, |map, _| {
                         map.retain(|id, _| visible_tracks.contains(id));
