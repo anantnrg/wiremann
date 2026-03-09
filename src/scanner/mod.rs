@@ -334,7 +334,7 @@ fn render_album_art(bytes: &[u8], is_thumbnail: bool) -> Result<Arc<RenderImage>
             fr::PixelType::U8x4,
         )?;
 
-        let mut dst = fr::images::Image::new(128, 128, fr::PixelType::U8x4);
+        let mut dst = fr::images::Image::new(256, 256, fr::PixelType::U8x4);
 
         let mut resizer = fr::Resizer::new();
 
@@ -345,7 +345,7 @@ fn render_album_art(bytes: &[u8], is_thumbnail: bool) -> Result<Arc<RenderImage>
                 .resize_alg(fr::ResizeAlg::Convolution(fr::FilterType::Bilinear)),
         )?;
 
-        RgbaImage::from_raw(128, 128, dst.into_vec()).unwrap()
+        RgbaImage::from_raw(256, 256, dst.into_vec()).unwrap()
     } else {
         rgba
     };

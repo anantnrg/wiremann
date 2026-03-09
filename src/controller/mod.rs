@@ -287,6 +287,8 @@ impl Controller {
                 self.state.update(cx, |this, _| {
                     this.library.image_lookup.extend(lookup.clone());
                 });
+                let state = self.state.read(cx).library.clone();
+                let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
             ScannerEvent::PlaylistThumbnail(id, thumbnail) => {
                 let thumbnail_cache = cx.global_mut::<ImageCache>();
