@@ -42,17 +42,15 @@ impl Audio {
     #[allow(clippy::missing_errors_doc)]
     pub fn run(&mut self) -> Result<(), AudioError> {
         loop {
-            while let Ok(cmd) = self.rx.recv_blocking() {
-                match cmd {
-                    AudioCommand::Load(path) => self.load_path(path)?,
-                    AudioCommand::GetPosition => self.emit_position(),
-                    AudioCommand::CheckTrackEnded => self.check_track_ended(),
-                    AudioCommand::Play => self.play(),
-                    AudioCommand::Pause => self.pause(),
-                    AudioCommand::Stop => self.stop(),
-                    AudioCommand::SetVolume(v) => self.set_volume(v),
-                    AudioCommand::Seek(u64) => self.seek(u64)?,
-                }
+            match self.rx.recv_blocking()? {
+                AudioCommand::Load(path) => self.load_path(path)?,
+                AudioCommand::GetPosition => self.emit_position(),
+                AudioCommand::CheckTrackEnded => self.check_track_ended(),
+                AudioCommand::Play => self.play(),
+                AudioCommand::Pause => self.pause(),
+                AudioCommand::Stop => self.stop(),
+                AudioCommand::SetVolume(v) => self.set_volume(v),
+                AudioCommand::Seek(u64) => self.seek(u64)?,
             }
         }
     }
