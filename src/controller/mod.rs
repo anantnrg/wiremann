@@ -69,36 +69,40 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         match event {
             AudioEvent::Position(pos) => {
-                view.update(cx, |this, cx| {
-                    this.player_page.update(cx, |this, cx| {
-                        this.controlbar.update(cx, |this, cx| {
-                            this.playback_slider_state.update(cx, |this, cx| {
-                                let state = cx.global::<Controller>().state.read(cx);
-                                let current = if let Some(id) = state.playback.current {
-                                    state.library.tracks.get(&id)
-                                } else {
-                                    None
-                                };
+                let last_pos = self.state.read(cx).playback.position.clone();
 
-                                let duration = if let Some(track) = current {
-                                    track.duration
-                                } else {
-                                    0
-                                };
-                                this.set_value(secs_to_slider(*pos, duration), cx);
+                if *pos != last_pos {
+                    view.update(cx, |this, cx| {
+                        this.player_page.update(cx, |this, cx| {
+                            this.controlbar.update(cx, |this, cx| {
+                                this.playback_slider_state.update(cx, |this, cx| {
+                                    let state = cx.global::<Controller>().state.read(cx);
+                                    let current = if let Some(id) = state.playback.current {
+                                        state.library.tracks.get(&id)
+                                    } else {
+                                        None
+                                    };
+
+                                    let duration = if let Some(track) = current {
+                                        track.duration
+                                    } else {
+                                        0
+                                    };
+                                    this.set_value(secs_to_slider(*pos, duration), cx);
+                                });
                             });
                         });
                     });
-                });
-                self.state.update(cx, |this, cx| {
-                    this.playback.position = *pos;
-                    cx.notify();
-                });
+                    self.state.update(cx, |this, cx| {
+                        this.playback.position = *pos;
+                        cx.notify();
+                    });
 
-                let state = self.state.read(cx).playback.clone();
-                let _ = self
-                    .cacher_tx
-                    .send(CacherCommand::WritePlaybackState(state));
+                    let state = self.state.read(cx).playback.clone();
+                    let _ = self
+                        .cacher_tx
+                        .send(CacherCommand::WritePlaybackState(state));
+                }
             }
             AudioEvent::TrackLoaded(path) => {
                 let track_id = gen_track_id(path)?;
