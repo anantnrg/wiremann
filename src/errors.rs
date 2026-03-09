@@ -24,8 +24,6 @@ pub enum AudioError {
     IoError(#[from] std::io::Error),
     #[error("Rodio Decoder Error occurred: `{0}`")]
     RodioDecoderError(#[from] rodio::decoder::DecoderError),
-    #[error("Recv Error occurred: `{0}`")]
-    RecvError(#[from] RecvError),
 }
 
 #[derive(Error, Debug)]
