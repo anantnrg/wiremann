@@ -1,4 +1,4 @@
-use crossbeam_channel::RecvError;
+use async_channel::RecvError;
 use fast_image_resize::{ImageBufferError, ResizeError};
 use image::ImageError;
 use lofty::error::LoftyError;
