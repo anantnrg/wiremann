@@ -266,10 +266,18 @@ impl Controller {
                 let state = self.state.read(cx).library.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
-            ScannerEvent::PlaylistThumbnail(id, hash, thumbnail) => {
+            ScannerEvent::PlaylistThumbnail(id, image_id, thumbnail) => {
                 let thumbnail_cache = cx.global_mut::<ImageCache>();
 
-                thumbnail_cache.images.put(hash.clone(), thumbnail.clone());
+                thumbnail_cache.images.put(image_id.clone(), thumbnail.clone());
+
+                self.state.update(cx, |this, _| {
+                    if let Some(playlist) = this.library.playlists.get_mut(&id) {
+                        Arc::make_mut(playlist).image_id = Some(*image_id);
+                    }
+                });
+                let state = self.state.read(cx).library.clone();
+                let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
         }
         Ok(())
