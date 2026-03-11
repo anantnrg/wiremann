@@ -699,10 +699,10 @@ impl Cacher {
                             }
                             Err(e) => {
                                 eprintln!("Error loading album art: {e}");
-                                let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(id));
+                                let _ = cacher.tx.send(CacherEvent::MissingPlaylistThumbnail(id));
                             }
                             _ => {
-                                let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(id));
+                                let _ = cacher.tx.send(CacherEvent::MissingPlaylistThumbnail(id));
                             }
                         }
                     }

@@ -5,7 +5,7 @@ use crate::cacher::ImageKind;
 use crate::controller::commands::CacherCommand;
 use crate::controller::events::CacherEvent;
 use crate::controller::state::PlaybackStatus;
-use crate::library::TrackId;
+use crate::library::{Track, TrackId};
 use crate::ui::helpers::{drop_image_from_app, secs_to_slider};
 use crate::ui::wiremann::Wiremann;
 use crate::{
@@ -18,7 +18,7 @@ use events::{AudioEvent, ScannerEvent};
 use gpui::{App, Entity, Global};
 use rand::rng;
 use rand::seq::{IteratorRandom, SliceRandom};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::{path::PathBuf, sync::Arc};
 
 #[derive(Clone)]
@@ -185,44 +185,12 @@ impl Controller {
 
                 let thumb_tracks = {
                     let state = self.state.read(cx);
-                    let library_tracks = &state.library.tracks;
 
-                    let mut rng = rand::rng();
-                    let mut chosen = Vec::with_capacity(4);
-                    let mut albums = HashSet::with_capacity(4);
-
-                    let candidates = playlist_tracks
-                        .iter()
-                        .copied()
-                        .sample(&mut rng, 12);
-
-                    for id in candidates {
-                        if let Some(track) = library_tracks.get(&id) {
-                            if albums.insert(track.album.clone()) {
-                                chosen.push(track.path.clone());
-                            }
-                        }
-
-                        if chosen.len() == 4 {
-                            break;
-                        }
-                    }
-
-                    if chosen.len() < 4 {
-                        for id in &playlist_tracks {
-                            if chosen.len() == 4 {
-                                break;
-                            }
-
-                            if let Some(track) = library_tracks.get(id) {
-                                if albums.insert(track.album.clone()) {
-                                    chosen.push(track.path.clone());
-                                }
-                            }
-                        }
-                    }
-
-                    chosen
+                    pick_playlist_thumbnail_tracks(
+                        &state.library.tracks,
+                        &playlist_tracks,
+                        4,
+                    )
                 };
 
                 self.state.update(cx, |this, cx| {
@@ -394,6 +362,29 @@ impl Controller {
                                 track_id: *track_id,
                             });
                         }
+                    }
+                }
+            }
+            CacherEvent::MissingPlaylistThumbnail(id) => {
+                let state = self.state.read(cx);
+                let playlists = state.library.playlists.clone();
+
+                let playlist_id = playlists.iter().find_map(|(pid, playlist)| { if playlist.image_id == Some(*id) { Some(pid) } else { None } });
+
+                if let Some(playlist_id) = playlist_id {
+                    if let Some(playlist) = playlists.get(playlist_id) {
+                        let playlist_tracks = playlist.tracks.clone();
+                        let thumb_tracks = {
+                            let state = self.state.read(cx);
+
+                            pick_playlist_thumbnail_tracks(
+                                &state.library.tracks,
+                                &playlist_tracks,
+                                4,
+                            )
+                        };
+                        
+                        let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnail {id: playlist_id.clone(), tracks: thumb_tracks});
                     }
                 }
             }
@@ -570,3 +561,46 @@ impl Controller {
 }
 
 impl Global for Controller {}
+
+pub fn pick_playlist_thumbnail_tracks(
+    library_tracks: &HashMap<TrackId, Arc<Track>>,
+    playlist_tracks: &[TrackId],
+    count: usize,
+) -> Vec<PathBuf> {
+    let mut rng = rand::rng();
+    let mut chosen = Vec::with_capacity(count);
+    let mut albums = HashSet::with_capacity(count);
+
+    let candidates = playlist_tracks
+        .iter()
+        .copied()
+        .sample(&mut rng, count * 3);
+
+    for id in candidates {
+        if let Some(track) = library_tracks.get(&id) {
+            if albums.insert(track.album.clone()) {
+                chosen.push(track.path.clone());
+            }
+        }
+
+        if chosen.len() == count {
+            return chosen;
+        }
+    }
+
+    if chosen.len() < count {
+        for id in playlist_tracks {
+            if chosen.len() == count {
+                break;
+            }
+
+            if let Some(track) = library_tracks.get(id) {
+                if albums.insert(track.album.clone()) {
+                    chosen.push(track.path.clone());
+                }
+            }
+        }
+    }
+
+    chosen
+}
