@@ -309,6 +309,8 @@ impl Scanner {
                 .to_string(),
             source: PlaylistSource::Folder,
             tracks: track_ids,
+            duration: Duration::from_secs(0),
+            image_id: None,
         };
 
         let _ = self.tx.send(ScannerEvent::Playlist(playlist));
@@ -397,6 +399,7 @@ fn get_track_metadata(
                     duration,
                     modified,
                     size,
+                    image_id: None,
                 },
                 None,
             ));
@@ -467,6 +470,7 @@ fn get_track_metadata(
             duration,
             modified,
             size,
+            image_id: None,
         },
         thumbnail,
     ))

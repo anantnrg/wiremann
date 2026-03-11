@@ -67,6 +67,8 @@ struct CachedTrack {
     pub duration: u64,
     pub size: u64,
     pub modified: u64,
+
+    pub image_id: Option<[u8; 32]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
@@ -90,6 +92,10 @@ struct CachedPlaylist {
     pub name: String,
     pub source: CachedPlaylistSource,
     pub tracks: Vec<[u8; 32]>,
+
+    pub duration: u64,
+
+    pub image_id: Option<[u8; 32]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
@@ -131,6 +137,7 @@ impl From<&Track> for CachedTrack {
             duration: track.duration,
             size: track.size,
             modified: track.modified,
+            image_id: track.image_id.map(|id| id.0),
         }
     }
 }
@@ -146,6 +153,7 @@ impl From<CachedTrack> for Track {
             duration: c.duration,
             size: c.size,
             modified: c.modified,
+            image_id: c.image_id.map(|id| ImageId(id)),
         }
     }
 }
@@ -161,6 +169,8 @@ impl From<&Playlist> for CachedPlaylist {
                 PlaylistSource::User => CachedPlaylistSource::User,
             },
             tracks: playlist.tracks.iter().map(|t| t.0).collect(),
+            duration: playlist.duration.as_secs(),
+            image_id: playlist.image_id.map(|id| id.0),
         }
     }
 }
@@ -176,6 +186,8 @@ impl From<CachedPlaylist> for Playlist {
                 CachedPlaylistSource::User => PlaylistSource::User,
             },
             tracks: cached_playlist.tracks.iter().map(|t| TrackId(*t)).collect(),
+            duration: Duration::from_secs(cached_playlist.duration),
+            image_id: cached_playlist.image_id.map(|id| ImageId(id)),
         }
     }
 }

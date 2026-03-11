@@ -22,6 +22,8 @@ pub struct Track {
     pub duration: u64,
     pub size: u64,
     pub modified: u64,
+
+    pub image_id: Option<ImageId>,
 }
 
 #[allow(clippy::missing_errors_doc)]
