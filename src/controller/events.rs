@@ -21,7 +21,7 @@ pub enum ScannerEvent {
     AlbumArt(ImageId, Arc<RenderImage>),
     Thumbnails(HashMap<ImageId, Arc<RenderImage>>),
     ImageLookup(HashMap<TrackId, ImageId>),
-    PlaylistThumbnail(PlaylistId, Arc<RenderImage>),
+    PlaylistThumbnail(PlaylistId, ImageId, Arc<RenderImage>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -29,6 +29,7 @@ pub enum CacherEvent {
     AppState(AppState),
     AlbumArt(Arc<RenderImage>),
     Thumbnails(HashMap<ImageId, Arc<RenderImage>>),
+    PlaylistThumbnail(),
     MissingThumbnails(Vec<ImageId>),
     MissingAlbumArt(ImageId),
 }

@@ -246,10 +246,10 @@ impl Scanner {
                 }
 
                 match render_playlist_thumbnail(images) {
-                    Some(thumbnail) => {
-                        let _ = events_tx.send(ScannerEvent::PlaylistThumbnail(id, thumbnail));
+                    (Some(thumbnail), Some(hash)) => {
+                        let _ = events_tx.send(ScannerEvent::PlaylistThumbnail(id, hash, thumbnail));
                     }
-                    None => eprintln!("Failed to generate playlist thumbnail"),
+                    _ => eprintln!("Failed to generate playlist thumbnail"),
                 }
             }
         });
@@ -500,7 +500,7 @@ fn get_album_art(path: &Path) -> Result<(TrackId, Option<Vec<u8>>), ScannerError
 
 fn render_playlist_thumbnail(
     mut images: Vec<DynamicImage>,
-) -> Option<Arc<RenderImage>> {
+) -> (Option<Arc<RenderImage>>, Option<ImageId>) {
     let mut canvas = DynamicImage::new_rgba8(128, 128);
 
     match images.len() {
@@ -542,10 +542,14 @@ fn render_playlist_thumbnail(
 
     let image = canvas.to_rgba8().to_vec();
 
-    match render_album_art(&image, false) {
+    let hash = ImageId(<[u8; 32]>::from(blake3::hash(&image)));
+
+    let image = match render_album_art(&image, false) {
         Ok(image) => Some(image),
         Err(_) => None,
-    }
+    };
+
+    (image, Some(hash))
 }
 
 fn get_cached_image_path(id: ImageId, kind: ImageKind) -> PathBuf {
@@ -560,6 +564,7 @@ fn get_cached_image_path(id: ImageId, kind: ImageKind) -> PathBuf {
     let name = match kind {
         ImageKind::Thumbnail => format!("{hex}_thumb.bgra.zstd"),
         ImageKind::AlbumArt => format!("{hex}_art.bgra.zstd"),
+        ImageKind::Playlist => format!("{hex}_playlist.bgra.zstd"),
     };
 
     base_dir.join("images").join(folder).join(name)

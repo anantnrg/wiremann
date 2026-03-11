@@ -41,6 +41,7 @@ enum CacheJob {
     LoadAppState,
     LoadThumbnails(HashSet<ImageId>),
     LoadAlbumArt(ImageId),
+    LoadPlaylistThumbnail(ImageId),
 }
 
 #[derive(Encode, Decode)]
@@ -52,6 +53,7 @@ struct CacheFile<T> {
 pub enum ImageKind {
     Thumbnail,
     AlbumArt,
+    Playlist,
 }
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
 struct CachedTrack {
@@ -405,6 +407,7 @@ impl Cacher {
         let name = match kind {
             ImageKind::Thumbnail => format!("{hex}_thumb.bgra.zstd"),
             ImageKind::AlbumArt => format!("{hex}_art.bgra.zstd"),
+            ImageKind::Playlist => format!("{hex}_playlist.bgra.zstd"),
         };
 
         self.base_dir.join("images").join(folder).join(name)
@@ -628,6 +631,51 @@ impl Cacher {
                 match job {
                     CacheJob::LoadAlbumArt(id) => {
                         match cacher.read_cached_image(id, &ImageKind::AlbumArt) {
+                            Ok(Some(image)) => {
+                                let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
+                            }
+                            Err(e) => {
+                                eprintln!("Error loading album art: {e}");
+                                let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(id));
+                            }
+                            _ => {
+                                let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(id));
+                            }
+                        }
+                    }
+                    CacheJob::WriteImage {
+                        id,
+                        kind,
+                        width,
+                        height,
+                        image,
+                    } => {
+                        let cached_image = CachedImage {
+                            width,
+                            height,
+                            image,
+                        };
+                        match cacher.write_cached_image(id, &kind, &cached_image) {
+                            Ok(()) => {}
+                            Err(err) => {
+                                eprintln!("Error occurred: {err:#?}");
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        });
+    }
+
+    fn spawn_playlist_thumbnail_worker(&self, rx: Receiver<CacheJob>) {
+        let cacher = Arc::new(self.clone());
+
+        std::thread::spawn(move || {
+            while let Ok(job) = rx.recv() {
+                match job {
+                    CacheJob::LoadPlaylistThumbnail(id) => {
+                        match cacher.read_cached_image(id, &ImageKind::Playlist) {
                             Ok(Some(image)) => {
                                 let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
                             }

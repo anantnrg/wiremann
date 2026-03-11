@@ -294,7 +294,7 @@ impl Controller {
                 let state = self.state.read(cx).library.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
-            ScannerEvent::PlaylistThumbnail(id, thumbnail) => {
+            ScannerEvent::PlaylistThumbnail(id, hash, thumbnail) => {
                 let thumbnail_cache = cx.global_mut::<ImageCache>();
 
                 thumbnail_cache.playlist_thumbs.put(id.clone(), thumbnail.clone());
