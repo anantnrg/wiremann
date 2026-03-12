@@ -1,2 +1,2 @@
 pub mod player;
-mod library;
+pub mod library;

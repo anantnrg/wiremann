@@ -4,12 +4,13 @@ use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::helpers::slider_to_secs;
 use crate::ui::theme::Theme;
-use components::{image_cache::ImageCache, pages::player::PlayerPage, titlebar::Titlebar, Page};
+use components::{image_cache::ImageCache, pages::{library::LibraryPage, player::PlayerPage}, titlebar::Titlebar, Page};
 use gpui::{div, AppContext, BorrowAppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window};
 
 pub struct Wiremann {
     pub titlebar: Entity<Titlebar>,
     pub player_page: Entity<PlayerPage>,
+    pub library_page: Entity<LibraryPage>,
 }
 
 impl Wiremann {
@@ -76,12 +77,14 @@ impl Wiremann {
         let titlebar = cx.new(|cx| Titlebar::new(cx));
         let controlbar = cx.new(|_| ControlBar::new(playback_slider_state, vol_slider_state));
         let player_page = cx.new(|cx| PlayerPage::new(cx, controlbar));
+        let library = cx.new(|cx| LibraryPage::new(cx));
 
         cx.global::<Controller>().load_cached_app_state();
 
         Self {
             titlebar,
             player_page,
+            library_page
         }
     }
 }

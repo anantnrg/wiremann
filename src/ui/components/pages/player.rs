@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use gpui::prelude::FluentBuilder;
-use gpui::{div, img, px, App, AppContext, Context, Entity, FontWeight, ImageFormat, InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window};
+use gpui::{div, img, px, App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window};
 
 #[derive(Clone)]
 pub struct PlayerPage {
@@ -297,14 +297,5 @@ impl Render for PlayerPage {
                         "Show Queue"
                     }),
             )
-    }
-}
-
-#[must_use]
-pub fn get_img_format(format: &str) -> ImageFormat {
-    match format {
-        "png" => ImageFormat::Png,
-        "jpeg" | "jpg" => ImageFormat::Jpeg,
-        _ => ImageFormat::Bmp,
     }
 }

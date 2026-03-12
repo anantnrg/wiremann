@@ -7,7 +7,7 @@ use crate::{
         theme::Theme,
     },
 };
-use gpui::{div, App, AppContext, Context, Entity, ImageFormat, IntoElement, ParentElement, Render, Styled, UniformListScrollHandle, Window};
+use gpui::{div, App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, UniformListScrollHandle, Window};
 
 #[derive(Clone)]
 pub struct LibraryPage {
@@ -61,14 +61,5 @@ impl Render for LibraryPage {
                     .pt_8()
                     .pb_2()
             )
-    }
-}
-
-#[must_use]
-pub fn get_img_format(format: &str) -> ImageFormat {
-    match format {
-        "png" => ImageFormat::Png,
-        "jpeg" | "jpg" => ImageFormat::Jpeg,
-        _ => ImageFormat::Bmp,
     }
 }
