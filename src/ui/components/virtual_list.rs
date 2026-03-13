@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 pub struct VirtualList {
     id: ElementId,
     base: Stateful<Div>,
-    scroll: ScrollHandle,
+    scroll_handle: ScrollHandle,
     heights: Rc<Vec<Pixels>>,
     offsets: Vec<Pixels>,
     content_height: Pixels,
@@ -20,6 +20,7 @@ pub fn vlist<R, V>(
     view: Entity<V>,
     id: impl Into<ElementId>,
     heights: Rc<Vec<Pixels>>,
+    scroll_handle: ScrollHandle,
     f: impl 'static + Fn(&mut V, Range<usize>, &mut Window, &mut Context<V>) -> Vec<R>,
 ) -> VirtualList
 where
@@ -27,7 +28,6 @@ where
     V: Render,
 {
     let id = id.into();
-    let scroll = ScrollHandle::default();
 
     let render = move |range: Range<usize>, window: &mut Window, cx: &mut App| {
         view.update(cx, |this, cx| {
@@ -46,12 +46,12 @@ where
         sum += *h;
     }
 
-    let base = div().id(id.clone()).size_full().overflow_scroll().track_scroll(&scroll);
+    let base = div().id(id.clone()).size_full().overflow_scroll().track_scroll(&scroll_handle);
 
     VirtualList {
         id,
         base,
-        scroll,
+        scroll_handle,
         heights,
         offsets,
         content_height: sum,
@@ -122,7 +122,7 @@ impl Element for VirtualList {
         cx: &mut App,
     ) -> Self::PrepaintState {
         let viewport_height = bounds.size.height;
-        let scroll = self.scroll.offset().y;
+        let scroll = self.scroll_handle.offset().y;
 
         let mut start = self.find_index(-scroll);
         let mut end = self.find_index(-scroll + viewport_height);

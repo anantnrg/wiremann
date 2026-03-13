@@ -8,27 +8,25 @@ use crate::{
     },
 };
 
+use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::components::virtual_list::vlist;
-use gpui::{
-    div, px, App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled,
-    UniformListScrollHandle, Window,
-};
+use gpui::{div, px, App, AppContext, Context, Entity, IntoElement, ParentElement, Render, ScrollHandle, Styled, Window};
 
 #[derive(Clone)]
 pub struct LibraryPage {
-    scroll_handle: UniformListScrollHandle,
+    scroll_handle: ScrollHandle,
     show_playlists: Entity<bool>,
     test_heights: Rc<Vec<gpui::Pixels>>,
 }
 
 impl LibraryPage {
     pub fn new(cx: &mut App) -> Self {
-        let scroll_handle = UniformListScrollHandle::new();
+        let scroll_handle = ScrollHandle::new();
         let show_playlists = cx.new(|_| true);
 
         let mut heights = Vec::new();
 
-        for i in 0..1000 {
+        for i in 0..50000 {
             if i % 20 == 0 {
                 heights.push(px(120.0));
             } else {
@@ -68,7 +66,7 @@ impl Render for LibraryPage {
         let controller = cx.global::<Controller>().clone();
         let state = controller.state.read(cx);
         let _thumbnail = cx.global::<ImageCache>().current.clone();
-        let _scroll_handle = self.scroll_handle.clone();
+        let scroll_handle = self.scroll_handle.clone();
         let _show_playlists = self.show_playlists.clone();
 
         let _current = if let Some(id) = state.playback.current {
@@ -82,12 +80,30 @@ impl Render for LibraryPage {
         div()
             .size_full()
             .bg(theme.bg_main)
+            .text_color(theme.text_primary)
             .child(
-                vlist(cx.entity(), "library-test", heights, |this, range, _, _| {
+                vlist(cx.entity(), "library-test", heights.clone(), scroll_handle, move |_this, range, _, _| {
                     range
-                        .map(|i| this.render_test_row(i))
+                        .map(|i| {
+                            println!("rendering row {}", i);
+
+                            let height = heights[i];
+
+                            div()
+                                .h(height)
+                                .w_full()
+                                .border_1()
+                                .items_center()
+                                .pl(px(10.0))
+                                .child(format!("Row {}", i))
+                        })
                         .collect::<Vec<_>>()
                 }),
             )
+            .child(floating_scrollbar(
+                "queue_scrollbar",
+                self.scroll_handle.clone(),
+                RightPad::None,
+            ))
     }
 }
