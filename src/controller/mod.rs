@@ -115,7 +115,7 @@ impl Controller {
                 }
 
                 if let Some(track) = state.library.tracks.get(&track_id) && let Some(image_id) = track.image_id {
-                    let _ = self.cacher_tx.send(CacherCommand::GetAlbumArt(image_id.clone()));
+                    let _ = self.cacher_tx.send(CacherCommand::GetImage(HashSet::from([image_id.clone()]), ImageKind::AlbumArt));
                 } else {
                     let _ = self.scanner_tx.send(ScannerCommand::GetCurrentAlbumArt(path.clone()));
                 }

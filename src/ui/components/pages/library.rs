@@ -5,12 +5,14 @@ use crate::{
     ui::theme::Theme,
 };
 
+use crate::cacher::ImageKind;
 use crate::controller::state::LibraryState;
 use crate::library::playlists::PlaylistId;
 use crate::library::TrackId;
+use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::components::virtual_list::vlist;
-use gpui::{div, px, rgb, App, AppContext, Context, Div, Entity, FontWeight, IntoElement, ParentElement, Pixels, Render, ScrollHandle, Styled, Window};
+use gpui::{div, img, px, white, App, AppContext, Context, Div, Entity, FontWeight, IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle, Styled, StyledImage, Window};
 
 #[derive(Clone)]
 pub struct LibraryPage {
@@ -86,27 +88,51 @@ impl LibraryPage {
             .gap_10()
             .px_6()
             .items_center()
-            .children(
-                // let image_cache = cx.global_mut::<ImageCache>();
-                //
-                // image_cache.request(&ids, cx, ImageKind::Playlist);
-                ids.iter().map(|pid| {
-                    let playlist = controller.state.read(cx)
-                        .library
-                        .playlists
-                        .get(pid)
-                        .unwrap();
+            .children({
+                let state = controller.state.read(cx).clone();
 
-                    div()
-                        .size_32()
-                        .bg(rgb(0x202020))
-                        .rounded(px(6.0))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(playlist.name.clone())
-                })
-            )
+                let tx = controller.cacher_tx.clone();
+                let cache = cx.global_mut::<ImageCache>();
+
+                let image_ids = ids
+                    .iter()
+                    .filter_map(|pid| state.library.playlists.get(pid)?.image_id);
+
+                cache.request(image_ids, &tx, ImageKind::Playlist);
+
+                let mut elements = Vec::new();
+
+                for pid in ids {
+                    if let Some(playlist) = state.library.playlists.get(pid) {
+                        let thumbnail =
+                            playlist.image_id.and_then(|id| cache.get(&id));
+
+                        let el = div()
+                            .h_auto()
+                            .w_auto()
+                            .flex()
+                            .flex_col()
+                            .items_center()
+                            .justify_center()
+                            .gap_y_4()
+                            .text_color(white())
+                            .child(match thumbnail {
+                                Some(image) => div().size_64().flex_shrink_0().child(
+                                    img(image.clone())
+                                        .object_fit(ObjectFit::Contain)
+                                        .size_full()
+                                        .rounded_lg(),
+                                ),
+                                None => div().size_64().flex_shrink_0(),
+                            })
+                            .child(playlist.name.clone());
+
+                        elements.push(el);
+                    }
+                }
+
+                elements
+            })
     }
 }
 
