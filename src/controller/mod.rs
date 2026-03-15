@@ -332,6 +332,7 @@ impl Controller {
                         drop_image_from_app(cx, img);
                     }
                 }
+                cx.notify(view.entity_id());
             }
             CacherEvent::AlbumArt(image) => {
                 let image_cache = cx.global_mut::<ImageCache>();
@@ -341,11 +342,19 @@ impl Controller {
                 cx.notify(view.entity_id());
             }
             CacherEvent::PlaylistThumbnail(id, thumbnail) => {
-                let image_cache = cx.global_mut::<ImageCache>();
+                let evicted = {
+                    let image_cache = cx.global_mut::<ImageCache>();
+                    image_cache.add(id.clone(), thumbnail.clone())
+                };
 
-                image_cache.images.put(id.clone(), thumbnail.clone());
+                if let Some(img) = evicted {
+                    drop_image_from_app(cx, img);
+                }
+                cx.notify(view.entity_id());
             }
             CacherEvent::MissingAlbumArt(id) => {
+                cx.global_mut::<ImageCache>().inflight.remove(id);
+
                 let state = self.state.read(cx);
                 let tracks = state.library.tracks.clone();
 
@@ -360,6 +369,12 @@ impl Controller {
                 }
             }
             CacherEvent::MissingThumbnails(ids) => {
+                let cache = cx.global_mut::<ImageCache>();
+
+                for id in ids {
+                    cache.inflight.remove(id);
+                }
+
                 let state = self.state.read(cx);
                 let tracks = state.library.tracks.clone();
 

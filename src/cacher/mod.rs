@@ -706,7 +706,7 @@ impl Cacher {
                     CacheJob::LoadPlaylistThumbnail(id) => {
                         match cacher.read_cached_image(id, &ImageKind::Playlist) {
                             Ok(Some(image)) => {
-                                let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
+                                let _ = cacher.tx.send(CacherEvent::PlaylistThumbnail(id, image));
                             }
                             Err(e) => {
                                 eprintln!("Error loading album art: {e}");

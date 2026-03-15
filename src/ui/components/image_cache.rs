@@ -1,3 +1,4 @@
+use crate::cacher::ImageKind;
 use crate::controller::commands::CacherCommand;
 use crate::library::ImageId;
 use crossbeam_channel::Sender;
@@ -6,7 +7,6 @@ use lru::LruCache;
 use std::collections::HashSet;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
-use crate::cacher::ImageKind;
 
 pub struct ImageCache {
     pub current: Option<Arc<RenderImage>>,
@@ -50,22 +50,28 @@ impl ImageCache {
         &mut self,
         ids: I,
         tx: &Sender<CacherCommand>,
-        kind: ImageKind
+        kind: ImageKind,
     )
     where
         I: IntoIterator<Item=ImageId>,
     {
         let mut to_request = HashSet::new();
 
+
         for id in ids {
-            if self.images.contains(&id) || self.inflight.contains(&id) {
+            if self.images.contains(&id) {
                 continue;
             }
 
-            self.inflight.insert(id);
+            if !self.inflight.insert(id) {
+                continue;
+            }
+
             to_request.insert(id);
         }
 
+        println!("requesting {} thumbnails", to_request.len());
+        
         if !to_request.is_empty() {
             let _ = tx.send(CacherCommand::GetImage(to_request, kind));
         }
