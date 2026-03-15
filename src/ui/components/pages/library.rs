@@ -5,7 +5,6 @@ use crate::{
     ui::theme::Theme,
 };
 
-use crate::cacher::ImageKind;
 use crate::controller::state::LibraryState;
 use crate::library::playlists::PlaylistId;
 use crate::library::TrackId;
@@ -91,15 +90,9 @@ impl LibraryPage {
             .children({
                 let state = controller.state.read(cx).clone();
 
-                let tx = controller.cacher_tx.clone();
+                controller.request_playlist_thumbnails(&ids, cx);
+
                 let cache = cx.global_mut::<ImageCache>();
-
-                let image_ids = ids
-                    .iter()
-                    .filter_map(|pid| state.library.playlists.get(pid)?.image_id);
-
-
-                cache.request(image_ids, &tx, ImageKind::Playlist);
 
                 let mut elements = Vec::new();
 

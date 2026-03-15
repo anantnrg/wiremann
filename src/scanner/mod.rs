@@ -557,16 +557,19 @@ fn render_playlist_thumbnail(
         }
     }
 
-    let image = canvas.to_rgba8().to_vec();
+    let mut image = canvas.to_rgba8();
 
-    let hash = ImageId(<[u8; 32]>::from(blake3::hash(&image)));
+    let hash = ImageId(<[u8; 32]>::from(blake3::hash(&image.to_vec())));
 
-    let image = match render_album_art(&image, false) {
-        Ok(image) => Some(image),
-        Err(_) => None,
-    };
+    for px in <[u8] as AsMut<[u8]>>::as_mut(&mut image).chunks_exact_mut(4) {
+        px.swap(0, 2);
+    }
 
-    (image, Some(hash))
+    let frame = Frame::new(image);
+
+    let render_image = Arc::new(RenderImage::new(smallvec![frame]));
+
+    (Some(render_image), Some(hash))
 }
 
 fn get_cached_image_path(id: ImageId, kind: ImageKind) -> PathBuf {

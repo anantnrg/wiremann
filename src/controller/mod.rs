@@ -5,6 +5,7 @@ use crate::cacher::ImageKind;
 use crate::controller::commands::CacherCommand;
 use crate::controller::events::CacherEvent;
 use crate::controller::state::PlaybackStatus;
+use crate::library::playlists::PlaylistId;
 use crate::library::{Track, TrackId};
 use crate::ui::helpers::{drop_image_from_app, secs_to_slider};
 use crate::ui::wiremann::Wiremann;
@@ -612,6 +613,36 @@ impl Controller {
                 track_id,
             });
         }
+    }
+
+    pub fn request_playlist_thumbnails(&self, playlist_ids: &[PlaylistId], cx: &mut App) {
+        let mut cache_ids = Vec::new();
+
+        let state = self.state.read(cx);
+        let playlists = &state.library.playlists;
+
+        for pid in playlist_ids {
+            if let Some(playlist) = playlists.get(pid) {
+                if let Some(image_id) = playlist.image_id {
+                    cache_ids.push(image_id);
+                } else {
+                    let playlist_tracks = playlist.tracks.clone();
+                    let thumb_tracks = {
+                        let state = self.state.read(cx);
+
+                        pick_playlist_thumbnail_tracks(
+                            &state.library.tracks,
+                            &playlist_tracks,
+                            4,
+                        )
+                    };
+
+                    let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnail { id: *pid, tracks: thumb_tracks });
+                }
+            }
+        }
+
+        cx.global_mut::<ImageCache>().request(cache_ids, &self.cacher_tx, ImageKind::Playlist);
     }
 }
 
