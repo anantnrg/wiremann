@@ -213,7 +213,6 @@ impl Render for Queue {
             .size_full()
             .child(
                 uniform_list("queue", len, move |range, _, cx| {
-
                     let (visible_tracks, ids) = {
                         let state = cx.global::<Controller>().state.read(cx);
 

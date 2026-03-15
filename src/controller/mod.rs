@@ -180,19 +180,6 @@ impl Controller {
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
             ScannerEvent::Playlist(playlist) => {
-                let id = playlist.id;
-                let playlist_tracks = playlist.tracks.clone();
-
-                let thumb_tracks = {
-                    let state = self.state.read(cx);
-
-                    pick_playlist_thumbnail_tracks(
-                        &state.library.tracks,
-                        &playlist_tracks,
-                        4,
-                    )
-                };
-
                 self.state.update(cx, |this, cx| {
                     this.library
                         .playlists
@@ -203,8 +190,6 @@ impl Controller {
 
                     cx.notify();
                 });
-
-                let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnail { id, tracks: thumb_tracks });
 
                 let state = self.state.read(cx).queue.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteQueueState(state));
@@ -268,10 +253,23 @@ impl Controller {
                 let state = self.state.read(cx).library.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
-            ScannerEvent::PlaylistThumbnail(id, image_id, thumbnail) => {
+            ScannerEvent::PlaylistThumbnail(id, image_id, image) => {
                 let thumbnail_cache = cx.global_mut::<ImageCache>();
 
-                thumbnail_cache.images.put(image_id.clone(), thumbnail.clone());
+                thumbnail_cache.add(*image_id, image.clone());
+
+                let width = image.size(0).width.0.cast_unsigned();
+                let height = image.size(0).height.0.cast_unsigned();
+                if let Some(image) = image.as_bytes(0) {
+                    let image = image.to_vec();
+                    let _ = self.cacher_tx.send(CacherCommand::WriteImage {
+                        id: *image_id,
+                        kind: ImageKind::Thumbnail,
+                        width,
+                        height,
+                        image,
+                    });
+                }
 
                 println!("got image_id:{:#?}; playlist_id: {:#?}", image_id, id);
 

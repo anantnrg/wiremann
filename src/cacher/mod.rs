@@ -709,7 +709,7 @@ impl Cacher {
                                 let _ = cacher.tx.send(CacherEvent::PlaylistThumbnail(id, image));
                             }
                             Err(e) => {
-                                eprintln!("Error loading album art: {e}");
+                                eprintln!("Error loading playlist thumbnail art: {e}");
                                 let _ = cacher.tx.send(CacherEvent::MissingPlaylistThumbnail(id));
                             }
                             _ => {
