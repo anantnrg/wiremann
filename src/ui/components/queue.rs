@@ -213,25 +213,26 @@ impl Render for Queue {
             .size_full()
             .child(
                 uniform_list("queue", len, move |range, _, cx| {
-                    let visible_tracks: Vec<TrackId> = range
-                        .clone()
-                        .map(|i| {
-                            let real_index = &tracks[queue_order[i]];
-                            if let Some(track) = state.library.tracks.get(real_index) {
-                                track.id
-                            } else {
-                                TrackId::default()
-                            }
-                        })
-                        .collect();
 
-                    let start = range.start.saturating_sub(THUMBNAIL_MARGIN);
-                    let end = (range.end + THUMBNAIL_MARGIN).min(len);
-
-                    let ids = {
+                    let (visible_tracks, ids) = {
                         let state = cx.global::<Controller>().state.read(cx);
 
-                        (start..end)
+                        let visible_tracks: Vec<TrackId> = range
+                            .clone()
+                            .map(|i| {
+                                let real_index = &tracks[queue_order[i]];
+                                state.library
+                                    .tracks
+                                    .get(real_index)
+                                    .map(|t| t.id)
+                                    .unwrap_or_default()
+                            })
+                            .collect();
+
+                        let start = range.start.saturating_sub(THUMBNAIL_MARGIN);
+                        let end = (range.end + THUMBNAIL_MARGIN).min(len);
+
+                        let ids = (start..end)
                             .filter_map(|i| {
                                 let track_id = tracks[queue_order[i]];
                                 state.library
@@ -239,7 +240,9 @@ impl Render for Queue {
                                     .get(&track_id)
                                     .and_then(|track| track.image_id)
                             })
-                            .collect::<Vec<_>>()
+                            .collect::<Vec<_>>();
+
+                        (visible_tracks, ids)
                     };
 
                     let tx = cx.global::<Controller>().cacher_tx.clone();
@@ -251,7 +254,10 @@ impl Render for Queue {
 
                     range
                         .map(|i| {
+                            let state = cx.global::<Controller>().state.read(cx);
+
                             let real_index = &tracks[queue_order[i]];
+
                             if let Some(track) = state.library.tracks.get(real_index) {
                                 let path = track.path.clone();
 

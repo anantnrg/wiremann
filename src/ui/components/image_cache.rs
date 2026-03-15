@@ -70,8 +70,6 @@ impl ImageCache {
             to_request.insert(id);
         }
 
-        println!("requesting {} thumbnails", to_request.len());
-        
         if !to_request.is_empty() {
             let _ = tx.send(CacherCommand::GetImage(to_request, kind));
         }

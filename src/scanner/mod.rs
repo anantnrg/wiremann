@@ -116,13 +116,7 @@ impl Scanner {
                                         if let Some(bytes) = image {
                                             let hash = ImageId(<[u8; 32]>::from(blake3::hash(&bytes)));
 
-                                            let path = get_cached_image_path(hash, ImageKind::Thumbnail);
-
-                                            if !path.exists() {
-                                                let _ = thumb_tx.send(ScanJob::Thumbnail(id, hash, bytes));
-                                            } else {
-                                                let _ = events_tx.send(ScannerEvent::ImageLookup(HashMap::from([(id, hash)])));
-                                            }
+                                            let _ = thumb_tx.send(ScanJob::Thumbnail(id, hash, bytes));
                                         }
                                     }
                                     Err(err) => eprintln!("Failed to get track metadata: {err}" ),
@@ -143,11 +137,7 @@ impl Scanner {
         }
     }
 
-    fn spawn_thumbnail_workers(
-        &self,
-        thumb_rx: &Receiver<ScanJob>,
-        workers: usize,
-    ) {
+    fn spawn_thumbnail_workers(&self, thumb_rx: &Receiver<ScanJob>, workers: usize) {
         let ticker = tick(Duration::from_millis(128));
 
         for _ in 0..workers {
@@ -163,6 +153,11 @@ impl Scanner {
                     select! {
                         recv(thumb_rx) -> job => {
                             if let Ok(ScanJob::Thumbnail(id, hash, bytes)) = job {
+                                 let path = get_cached_image_path(hash, ImageKind::Thumbnail);
+
+                                if path.exists() {
+                                    lookup_batch.insert(id, hash);
+                                } else {
                                 if let Ok(image) = render_album_art(&bytes, true) {
                                     image_batch.insert(hash, image);
                                     lookup_batch.insert(id, hash);
@@ -173,7 +168,7 @@ impl Scanner {
                                         );
                                         let _ = events_tx.send(ScannerEvent::ImageLookup(std::mem::take(&mut lookup_batch)));
                                     }
-                                }
+                                }}
                             }
                         }
 
@@ -205,10 +200,12 @@ impl Scanner {
                         if !path.exists() {
                             if let Ok(album_art) = render_album_art(&image, false) {
                                 let _ = events_tx.send(ScannerEvent::AlbumArt(hash, album_art));
-                                let _ = events_tx.send(ScannerEvent::ImageLookup(HashMap::from([(id, hash)])));
+                                let _ = events_tx
+                                    .send(ScannerEvent::ImageLookup(HashMap::from([(id, hash)])));
                             }
                         } else {
-                            let _ = events_tx.send(ScannerEvent::ImageLookup(HashMap::from([(id, hash)])));
+                            let _ = events_tx
+                                .send(ScannerEvent::ImageLookup(HashMap::from([(id, hash)])));
                         }
                     }
                     Err(err) => eprintln!("Failed album art: {err}"),
@@ -249,7 +246,8 @@ impl Scanner {
 
                 match render_playlist_thumbnail(images) {
                     (Some(thumbnail), Some(hash)) => {
-                        let _ = events_tx.send(ScannerEvent::PlaylistThumbnail(id, hash, thumbnail));
+                        let _ =
+                            events_tx.send(ScannerEvent::PlaylistThumbnail(id, hash, thumbnail));
                     }
                     _ => eprintln!("Failed to generate playlist thumbnail"),
                 }
@@ -257,12 +255,7 @@ impl Scanner {
         });
     }
 
-    fn enqueue_track(
-        &self,
-        path: PathBuf,
-        track_id: TrackId,
-        meta_tx: &Sender<ScanJob>,
-    ) {
+    fn enqueue_track(&self, path: PathBuf, track_id: TrackId, meta_tx: &Sender<ScanJob>) {
         let _ = meta_tx.send(ScanJob::Metadata(path, track_id));
     }
 
@@ -331,12 +324,8 @@ fn render_album_art(bytes: &[u8], is_thumbnail: bool) -> Result<Arc<RenderImage>
     let image = if is_thumbnail {
         let (src_w, src_h) = rgba.dimensions();
 
-        let src = fr::images::Image::from_vec_u8(
-            src_w,
-            src_h,
-            rgba.into_raw(),
-            fr::PixelType::U8x4,
-        )?;
+        let src =
+            fr::images::Image::from_vec_u8(src_w, src_h, rgba.into_raw(), fr::PixelType::U8x4)?;
 
         let mut dst = fr::images::Image::new(256, 256, fr::PixelType::U8x4);
 
@@ -511,7 +500,8 @@ fn render_playlist_thumbnail(
 
     match images.len() {
         1 => {
-            let img = images.remove(0)
+            let img = images
+                .remove(0)
                 .resize_exact(128, 128, imageops::FilterType::Lanczos3);
 
             imageops::overlay(&mut canvas, &img, 0, 0);
@@ -525,9 +515,15 @@ fn render_playlist_thumbnail(
         }
 
         3 => {
-            let a = images.remove(0).resize_exact(64, 64, imageops::FilterType::Lanczos3);
-            let b = images.remove(0).resize_exact(64, 64, imageops::FilterType::Lanczos3);
-            let c = images.remove(0).resize_exact(128, 64, imageops::FilterType::Lanczos3);
+            let a = images
+                .remove(0)
+                .resize_exact(64, 64, imageops::FilterType::Lanczos3);
+            let b = images
+                .remove(0)
+                .resize_exact(64, 64, imageops::FilterType::Lanczos3);
+            let c = images
+                .remove(0)
+                .resize_exact(128, 64, imageops::FilterType::Lanczos3);
 
             imageops::overlay(&mut canvas, &a, 0, 0);
             imageops::overlay(&mut canvas, &b, 64, 0);
