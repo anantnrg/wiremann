@@ -173,6 +173,7 @@ impl Controller {
                         this.library
                             .tracks
                             .insert(track.id, Arc::new(track.clone()));
+                        let _ = self.scanner_tx.send(ScannerCommand::MetaJobFinished(track.id));
                     }
                     cx.notify();
                 });
@@ -257,6 +258,8 @@ impl Controller {
                 let thumbnail_cache = cx.global_mut::<ImageCache>();
 
                 thumbnail_cache.add(*image_id, image.clone());
+
+                let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnailJobFinished(*id));
 
                 let width = image.size(0).width.0.cast_unsigned();
                 let height = image.size(0).height.0.cast_unsigned();
@@ -582,6 +585,33 @@ impl Controller {
 
     pub fn load_cached_app_state(&self) {
         let _ = self.cacher_tx.send(CacherCommand::GetAppState);
+    }
+
+    pub fn request_track_thumbnails(&self, track_ids: &[TrackId], cx: &mut App) {
+        let mut cache_ids = Vec::new();
+        let mut scan_jobs = Vec::new();
+
+        let state = self.state.read(cx);
+        let tracks = &state.library.tracks;
+
+        for tid in track_ids {
+            if let Some(track) = tracks.get(tid) {
+                if let Some(image_id) = track.image_id {
+                    cache_ids.push(image_id);
+                } else {
+                    scan_jobs.push((track.id, track.path.clone()));
+                }
+            }
+        }
+
+        cx.global_mut::<ImageCache>().request(cache_ids, &self.cacher_tx, ImageKind::Thumbnail);
+
+        for (track_id, path) in scan_jobs {
+            let _ = self.scanner_tx.send(ScannerCommand::GetTrackMetadata {
+                path,
+                track_id,
+            });
+        }
     }
 }
 

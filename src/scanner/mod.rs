@@ -63,10 +63,15 @@ impl Scanner {
         self.spawn_album_art_worker(album_art_rx);
         self.spawn_playlist_thumbnail_worker(playlist_thumb_rx);
 
+        let mut inflight_tracks = HashSet::new();
+        let mut inflight_playlists = HashSet::new();
+
         loop {
             match self.rx.recv()? {
                 ScannerCommand::GetTrackMetadata { path, track_id } => {
-                    self.enqueue_track(path, track_id, &meta_tx);
+                    if inflight_tracks.insert(track_id) {
+                        self.enqueue_track(path, track_id, &meta_tx);
+                    }
                 }
                 ScannerCommand::ScanFolder { tracks, path } => {
                     self.enqueue_folder(&tracks, &path, &meta_tx)?;
@@ -75,7 +80,15 @@ impl Scanner {
                     let _ = album_art_tx.send(ScanJob::AlbumArt(path));
                 }
                 ScannerCommand::PlaylistThumbnail { id, tracks } => {
-                    let _ = playlist_thumb_tx.send(ScanJob::PlaylistThumbnail(id, tracks));
+                    if inflight_playlists.insert(id) {
+                        let _ = playlist_thumb_tx.send(ScanJob::PlaylistThumbnail(id, tracks));
+                    }
+                }
+                ScannerCommand::MetaJobFinished(id) => {
+                    inflight_tracks.remove(&id);
+                }
+                ScannerCommand::PlaylistThumbnailJobFinished(id) => {
+                    inflight_playlists.remove(&id);
                 }
             }
         }

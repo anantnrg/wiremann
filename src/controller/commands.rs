@@ -30,6 +30,8 @@ pub enum ScannerCommand {
         id: PlaylistId,
         tracks: Vec<PathBuf>,
     },
+    MetaJobFinished(TrackId),
+    PlaylistThumbnailJobFinished(PlaylistId),
 }
 
 pub enum CacherCommand {

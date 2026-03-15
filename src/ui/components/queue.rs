@@ -1,4 +1,3 @@
-use crate::cacher::ImageKind;
 use crate::library::TrackId;
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::theme::Theme;
@@ -177,7 +176,9 @@ impl Render for Queue {
         let views = self.views.clone();
         let stop_auto_scroll = self.stop_auto_scroll.clone();
 
-        let state = cx.global::<Controller>().state.read(cx).clone();
+        let controller = cx.global::<Controller>().clone();
+
+        let state = controller.state.read(cx).clone();
 
         let tracks = state.queue.tracks.clone();
         let order = state.queue.order.clone();
@@ -213,39 +214,17 @@ impl Render for Queue {
             .size_full()
             .child(
                 uniform_list("queue", len, move |range, _, cx| {
-                    let (visible_tracks, ids) = {
-                        let state = cx.global::<Controller>().state.read(cx);
+                    let visible_tracks: Vec<TrackId> =
+                        range.clone().map(|i| tracks[queue_order[i]]).collect();
 
-                        let visible_tracks: Vec<TrackId> = range
-                            .clone()
-                            .map(|i| {
-                                let real_index = &tracks[queue_order[i]];
-                                state.library
-                                    .tracks
-                                    .get(real_index)
-                                    .map(|t| t.id)
-                                    .unwrap_or_default()
-                            })
-                            .collect();
+                    let start = range.start.saturating_sub(THUMBNAIL_MARGIN);
+                    let end = (range.end + THUMBNAIL_MARGIN).min(len);
 
-                        let start = range.start.saturating_sub(THUMBNAIL_MARGIN);
-                        let end = (range.end + THUMBNAIL_MARGIN).min(len);
+                    let thumb_tracks: Vec<TrackId> =
+                        (start..end).map(|i| tracks[queue_order[i]]).collect();
 
-                        let ids = (start..end)
-                            .filter_map(|i| {
-                                let track_id = tracks[queue_order[i]];
-                                state.library
-                                    .tracks
-                                    .get(&track_id)
-                                    .and_then(|track| track.image_id)
-                            })
-                            .collect::<Vec<_>>();
-
-                        (visible_tracks, ids)
-                    };
-
-                    let tx = cx.global::<Controller>().cacher_tx.clone();
-                    cx.global_mut::<ImageCache>().request(ids, &tx, ImageKind::Thumbnail);
+                    controller
+                        .request_track_thumbnails(&thumb_tracks, cx);
 
                     views.update(cx, |map, _| {
                         map.retain(|id, _| visible_tracks.contains(id));
