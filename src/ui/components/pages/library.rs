@@ -11,7 +11,7 @@ use crate::library::TrackId;
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::components::virtual_list::vlist;
-use gpui::{div, img, px, white, App, AppContext, Context, Div, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle, Styled, StyledImage, Window};
+use gpui::{div, img, px, App, AppContext, Context, Div, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle, Styled, StyledImage, Window};
 
 #[derive(Clone)]
 pub struct LibraryPage {
@@ -121,8 +121,7 @@ impl LibraryPage {
         div()
             .h(height)
             .flex()
-            .gap_10()
-            .px_6()
+            .gap_8()
             .items_center()
             .children({
                 let state = controller.state.read(cx).clone();
@@ -140,27 +139,26 @@ impl LibraryPage {
 
                         let el = div()
                             .id(format!("playlist_{}", playlist.id.0.to_string()))
-                            .size_64()
                             .bg(theme.bg_main)
                             .flex()
                             .flex_col()
-                            .items_center()
+                            .items_start()
                             .justify_center()
-                            .gap_y_3()
-                            .text_color(white())
-                            .p_4()
+                            .text_color(theme.text_primary)
+                            .p_3()
                             .rounded_lg()
-                            .hover(|this| this.bg(theme.white_08))
+                            .hover(|this| this.bg(theme.accent_10))
                             .child(match thumbnail {
-                                Some(image) => div().size_48().child(
+                                Some(image) => div().size_48().mb_3().child(
                                     img(image.clone())
                                         .object_fit(ObjectFit::Contain)
                                         .size_full()
                                         .rounded_lg(),
                                 ),
-                                None => div().size_56().flex_shrink_0(),
+                                None => div().size_48().flex_shrink_0(),
                             })
-                            .child(playlist.name.clone());
+                            .child(div().text_base().text_color(theme.text_primary).font_weight(FontWeight::SEMIBOLD).child(playlist.name.clone()))
+                            .child(div().text_sm().text_color(theme.text_muted).font_weight(FontWeight::SEMIBOLD).child(format!("{} tracks", playlist.tracks.len())));
 
                         elements.push(el);
                     }
@@ -259,7 +257,7 @@ fn build_rows(
 
     if !library.playlists.is_empty() {
         rows.push(LibraryRow::Header(HeaderKind::Playlists));
-        heights.push(px(40.0));
+        heights.push(px(60.0));
 
         let mut chunk = Vec::with_capacity(cols);
 
@@ -281,7 +279,7 @@ fn build_rows(
 
     if !library.tracks.is_empty() {
         rows.push(LibraryRow::Header(HeaderKind::Tracks));
-        heights.push(px(40.0));
+        heights.push(px(60.0));
 
         for id in library.tracks.keys() {
             rows.push(LibraryRow::TrackRow(*id));
