@@ -22,6 +22,7 @@ pub struct LibraryPage {
     show_playlists: Entity<bool>,
     rows: Rc<Vec<LibraryRow>>,
     heights: Rc<Vec<Pixels>>,
+    pub sorted_tracks: Vec<&'static TrackId>,
     grid_cols: usize,
 }
 
@@ -37,7 +38,7 @@ enum LibraryRow {
     Header(HeaderKind),
     PlaylistGridRow(Vec<PlaylistId>),
     TrackTableHeader,
-    TrackRow(TrackId),
+    TrackRow(usize, TrackId),
 }
 
 impl LibraryPage {
@@ -57,6 +58,7 @@ impl LibraryPage {
             rows: Rc::new(rows),
             heights: Rc::new(heights),
             grid_cols: cols,
+            sorted_tracks: Vec::new(),
         }
     }
 
@@ -337,7 +339,8 @@ impl LibraryPage {
                                 .flex()
                                 .items_center()
                                 .justify_start()
-                                .child(track.duration.to_string())
+                                .font_family("JetBrains Mono")
+                                .child(format!("{:02}:{:02}", track.duration / 60, track.duration % 60))
                                 .overflow_hidden()
                                 .whitespace_nowrap()
                                 .text_ellipsis()
@@ -402,7 +405,7 @@ impl Render for LibraryPage {
                     let thumb_track_ids: Vec<TrackId> = (start..end)
                         .filter_map(|idx| {
                             match &rows[idx] {
-                                LibraryRow::TrackRow(id) => Some(*id),
+                                LibraryRow::TrackRow(_, id) => Some(*id),
                                 _ => None,
                             }
                         })
@@ -411,8 +414,7 @@ impl Render for LibraryPage {
                     controller.request_track_thumbnails(&thumb_track_ids, cx);
 
                     range
-                        .enumerate()
-                        .map(|(i, idx)| {
+                        .map(|idx| {
                             match &rows[idx] {
                                 LibraryRow::Header(kind) => Self::render_header(kind, heights[idx], cx),
 
@@ -420,7 +422,7 @@ impl Render for LibraryPage {
 
                                 LibraryRow::TrackTableHeader => Self::render_track_table_header(heights[idx], cx),
 
-                                LibraryRow::TrackRow(id) => Self::render_track(i, id, heights[idx], cx),
+                                LibraryRow::TrackRow(i, id) => Self::render_track(*i, id, heights[idx], cx),
                             }
                         })
                         .collect::<Vec<_>>()
@@ -452,7 +454,7 @@ fn build_rows(
 
             if chunk.len() == cols {
                 rows.push(LibraryRow::PlaylistGridRow(chunk));
-                heights.push(px(280.0));
+                heights.push(px(260.0));
                 chunk = Vec::with_capacity(cols);
             }
         }
@@ -464,14 +466,18 @@ fn build_rows(
     }
 
     if !library.tracks.is_empty() {
+        let mut sorted_tracks: Vec<_> = library.tracks.values().collect();
+
+        sorted_tracks.sort_by(|a, b| a.path.cmp(&b.path));
+
         rows.push(LibraryRow::Header(HeaderKind::Tracks));
         heights.push(px(60.0));
 
         rows.push(LibraryRow::TrackTableHeader);
         heights.push(px(40.0));
 
-        for id in library.tracks.keys() {
-            rows.push(LibraryRow::TrackRow(*id));
+        for (i, track) in sorted_tracks.iter().enumerate() {
+            rows.push(LibraryRow::TrackRow(i + 1, track.id));
             heights.push(px(60.0));
         }
     }
