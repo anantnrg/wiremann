@@ -172,10 +172,66 @@ impl LibraryPage {
     }
 
     fn render_track_table_header(height: Pixels, cx: &mut App) -> Div {
+        let theme = cx.global::<Theme>();
+
         div()
+            .h(height)
+            .w_full()
+            .flex()
+            .items_center()
+            .text_xs()
+            .font_weight(FontWeight::NORMAL)
+            .text_color(theme.text_muted)
+            .border_b_1()
+            .border_color(theme.white_05)
+            .child(
+                div()
+                    .w_20()
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child("#")
+            )
+            .child(
+                div()
+                    .w_2_3()
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child("TITLE")
+            )
+            .child(
+                div()
+                    .w_1_5()
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child("ARTIST")
+            )
+            .child(
+                div()
+                    .w_1_5()
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child("ALBUM")
+            )
+            .child(
+                div()
+                    .w_1_5()
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child("DURATION")
+            )
     }
 
-    fn render_track(id: &TrackId, height: Pixels, cx: &mut App) -> Div {
+    fn render_track(i: usize, id: &TrackId, height: Pixels, cx: &mut App) -> Div {
         let controller = cx.global::<Controller>().clone();
         let theme = cx.global::<Theme>().clone();
         let state = controller.state.read(cx).clone();
@@ -186,7 +242,57 @@ impl LibraryPage {
                 .py_2()
                 .child(
                     div()
+                        .id(format!("track_{:?}", track.id.0))
                         .size_full()
+                        .flex()
+                        .items_center()
+                        .hover(|this| this.bg(theme.accent_10))
+                        .rounded_md()
+                        .child(
+                            div()
+                                .w_20()
+                                .h_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(i.to_string())
+                        )
+                        .child(
+                            div()
+                                .w_2_3()
+                                .h_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(track.title.to_string())
+                        )
+                        .child(
+                            div()
+                                .w_1_5()
+                                .h_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(track.artist.to_string())
+                        )
+                        .child(
+                            div()
+                                .w_1_5()
+                                .h_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(track.album.to_string())
+                        )
+                        .child(
+                            div()
+                                .w_1_5()
+                                .h_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(track.duration.to_string())
+                        )
                 )
         } else {
             div()
@@ -240,15 +346,16 @@ impl Render for LibraryPage {
             .child(
                 vlist(cx.entity(), "library", heights.clone(), scroll_handle, move |_this, range, _, cx| {
                     range
-                        .map(|i| {
-                            match &rows[i] {
-                                LibraryRow::Header(kind) => Self::render_header(kind, heights[i], cx),
+                        .enumerate()
+                        .map(|(i, idx)| {
+                            match &rows[idx] {
+                                LibraryRow::Header(kind) => Self::render_header(kind, heights[idx], cx),
 
-                                LibraryRow::PlaylistGridRow(ids) => Self::render_playlist_grid(ids, heights[i], cx),
+                                LibraryRow::PlaylistGridRow(ids) => Self::render_playlist_grid(ids, heights[idx], cx),
 
-                                LibraryRow::TrackTableHeader => Self::render_track_table_header(heights[i], cx),
+                                LibraryRow::TrackTableHeader => Self::render_track_table_header(heights[idx], cx),
 
-                                LibraryRow::TrackRow(id) => Self::render_track(id, heights[i], cx),
+                                LibraryRow::TrackRow(id) => Self::render_track(i, id, heights[idx], cx),
                             }
                         })
                         .collect::<Vec<_>>()
