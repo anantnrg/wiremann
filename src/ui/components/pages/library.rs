@@ -11,7 +11,10 @@ use crate::library::TrackId;
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::components::virtual_list::vlist;
+use gpui::prelude::FluentBuilder;
 use gpui::{div, img, px, App, AppContext, Context, Div, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle, Styled, StyledImage, Window};
+
+const THUMBNAIL_MARGIN: usize = 16;
 
 #[derive(Clone)]
 pub struct LibraryPage {
@@ -195,7 +198,7 @@ impl LibraryPage {
             )
             .child(
                 div()
-                    .w_2_3()
+                    .w_3_5()
                     .h_full()
                     .flex()
                     .items_center()
@@ -204,7 +207,7 @@ impl LibraryPage {
             )
             .child(
                 div()
-                    .w_1_5()
+                    .w_1_2()
                     .h_full()
                     .flex()
                     .items_center()
@@ -213,7 +216,7 @@ impl LibraryPage {
             )
             .child(
                 div()
-                    .w_1_5()
+                    .w_1_2()
                     .h_full()
                     .flex()
                     .items_center()
@@ -222,7 +225,7 @@ impl LibraryPage {
             )
             .child(
                 div()
-                    .w_1_5()
+                    .w_24()
                     .h_full()
                     .flex()
                     .items_center()
@@ -232,14 +235,26 @@ impl LibraryPage {
     }
 
     fn render_track(i: usize, id: &TrackId, height: Pixels, cx: &mut App) -> Div {
+        let image_id = {
+            let state = cx.global::<Controller>().state.read(cx);
+            state.library.tracks.get(id).and_then(|t| t.image_id)
+        };
+
+        let thumbnail = image_id.and_then(|id| {
+            cx.global_mut::<ImageCache>().get(&id)
+        });
+
         let controller = cx.global::<Controller>().clone();
         let theme = cx.global::<Theme>().clone();
         let state = controller.state.read(cx).clone();
+        let is_current = Some(id) == state.playback.current.as_ref();
 
         if let Some(track) = state.library.tracks.get(id) {
             div()
                 .h(height)
-                .py_2()
+                .py_1()
+                .border_b_1()
+                .border_color(theme.white_05)
                 .child(
                     div()
                         .id(format!("track_{:?}", track.id.0))
@@ -247,51 +262,85 @@ impl LibraryPage {
                         .flex()
                         .items_center()
                         .hover(|this| this.bg(theme.accent_10))
+                        .when(is_current, |this| this.bg(theme.accent_15))
                         .rounded_md()
                         .child(
                             div()
                                 .w_20()
                                 .h_full()
                                 .flex()
+                                .px_6()
                                 .items_center()
-                                .justify_center()
+                                .justify_start()
                                 .child(i.to_string())
                         )
                         .child(
                             div()
                                 .w_2_3()
+                                .max_w_2_3()
                                 .h_full()
+                                .px_6()
+                                .py_1()
                                 .flex()
+                                .gap_x_3()
                                 .items_center()
-                                .justify_center()
+                                .justify_start()
+                                .child(match thumbnail {
+                                    Some(image) => div().size_11().flex_shrink_0().child(
+                                        img(image.clone())
+                                            .object_fit(ObjectFit::Contain)
+                                            .size_full()
+                                            .rounded_sm(),
+                                    ),
+                                    None => div().size_11().flex_shrink_0(),
+                                })
+                                .when(is_current, |this| this.text_color(theme.accent).font_weight(FontWeight::MEDIUM))
                                 .child(track.title.to_string())
+                                .overflow_hidden()
+                                .whitespace_nowrap()
+                                .text_ellipsis()
                         )
                         .child(
                             div()
-                                .w_1_5()
+                                .w_1_3()
+                                .px_6()
+                                .max_w_1_3()
                                 .h_full()
                                 .flex()
                                 .items_center()
-                                .justify_center()
+                                .justify_start()
                                 .child(track.artist.to_string())
+                                .overflow_hidden()
+                                .whitespace_nowrap()
+                                .text_ellipsis()
                         )
                         .child(
                             div()
-                                .w_1_5()
+                                .w_1_3()
+                                .max_w_1_3()
+                                .px_6()
                                 .h_full()
                                 .flex()
                                 .items_center()
-                                .justify_center()
+                                .justify_start()
                                 .child(track.album.to_string())
+                                .overflow_hidden()
+                                .whitespace_nowrap()
+                                .text_ellipsis()
                         )
                         .child(
                             div()
-                                .w_1_5()
+                                .w_24()
+                                .max_w_24()
                                 .h_full()
+                                .px_4()
                                 .flex()
                                 .items_center()
-                                .justify_center()
+                                .justify_start()
                                 .child(track.duration.to_string())
+                                .overflow_hidden()
+                                .whitespace_nowrap()
+                                .text_ellipsis()
                         )
                 )
         } else {
@@ -345,6 +394,22 @@ impl Render for LibraryPage {
             .py_10()
             .child(
                 vlist(cx.entity(), "library", heights.clone(), scroll_handle, move |_this, range, _, cx| {
+                    let len = rows.len();
+
+                    let start = range.start.saturating_sub(THUMBNAIL_MARGIN);
+                    let end = (range.end + THUMBNAIL_MARGIN).min(len);
+
+                    let thumb_track_ids: Vec<TrackId> = (start..end)
+                        .filter_map(|idx| {
+                            match &rows[idx] {
+                                LibraryRow::TrackRow(id) => Some(*id),
+                                _ => None,
+                            }
+                        })
+                        .collect();
+
+                    controller.request_track_thumbnails(&thumb_track_ids, cx);
+
                     range
                         .enumerate()
                         .map(|(i, idx)| {
