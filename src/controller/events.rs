@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AudioEvent {
-    TrackLoaded(PathBuf),
+    TrackLoaded(TrackId, PathBuf),
     Position(u64),
     PlaybackStatus(PlaybackStatus),
     TrackEnded,

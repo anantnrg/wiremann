@@ -76,3 +76,9 @@ impl TrackId {
         }
     }
 }
+
+impl Track {
+    pub fn get_valid_source(&self) -> Option<&TrackSource> {
+        self.sources.iter().find(|&t| t.path.exists())
+    }
+}
