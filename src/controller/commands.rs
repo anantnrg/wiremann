@@ -1,9 +1,10 @@
 use crate::cacher::ImageKind;
 use crate::controller::state::{LibraryState, PlaybackState, QueueState};
 use crate::library::playlists::PlaylistId;
-use crate::library::{ImageId, TrackId};
-use std::collections::HashSet;
+use crate::library::{ImageId, Track, TrackId};
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 pub enum AudioCommand {
     Load(PathBuf),
@@ -23,7 +24,7 @@ pub enum ScannerCommand {
     },
     ScanFolder {
         path: PathBuf,
-        tracks: HashSet<TrackId>,
+        tracks: HashMap<TrackId, Arc<Track>>,
     },
     GetCurrentAlbumArt(PathBuf),
     PlaylistThumbnail {

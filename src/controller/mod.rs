@@ -453,10 +453,10 @@ impl Controller {
         let _ = self.audio_tx.send(AudioCommand::GetPosition);
     }
 
-    pub fn scan_folder(&self, tracks: &HashSet<TrackId>, path: PathBuf) {
+    pub fn scan_folder(&self, tracks: HashMap<TrackId, Arc<Track>>, path: PathBuf) {
         let _ = self.scanner_tx.send(ScannerCommand::ScanFolder {
             path,
-            tracks: tracks.clone(),
+            tracks,
         });
     }
 

@@ -105,12 +105,10 @@ impl LibraryPage {
                                 .read(cx)
                                 .library
                                 .tracks
-                                .keys()
-                                .copied()
-                                .collect();
+                                .clone();
                             cx.spawn(async move |cx| {
                                 if let Some(folder) = rfd::AsyncFileDialog::new().pick_folder().await {
-                                    controller.scan_folder(&tracks, folder.path().into());
+                                    controller.scan_folder(tracks, folder.path().into());
                                 }
                             }).detach()
                         })
@@ -503,7 +501,7 @@ fn build_rows(
     if !library.tracks.is_empty() {
         let mut sorted_tracks: Vec<_> = library.tracks.values().collect();
 
-        sorted_tracks.sort_by(|a, b| a.path.cmp(&b.path));
+        sorted_tracks.sort_by(|a, b| a.sources[0].cmp(&b.sources[0]));
 
         rows.push(LibraryRow::Header(HeaderKind::Tracks));
         heights.push(px(60.0));
