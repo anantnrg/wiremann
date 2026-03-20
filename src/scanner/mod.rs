@@ -1,6 +1,6 @@
 use crate::cacher::ImageKind;
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{gen_track_id, ImageId, Track};
+use crate::library::{ImageId, Track, TrackSource};
 use crate::{
     controller::{commands::ScannerCommand, events::ScannerEvent},
     errors::ScannerError,
@@ -9,7 +9,7 @@ use crate::{
 use crossbeam_channel::{select, tick, Receiver, Sender};
 use fast_image_resize as fr;
 use gpui::RenderImage;
-use image::{imageops, DynamicImage, Frame, ImageReader, RgbaImage};
+use image::{imageops, DynamicImage, EncodableLayout, Frame, ImageReader, RgbaImage};
 use lofty::{prelude::*, probe::Probe};
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
@@ -73,7 +73,7 @@ impl Scanner {
                         self.enqueue_track(path, track_id, &meta_tx);
                     }
                 }
-                ScannerCommand::ScanFolder { tracks, path } => {
+                ScannerCommand::ScanFolder { path, tracks } => {
                     self.enqueue_folder(&tracks, &path, &meta_tx)?;
                 }
                 ScannerCommand::GetCurrentAlbumArt(path) => {
@@ -126,9 +126,7 @@ impl Scanner {
                                             );
                                         }
 
-                                        if let Some(bytes) = image {
-                                            let hash = ImageId(<[u8; 32]>::from(blake3::hash(&bytes)));
-
+                                        if let Some(bytes) = image && let Ok(hash) = ImageId::generate(&bytes) {
                                             let _ = thumb_tx.send(ScanJob::Thumbnail(id, hash, bytes));
                                         }
                                     }
@@ -206,19 +204,19 @@ impl Scanner {
             while let Ok(ScanJob::AlbumArt(path)) = album_art_rx.recv() {
                 match get_album_art(&path) {
                     Ok((id, Some(image))) => {
-                        let hash = ImageId(<[u8; 32]>::from(blake3::hash(&image)));
+                        if let Ok(hash) = ImageId::generate(&image) {
+                            let path = get_cached_image_path(hash, ImageKind::AlbumArt);
 
-                        let path = get_cached_image_path(hash, ImageKind::AlbumArt);
-
-                        if !path.exists() {
-                            if let Ok(album_art) = render_album_art(&image, false) {
-                                let _ = events_tx.send(ScannerEvent::AlbumArt(hash, album_art));
+                            if !path.exists() {
+                                if let Ok(album_art) = render_album_art(&image, false) {
+                                    let _ = events_tx.send(ScannerEvent::AlbumArt(hash, album_art));
+                                    let _ = events_tx
+                                        .send(ScannerEvent::ImageLookup(HashMap::from([(id, hash)])));
+                                }
+                            } else {
                                 let _ = events_tx
                                     .send(ScannerEvent::ImageLookup(HashMap::from([(id, hash)])));
                             }
-                        } else {
-                            let _ = events_tx
-                                .send(ScannerEvent::ImageLookup(HashMap::from([(id, hash)])));
                         }
                     }
                     Err(err) => eprintln!("Failed album art: {err}"),
@@ -276,7 +274,7 @@ impl Scanner {
 
     fn enqueue_folder(
         &self,
-        existing_tracks: &HashSet<TrackId>,
+        existing_tracks: &HashMap<TrackId, Arc<Track>>,
         path: &PathBuf,
         meta_tx: &Sender<ScanJob>,
     ) -> Result<(), ScannerError> {
@@ -301,7 +299,7 @@ impl Scanner {
                     continue;
                 }
 
-                let id = gen_track_id(&file)?;
+                let id = TrackId::generate(&file)?;
                 track_ids.push(id);
 
                 if !existing_tracks.contains(&id) {
@@ -394,17 +392,21 @@ fn get_track_metadata(
                 .and_then(|s| s.to_str())
                 .unwrap_or("Unknown")
                 .to_string();
+            
+            let sources = vec![TrackSource {
+                path,
+                size,
+                modified
+            }];
 
             return Ok((
                 Track {
-                    path,
+                    sources,
                     id: track_id,
                     title,
                     artist: "Unknown Artist".to_string(),
                     album: "Unknown Album".to_string(),
                     duration,
-                    modified,
-                    size,
                     image_id: None,
                 },
                 None,
@@ -466,16 +468,20 @@ fn get_track_metadata(
         .duration_since(UNIX_EPOCH)?
         .as_secs();
 
+    let sources = vec![TrackSource {
+        path,
+        size,
+        modified
+    }];
+    
     Ok((
         Track {
-            path,
+            sources,
             id: track_id,
             title,
             artist,
             album,
             duration,
-            modified,
-            size,
             image_id: None,
         },
         thumbnail,
@@ -491,7 +497,7 @@ fn get_album_art(path: &Path) -> Result<(TrackId, Option<Vec<u8>>), ScannerError
         Err(e) => return Err(ScannerError::from(e)),
     };
 
-    let id = gen_track_id(path)?;
+    let id = TrackId::generate(path)?;
 
     let tag = tagged_file
         .primary_tag()
@@ -559,7 +565,7 @@ fn render_playlist_thumbnail(
 
     let mut image = canvas.to_rgba8();
 
-    let hash = ImageId(<[u8; 32]>::from(blake3::hash(image.as_raw())));
+    let hash = if let Ok(hash) = ImageId::generate(image.as_bytes()) { Some(hash) } else { None };
 
     for px in <[u8] as AsMut<[u8]>>::as_mut(&mut image).chunks_exact_mut(4) {
         px.swap(0, 2);
@@ -569,7 +575,7 @@ fn render_playlist_thumbnail(
 
     let render_image = Arc::new(RenderImage::new(smallvec![frame]));
 
-    (Some(render_image), Some(hash))
+    (Some(render_image), hash)
 }
 
 fn get_cached_image_path(id: ImageId, kind: ImageKind) -> PathBuf {
