@@ -346,6 +346,7 @@ impl Scanner {
                 .unwrap_or("Unnamed Playlist")
                 .to_string(),
             source: PlaylistSource::Folder,
+            folder_path: Some(scan_path.clone()),
             tracks: track_ids,
             duration: Duration::from_secs(0),
             image_id: None,

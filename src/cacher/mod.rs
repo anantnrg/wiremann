@@ -98,6 +98,8 @@ struct CachedPlaylist {
     pub source: CachedPlaylistSource,
     pub tracks: Vec<[u8; 16]>,
 
+    pub folder_path: Option<String>,
+
     pub duration: u64,
 
     pub image_id: Option<[u8; 16]>,
@@ -188,6 +190,7 @@ impl From<&Playlist> for CachedPlaylist {
                 PlaylistSource::Generated => CachedPlaylistSource::Generated,
                 PlaylistSource::User => CachedPlaylistSource::User,
             },
+            folder_path: playlist.folder_path.map(|path| path.to_string_lossy().to_string()),
             tracks: playlist.tracks.iter().map(|t| t.0).collect(),
             duration: playlist.duration.as_secs(),
             image_id: playlist.image_id.map(|id| id.0),
@@ -205,6 +208,7 @@ impl From<CachedPlaylist> for Playlist {
                 CachedPlaylistSource::Generated => PlaylistSource::Generated,
                 CachedPlaylistSource::User => PlaylistSource::User,
             },
+            folder_path: cached_playlist.folder_path.map(|path| PathBuf::from(path)),
             tracks: cached_playlist.tracks.iter().map(|t| TrackId(*t)).collect(),
             duration: Duration::from_secs(cached_playlist.duration),
             image_id: cached_playlist.image_id.map(|id| ImageId(id)),
