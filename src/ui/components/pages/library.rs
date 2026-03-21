@@ -39,6 +39,7 @@ enum LibraryRow {
     PlaylistGridRow(Vec<PlaylistId>),
     TrackTableHeader,
     TrackRow(usize, TrackId),
+    Empty(HeaderKind),
 }
 
 impl LibraryPage {
@@ -456,6 +457,20 @@ impl Render for LibraryPage {
                                 LibraryRow::TrackTableHeader => Self::render_track_table_header(heights[idx], cx),
 
                                 LibraryRow::TrackRow(i, id) => Self::render_track(*i, id, heights[idx], cx),
+
+                                LibraryRow::Empty(kind) => {
+                                    match kind {
+                                        HeaderKind::Playlists => {
+                                            div().w_full().h_48().text_center().text_lg().text_color(theme.text_primary).child("No playlists loaded.")
+                                        }
+                                        HeaderKind::Tracks => {
+                                            div().w_full().h_48().text_center().text_lg().text_color(theme.text_primary).child("No tracks loaded.")
+                                        }
+                                        HeaderKind::Albums => {
+                                            div().w_full().h_48().text_center().text_lg().text_color(theme.text_primary).child("No albums loaded.")
+                                        }
+                                    }
+                                }
                             }
                         })
                         .collect::<Vec<_>>()
@@ -476,10 +491,10 @@ fn build_rows(
     let mut rows = Vec::new();
     let mut heights = Vec::new();
 
-    if !library.playlists.is_empty() {
-        rows.push(LibraryRow::Header(HeaderKind::Playlists));
-        heights.push(px(60.0));
+    rows.push(LibraryRow::Header(HeaderKind::Playlists));
+    heights.push(px(60.0));
 
+    if !library.playlists.is_empty() {
         let mut chunk = Vec::with_capacity(cols);
 
         for pid in library.playlists.keys() {
@@ -496,15 +511,18 @@ fn build_rows(
             rows.push(LibraryRow::PlaylistGridRow(chunk));
             heights.push(px(280.0));
         }
+    } else {
+        rows.push(LibraryRow::Empty(HeaderKind::Playlists));
+        heights.push(px(192.0));
     }
+
+    rows.push(LibraryRow::Header(HeaderKind::Tracks));
+    heights.push(px(60.0));
 
     if !library.tracks.is_empty() {
         let mut sorted_tracks: Vec<_> = library.tracks.values().collect();
 
         // sorted_tracks.sort_by(|a, b| a.sources[0].cmp(&b.sources[0]));
-
-        rows.push(LibraryRow::Header(HeaderKind::Tracks));
-        heights.push(px(60.0));
 
         rows.push(LibraryRow::TrackTableHeader);
         heights.push(px(40.0));
@@ -513,6 +531,9 @@ fn build_rows(
             rows.push(LibraryRow::TrackRow(i + 1, track.id));
             heights.push(px(60.0));
         }
+    } else {
+        rows.push(LibraryRow::Empty(HeaderKind::Tracks));
+        heights.push(px(192.0));
     }
 
     (rows, heights)
