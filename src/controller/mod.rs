@@ -180,6 +180,30 @@ impl Controller {
                 let state = self.state.read(cx).library.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
+            ScannerEvent::AddTrackSource(id, source) => {
+                self.state.update(cx, |this, cx| {
+                    if let Some(track) = this.library.tracks.get_mut(&id) {
+                        Arc::make_mut(track).sources.push(source.clone());
+                    }
+
+                    cx.notify();
+                });
+                let state = self.state.read(cx).library.clone();
+                let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
+            }
+            ScannerEvent::RemoveTrackSource(id, path) => {
+                self.state.update(cx, |this, cx| {
+                    if let Some(track) = this.library.tracks.get_mut(&id) {
+                        if let Some(source) = track.sources.iter().position(|this| this.path == *path) {
+                            Arc::make_mut(track).sources.remove(source);
+                        }
+                    }
+
+                    cx.notify();
+                });
+                let state = self.state.read(cx).library.clone();
+                let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
+            }
             ScannerEvent::Playlist(playlist) => {
                 self.state.update(cx, |this, cx| {
                     this.library

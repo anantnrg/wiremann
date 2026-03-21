@@ -190,7 +190,7 @@ impl From<&Playlist> for CachedPlaylist {
                 PlaylistSource::Generated => CachedPlaylistSource::Generated,
                 PlaylistSource::User => CachedPlaylistSource::User,
             },
-            folder_path: playlist.folder_path.map(|path| path.to_string_lossy().to_string()),
+            folder_path: playlist.folder_path.clone().map(|path| path.to_string_lossy().to_string()),
             tracks: playlist.tracks.iter().map(|t| t.0).collect(),
             duration: playlist.duration.as_secs(),
             image_id: playlist.image_id.map(|id| id.0),
