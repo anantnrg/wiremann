@@ -448,7 +448,7 @@ impl Controller {
                 let _ = self.audio_tx.send(AudioCommand::Load(source.path.clone()));
                 let _ = self
                     .scanner_tx
-                    .send(ScannerCommand::GetCurrentAlbumArt(source.path));
+                    .send(ScannerCommand::GetCurrentAlbumArt(source.path.clone()));
             }
         }
     }

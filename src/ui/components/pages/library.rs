@@ -106,7 +106,7 @@ impl LibraryPage {
                                 .library
                                 .tracks
                                 .clone();
-                            cx.spawn(async move |cx| {
+                            cx.spawn(async move |_| {
                                 if let Some(folder) = rfd::AsyncFileDialog::new().pick_folder().await {
                                     controller.scan_folder(tracks, folder.path().into());
                                 }
@@ -131,7 +131,7 @@ impl LibraryPage {
                         .hover(|this| this.bg(theme.accent_15))
                         .on_click(move |_, _, cx| {
                             let controller = cx.global::<Controller>().clone();
-                            cx.spawn(async move |cx| {
+                            cx.spawn(async move |_| {
                                 if let Some(files) = rfd::AsyncFileDialog::new().pick_files().await {
                                     for file in files {
                                         controller.load_audio(file.path().into());
@@ -501,7 +501,7 @@ fn build_rows(
     if !library.tracks.is_empty() {
         let mut sorted_tracks: Vec<_> = library.tracks.values().collect();
 
-        sorted_tracks.sort_by(|a, b| a.sources[0].cmp(&b.sources[0]));
+        // sorted_tracks.sort_by(|a, b| a.sources[0].cmp(&b.sources[0]));
 
         rows.push(LibraryRow::Header(HeaderKind::Tracks));
         heights.push(px(60.0));

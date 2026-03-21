@@ -134,7 +134,7 @@ impl From<&Track> for CachedTrack {
     fn from(track: &Track) -> Self {
         Self {
             id: track.id.0,
-            sources: track.sources.into(),
+            sources: track.sources.iter().map(|this| this.into()).collect(),
             title: track.title.clone(),
             artist: track.artist.clone(),
             album: track.album.clone(),
@@ -148,7 +148,7 @@ impl From<CachedTrack> for Track {
     fn from(c: CachedTrack) -> Self {
         Self {
             id: TrackId(c.id),
-            sources: c.sources.into(),
+            sources: c.sources.iter().map(|this| this.into()).collect(),
             title: c.title,
             artist: c.artist,
             album: c.album,

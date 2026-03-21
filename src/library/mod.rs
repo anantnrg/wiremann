@@ -1,8 +1,8 @@
 pub mod playlists;
 
-use crate::errors::ScannerError;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
+use std::io;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use twox_hash::XxHash3_128;
@@ -41,7 +41,7 @@ pub struct TrackSource {
 
 impl TrackId {
     #[allow(clippy::missing_errors_doc)]
-    pub fn generate(path: &Path) -> Result<Self, ScannerError> {
+    pub fn generate(path: &Path) -> Result<Self, io::Error> {
         let mut hasher = XxHash3_128::with_seed(AUDIO_HASH_SEED);
 
         let mut file = File::open(path)?;
@@ -78,7 +78,7 @@ impl TrackId {
 }
 
 impl ImageId {
-    pub fn generate(bytes: &[u8]) -> Result<Self, ScannerError> {
+    pub fn generate(bytes: &[u8]) -> Result<Self, io::Error> {
         let mut hasher = XxHash3_128::with_seed(IMAGE_HASH_SEED);
 
         hasher.write(bytes);
