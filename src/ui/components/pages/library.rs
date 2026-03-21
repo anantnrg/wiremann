@@ -391,7 +391,7 @@ impl LibraryPage {
 impl Render for LibraryPage {
     #[allow(clippy::too_many_lines)]
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.global::<Theme>();
+        let theme = cx.global::<Theme>().clone();
 
         let controller = cx.global::<Controller>().clone();
         let state = controller.state.read(cx);
@@ -461,13 +461,13 @@ impl Render for LibraryPage {
                                 LibraryRow::Empty(kind) => {
                                     match kind {
                                         HeaderKind::Playlists => {
-                                            div().w_full().h_48().text_center().text_lg().text_color(theme.text_primary).child("No playlists loaded.")
+                                            div().w_full().h_48().flex().items_center().justify_center().text_lg().text_color(theme.text_muted).child("No playlists loaded.")
                                         }
                                         HeaderKind::Tracks => {
-                                            div().w_full().h_48().text_center().text_lg().text_color(theme.text_primary).child("No tracks loaded.")
+                                            div().w_full().h_48().flex().items_center().justify_center().text_lg().text_color(theme.text_muted).child("No tracks loaded.")
                                         }
                                         HeaderKind::Albums => {
-                                            div().w_full().h_48().text_center().text_lg().text_color(theme.text_primary).child("No albums loaded.")
+                                            div().w_full().h_48().flex().items_center().justify_center().text_lg().text_color(theme.text_muted).child("No albums loaded.")
                                         }
                                     }
                                 }
