@@ -122,7 +122,7 @@ impl Scanner {
 
                                         if batch.len() >= 16 {
                                             let _ = events_tx.send(
-                                                ScannerEvent::Tracks(std::mem::take(&mut batch))
+                                                ScannerEvent::InsertTracks(std::mem::take(&mut batch))
                                             );
                                         }
 
@@ -138,7 +138,7 @@ impl Scanner {
                          recv(ticker) -> _ => {
                             if !batch.is_empty() {
                                 let _ = events_tx.send(
-                                    ScannerEvent::Tracks(std::mem::take(&mut batch))
+                                    ScannerEvent::InsertTracks(std::mem::take(&mut batch))
                                 );
                             }
                         }
@@ -275,7 +275,7 @@ impl Scanner {
     fn enqueue_folder(
         &self,
         existing_tracks: &HashMap<TrackId, Arc<Track>>,
-        path: &PathBuf,
+        scan_path: &PathBuf,
         meta_tx: &Sender<ScanJob>,
     ) -> Result<(), ScannerError> {
         let mut track_ids = Vec::new();
@@ -283,18 +283,24 @@ impl Scanner {
 
         for (&id, track) in existing_tracks {
             for source in &track.sources {
-                quick_lookup.insert(source.path, (id, source.size, source.modified));
+                quick_lookup.insert(source.path.clone(), (id, source.size, source.modified));
             }
         }
 
-        if path.is_dir() {
-            for entry in WalkDir::new(path)
+        if scan_path.is_dir() {
+            for entry in WalkDir::new(scan_path)
                 .into_iter()
                 .filter_map(Result::ok)
                 .filter(|e| e.file_type().is_file())
             {
-                let file = entry.path().to_path_buf();
+                let file = entry.path();
                 let meta = file.metadata()?;
+
+                let track_source = TrackSource {
+                    path: file.to_path_buf(),
+                    modified: meta.modified()?.duration_since(UNIX_EPOCH)?.as_secs(),
+                    size: meta.len(),
+                };
 
                 let ext_ok = file
                     .extension()
@@ -305,29 +311,36 @@ impl Scanner {
                     continue;
                 }
 
-                if quick_lookup.contains_key(&file) {
-                    if let Some((id, size, modified)) = quick_lookup.get(&file) && (*size, *modified) == (meta.len(), meta.modified()?.duration_since(UNIX_EPOCH)?.as_secs()) {
-                        track_ids.push(*id);
+                if let Some((existing_id, size, modified)) = quick_lookup.get(file) {
+                    if (*size, *modified) == (track_source.size, track_source.modified) {
+                        track_ids.push(*existing_id);
                     } else {
-                        if let Some((id, _, _)) = quick_lookup.get(&file) {
-                            let _ = meta_tx.send(ScanJob::Metadata(file, *id));
+                        let _ = self.tx.send(ScannerEvent::RemoveTrackSource(*existing_id, file.to_path_buf()));
+                        let id = TrackId::generate(&file)?;
+
+                        if existing_tracks.contains_key(&id) {
+                            let _ = self.tx.send(ScannerEvent::AddTrackSource(id, track_source));
+                        } else {
+                            let _ = meta_tx.send(ScanJob::Metadata(file.to_path_buf(), id));
                         }
+                        track_ids.push(id);
                     }
                 } else {
                     let id = TrackId::generate(&file)?;
 
                     if existing_tracks.contains_key(&id) {
-                        track_ids.push(id);
+                        let _ = self.tx.send(ScannerEvent::AddTrackSource(id, track_source));
                     } else {
-                        let _ = meta_tx.send(ScanJob::Metadata(file, id));
+                        let _ = meta_tx.send(ScanJob::Metadata(file.to_path_buf(), id));
                     }
+                    track_ids.push(id);
                 }
             }
         }
 
         let playlist = Playlist {
             id: PlaylistId(Uuid::new_v4()),
-            name: path
+            name: scan_path
                 .file_name()
                 .and_then(|s| s.to_str())
                 .unwrap_or("Unnamed Playlist")

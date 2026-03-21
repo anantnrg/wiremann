@@ -166,7 +166,7 @@ impl Controller {
         view: &Entity<Wiremann>,
     ) -> Result<(), ControllerError> {
         match event {
-            ScannerEvent::Tracks(tracks) => {
+            ScannerEvent::InsertTracks(tracks) => {
                 self.state.update(cx, |this, cx| {
                     this.library.tracks.reserve(tracks.len());
                     for track in tracks {
