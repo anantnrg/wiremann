@@ -3,7 +3,7 @@ use crate::controller::events::CacherEvent;
 use crate::controller::state::{AppState, LibraryState, PlaybackState, PlaybackStatus, QueueState};
 use crate::errors::CacherError;
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{ImageId, Track, TrackId};
+use crate::library::{ImageId, Track, TrackId, TrackSource};
 use bitcode::{Decode, Encode};
 use crossbeam_channel::{select, tick, Receiver, Sender};
 use gpui::RenderImage;
@@ -57,18 +57,23 @@ pub enum ImageKind {
 }
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
 struct CachedTrack {
-    pub id: [u8; 32],
-    pub path: String,
+    pub id: [u8; 16],
+    pub sources: Vec<CachedTrackSource>,
 
     pub title: String,
     pub artist: String,
     pub album: String,
 
     pub duration: u64,
-    pub size: u64,
-    pub modified: u64,
 
-    pub image_id: Option<[u8; 32]>,
+    pub image_id: Option<[u8; 16]>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
+struct CachedTrackSource {
+    path: String,
+    size: u64,
+    modified: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
@@ -91,22 +96,24 @@ struct CachedPlaylist {
     pub id: String,
     pub name: String,
     pub source: CachedPlaylistSource,
-    pub tracks: Vec<[u8; 32]>,
+    pub tracks: Vec<[u8; 16]>,
+
+    pub folder_path: Option<String>,
 
     pub duration: u64,
 
-    pub image_id: Option<[u8; 32]>,
+    pub image_id: Option<[u8; 16]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
 struct CachedLibraryState {
-    pub tracks: HashMap<[u8; 32], CachedTrack>,
+    pub tracks: HashMap<[u8; 16], CachedTrack>,
     pub playlists: HashMap<String, CachedPlaylist>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 struct CachedPlaybackState {
-    pub current: Option<[u8; 32]>,
+    pub current: Option<[u8; 16]>,
     pub current_playlist: Option<String>,
     pub current_index: usize,
 
@@ -121,7 +128,7 @@ struct CachedPlaybackState {
 
 #[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
 pub struct CachedQueueState {
-    pub tracks: Vec<[u8; 32]>,
+    pub tracks: Vec<[u8; 16]>,
     pub order: Vec<usize>,
 }
 
@@ -129,13 +136,11 @@ impl From<&Track> for CachedTrack {
     fn from(track: &Track) -> Self {
         Self {
             id: track.id.0,
-            path: track.path.to_string_lossy().to_string(),
+            sources: track.sources.iter().map(|this| this.into()).collect(),
             title: track.title.clone(),
             artist: track.artist.clone(),
             album: track.album.clone(),
             duration: track.duration,
-            size: track.size,
-            modified: track.modified,
             image_id: track.image_id.map(|id| id.0),
         }
     }
@@ -145,14 +150,32 @@ impl From<CachedTrack> for Track {
     fn from(c: CachedTrack) -> Self {
         Self {
             id: TrackId(c.id),
-            path: PathBuf::from(c.path),
+            sources: c.sources.iter().map(|this| this.into()).collect(),
             title: c.title,
             artist: c.artist,
             album: c.album,
             duration: c.duration,
+            image_id: c.image_id.map(|id| ImageId(id)),
+        }
+    }
+}
+
+impl From<&TrackSource> for CachedTrackSource {
+    fn from(c: &TrackSource) -> Self {
+        CachedTrackSource {
+            path: c.path.to_string_lossy().to_string(),
             size: c.size,
             modified: c.modified,
-            image_id: c.image_id.map(|id| ImageId(id)),
+        }
+    }
+}
+
+impl From<&CachedTrackSource> for TrackSource {
+    fn from(c: &CachedTrackSource) -> Self {
+        TrackSource {
+            path: PathBuf::from(c.path.clone()),
+            size: c.size,
+            modified: c.modified,
         }
     }
 }
@@ -167,6 +190,7 @@ impl From<&Playlist> for CachedPlaylist {
                 PlaylistSource::Generated => CachedPlaylistSource::Generated,
                 PlaylistSource::User => CachedPlaylistSource::User,
             },
+            folder_path: playlist.folder_path.clone().map(|path| path.to_string_lossy().to_string()),
             tracks: playlist.tracks.iter().map(|t| t.0).collect(),
             duration: playlist.duration.as_secs(),
             image_id: playlist.image_id.map(|id| id.0),
@@ -184,6 +208,7 @@ impl From<CachedPlaylist> for Playlist {
                 CachedPlaylistSource::Generated => PlaylistSource::Generated,
                 CachedPlaylistSource::User => PlaylistSource::User,
             },
+            folder_path: cached_playlist.folder_path.map(|path| PathBuf::from(path)),
             tracks: cached_playlist.tracks.iter().map(|t| TrackId(*t)).collect(),
             duration: Duration::from_secs(cached_playlist.duration),
             image_id: cached_playlist.image_id.map(|id| ImageId(id)),

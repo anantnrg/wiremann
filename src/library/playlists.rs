@@ -1,5 +1,6 @@
 use super::{ImageId, TrackId};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -18,6 +19,8 @@ pub struct Playlist {
     pub id: PlaylistId,
     pub name: String,
     pub source: PlaylistSource,
+
+    pub folder_path: Option<PathBuf>,
 
     pub duration: Duration,
 

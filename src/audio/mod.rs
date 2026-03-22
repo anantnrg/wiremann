@@ -3,6 +3,7 @@ use std::time::Duration;
 use std::{fs::File, path::PathBuf};
 
 use crate::controller::state::PlaybackStatus;
+use crate::library::TrackId;
 use crate::{
     controller::{commands::AudioCommand, events::AudioEvent},
     errors::AudioError,
@@ -42,20 +43,20 @@ impl Audio {
     #[allow(clippy::missing_errors_doc)]
     pub fn run(&mut self) -> Result<(), AudioError> {
         loop {
-                match self.rx.recv()? {
-                    AudioCommand::Load(path) => self.load_path(path)?,
-                    AudioCommand::GetPosition => self.emit_position(),
-                    AudioCommand::CheckTrackEnded => self.check_track_ended(),
-                    AudioCommand::Play => self.play(),
-                    AudioCommand::Pause => self.pause(),
-                    AudioCommand::Stop => self.stop(),
-                    AudioCommand::SetVolume(v) => self.set_volume(v),
-                    AudioCommand::Seek(u64) => self.seek(u64)?,
-                }
+            match self.rx.recv()? {
+                AudioCommand::Load(id, path) => self.load_path(id, path)?,
+                AudioCommand::GetPosition => self.emit_position(),
+                AudioCommand::CheckTrackEnded => self.check_track_ended(),
+                AudioCommand::Play => self.play(),
+                AudioCommand::Pause => self.pause(),
+                AudioCommand::Stop => self.stop(),
+                AudioCommand::SetVolume(v) => self.set_volume(v),
+                AudioCommand::Seek(u64) => self.seek(u64)?,
+            }
         }
     }
 
-    fn load_path(&mut self, path: PathBuf) -> Result<(), AudioError> {
+    fn load_path(&mut self, id: TrackId, path: PathBuf) -> Result<(), AudioError> {
         self.player.stop();
 
         let prev_vol = self.player.volume();
@@ -76,7 +77,7 @@ impl Audio {
 
         self.player.set_volume(prev_vol);
 
-        let _ = self.tx.send(AudioEvent::TrackLoaded(path));
+        let _ = self.tx.send(AudioEvent::TrackLoaded(id, path));
 
         self.play();
 

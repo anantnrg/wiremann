@@ -60,11 +60,12 @@ impl Render for Item {
             None
         };
 
-        let path = if let Some(track) = current {
-            track.path.clone()
+        let path = if let Some(track) = current && let Some(source) = track.get_valid_source() {
+            source.path.clone()
         } else {
             PathBuf::new()
         };
+
         div()
             .id(format!("track_item_{}", path.to_string_lossy()))
             .h(px(64.))
@@ -233,18 +234,21 @@ impl Render for Queue {
 
                     range
                         .map(|i| {
-                            let state = cx.global::<Controller>().state.read(cx);
+                            let state = cx.global::<Controller>().state.read(cx).clone();
 
                             let real_index = &tracks[queue_order[i]];
 
-                            if let Some(track) = state.library.tracks.get(real_index) {
-                                let path = track.path.clone();
+                            if let Some(track) = state.library.tracks.get(real_index) && let Some(source) = track.get_valid_source() {
+                                let path = source.path.clone();
 
                                 div()
                                     .id(format!("track_{}", path.to_string_lossy()))
                                     .child(Queue::get_or_create_item(&views, track.clone(), cx))
-                                    .on_click(move |_, _, cx| {
-                                        cx.global::<Controller>().load_audio(path.clone());
+                                    .on_click({
+                                        let id = track.id;
+                                        move |_, _, cx| {
+                                            cx.global::<Controller>().load_audio(&id, cx);
+                                        }
                                     })
                             } else {
                                 div()
