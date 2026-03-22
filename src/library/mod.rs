@@ -40,16 +40,16 @@ pub struct TrackSource {
 
 impl TrackId {
     #[allow(clippy::missing_errors_doc)]
-    pub fn generate(name: &str, artists: &str, album: &str) -> Result<Self, io::Error> {
+    pub fn generate(name: &str, artist: &str, album: &str) -> Result<Self, io::Error> {
         let mut hasher = XxHash3_128::with_seed(AUDIO_HASH_SEED);
 
         let name = name.trim().to_lowercase();
-        let artists = artists.trim().to_lowercase();
+        let artist = artist.trim().to_lowercase();
         let album = album.trim().to_lowercase();
 
         hasher.write(name.as_bytes());
         hasher.write(b"#");
-        hasher.write(artists.as_bytes());
+        hasher.write(artist.as_bytes());
         hasher.write(b"#");
         hasher.write(album.as_bytes());
 

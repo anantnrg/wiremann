@@ -26,7 +26,7 @@ pub enum ScannerCommand {
         path: PathBuf,
         tracks: HashMap<TrackId, Arc<Track>>,
     },
-    GetCurrentAlbumArt(PathBuf),
+    GetCurrentAlbumArt(TrackId, PathBuf),
     PlaylistThumbnail {
         id: PlaylistId,
         tracks: Vec<PathBuf>,

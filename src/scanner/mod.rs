@@ -29,7 +29,7 @@ pub struct Scanner {
 enum ScanJob {
     Metadata(TrackSource, Option<PlaylistId>),
     Thumbnail(TrackId, ImageId, Vec<u8>),
-    AlbumArt(PathBuf),
+    AlbumArt(TrackId, PathBuf),
     InsertPlaylistThumbnail(PlaylistId, Vec<PathBuf>),
 }
 
@@ -76,8 +76,8 @@ impl Scanner {
                 ScannerCommand::ScanFolder { path, tracks } => {
                     self.enqueue_folder(&tracks, &path, &meta_tx)?;
                 }
-                ScannerCommand::GetCurrentAlbumArt(path) => {
-                    let _ = album_art_tx.send(ScanJob::AlbumArt(path));
+                ScannerCommand::GetCurrentAlbumArt(id, path) => {
+                    let _ = album_art_tx.send(ScanJob::AlbumArt(id, path));
                 }
                 ScannerCommand::PlaylistThumbnail { id, tracks } => {
                     if inflight_playlists.insert(id) {
@@ -201,9 +201,9 @@ impl Scanner {
         let events_tx = self.tx.clone();
 
         std::thread::spawn(move || {
-            while let Ok(ScanJob::AlbumArt(path)) = album_art_rx.recv() {
+            while let Ok(ScanJob::AlbumArt(id, path)) = album_art_rx.recv() {
                 match get_album_art(&path) {
-                    Ok((id, Some(image))) => {
+                    Ok(Some(image)) => {
                         if let Ok(hash) = ImageId::generate(&image) {
                             let path = get_cached_image_path(hash, ImageKind::AlbumArt);
 
@@ -241,14 +241,14 @@ impl Scanner {
                     }
 
                     match get_album_art(&path) {
-                        Ok((_tid, Some(image))) => {
+                        Ok(Some(image)) => {
                             if let Ok(img) = image::load_from_memory(&image) {
                                 images.push(img);
                             } else {
                                 eprintln!("Invalid album art in {:?}", path);
                             }
                         }
-                        Ok((_tid, None)) => {}
+                        Ok(None) => {}
                         Err(err) => eprintln!("Failed album art for {:?}: {err}", path),
                     }
                 }
@@ -394,8 +394,9 @@ fn render_album_art(bytes: &[u8], is_thumbnail: bool) -> Result<Arc<RenderImage>
 }
 
 fn get_track_metadata(
-    path: PathBuf,
+    source: TrackSource,
 ) -> Result<(Track, Option<Vec<u8>>), ScannerError> {
+    let path = source.path.clone();
     let tagged_file = match Probe::open(path.clone())
         .and_then(|p| Ok(p.guess_file_type()?))
         .and_then(Probe::read)
@@ -404,27 +405,15 @@ fn get_track_metadata(
         Err(e) => {
             eprintln!("Metadata decode failed {}: {e:?}", path.display());
 
-            let file_metadata = fs::metadata(path.clone())?;
-            let duration = 0;
-            let size = file_metadata.len();
-            let modified = file_metadata
-                .modified()?
-                .duration_since(UNIX_EPOCH)?
-                .as_secs();
-
             let title = path
                 .file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("Unknown")
                 .to_string();
 
-            let sources = vec![TrackSource {
-                path,
-                size,
-                modified
-            }];
+            let sources = vec![source];
 
-            let track_id = TrackId::generate()?;
+            let track_id = TrackId::generate(title.as_str(), "Unknown Artist", "Unknown Album")?;
 
             return Ok((
                 Track {
@@ -501,6 +490,8 @@ fn get_track_metadata(
         modified
     }];
 
+    let track_id = TrackId::generate(title.as_str(), artist.as_str(), album.as_str())?;
+
     Ok((
         Track {
             sources,
@@ -515,7 +506,7 @@ fn get_track_metadata(
     ))
 }
 
-fn get_album_art(path: &Path) -> Result<(TrackId, Option<Vec<u8>>), ScannerError> {
+fn get_album_art(path: &Path) -> Result<Option<Vec<u8>>, ScannerError> {
     let tagged_file = match Probe::open(path)
         .and_then(|p| Ok(p.guess_file_type()?))
         .and_then(Probe::read)
@@ -523,8 +514,6 @@ fn get_album_art(path: &Path) -> Result<(TrackId, Option<Vec<u8>>), ScannerError
         Ok(file) => file,
         Err(e) => return Err(ScannerError::from(e)),
     };
-
-    let id = TrackId::generate(path)?;
 
     let tag = tagged_file
         .primary_tag()
@@ -538,7 +527,7 @@ fn get_album_art(path: &Path) -> Result<(TrackId, Option<Vec<u8>>), ScannerError
         thumbnail = None;
     }
 
-    Ok((id, thumbnail))
+    Ok(thumbnail)
 }
 
 fn render_playlist_thumbnail(
