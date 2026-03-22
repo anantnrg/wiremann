@@ -44,7 +44,7 @@ impl Audio {
     pub fn run(&mut self) -> Result<(), AudioError> {
         loop {
             match self.rx.recv()? {
-                AudioCommand::Load(path) => self.load_path(path)?,
+                AudioCommand::Load(id, path) => self.load_path(id, path)?,
                 AudioCommand::GetPosition => self.emit_position(),
                 AudioCommand::CheckTrackEnded => self.check_track_ended(),
                 AudioCommand::Play => self.play(),
@@ -56,14 +56,12 @@ impl Audio {
         }
     }
 
-    fn load_path(&mut self, path: PathBuf) -> Result<(), AudioError> {
+    fn load_path(&mut self, id: TrackId, path: PathBuf) -> Result<(), AudioError> {
         self.player.stop();
 
         let prev_vol = self.player.volume();
 
         self.player = Player::connect_new(self.stream_handle.mixer());
-
-        let id = TrackId::generate(&path)?;
 
         let file = File::open(path.clone())?;
         let len = file.metadata()?.len();

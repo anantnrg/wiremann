@@ -405,6 +405,8 @@ fn get_track_metadata(
         Err(e) => {
             eprintln!("Metadata decode failed {}: {e:?}", path.display());
 
+            let duration = 0;
+
             let title = path
                 .file_stem()
                 .and_then(|s| s.to_str())

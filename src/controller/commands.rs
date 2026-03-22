@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 pub enum AudioCommand {
-    Load(PathBuf),
+    Load(TrackId, PathBuf),
     GetPosition,
     CheckTrackEnded,
     Play,

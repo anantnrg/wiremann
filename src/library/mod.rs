@@ -2,7 +2,6 @@ pub mod playlists;
 
 use serde::{Deserialize, Serialize};
 use std::io;
-use std::io::{Read, Seek};
 use std::path::PathBuf;
 use twox_hash::XxHash3_128;
 
