@@ -734,7 +734,7 @@ impl Controller {
                         )
                     };
 
-                    if !thumb_tracks.is_empty() {
+                    if thumb_tracks.len() >= 4 {
                         let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnail { id: *pid, tracks: thumb_tracks });
                     }
                 }
