@@ -187,7 +187,7 @@ impl LibraryPage {
                             .on_click({
                                 let id = playlist.id.clone();
                                 move |_, _, cx| {
-                                    let mut controller = cx.global::<Controller>().clone();
+                                    let controller = cx.global::<Controller>().clone();
 
                                     controller.load_playlist(id, cx);
                                 }

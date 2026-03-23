@@ -571,7 +571,7 @@ impl Controller {
 
             this.playback.current = Some(track_id);
 
-            if let Some(idx) = this.queue.get_index(*track_id) {
+            if let Some(idx) = this.queue.get_index(track_id) {
                 this.playback.current_index = idx;
             }
 
