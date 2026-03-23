@@ -167,9 +167,9 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         match event {
             ScannerEvent::UpsertTracks(tracks) => {
+                let mut modified_playlists = HashSet::new();
                 self.state.update(cx, |this, cx| {
                     this.library.tracks.reserve(tracks.len());
-                    let mut modified_playlists = HashSet::new();
                     for (track, playlist_id) in tracks {
                         let id = track.id;
 
@@ -208,26 +208,9 @@ impl Controller {
                             }
                         }
                     }
-                    for pid in modified_playlists {
-                        if let Some(playlist) = this.library.playlists.get(&pid) {
-                            let thumb_tracks = pick_playlist_thumbnail_tracks(
-                                &this.library.tracks,
-                                &playlist.tracks,
-                                4,
-                            );
-
-                            if !thumb_tracks.is_empty() {
-                                let _ = self.scanner_tx.send(
-                                    ScannerCommand::PlaylistThumbnail {
-                                        id: pid,
-                                        tracks: thumb_tracks,
-                                    }
-                                );
-                            }
-                        }
-                    }
                     cx.notify();
                 });
+                self.request_playlist_thumbnails(&modified_playlists.iter().copied().collect::<Vec<PlaylistId>>(), cx);
                 let state = self.state.read(cx).library.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
@@ -239,23 +222,10 @@ impl Controller {
                                 playlist.tracks.push(*tid);
                             }
                         }
-                        let thumb_tracks = pick_playlist_thumbnail_tracks(
-                            &this.library.tracks,
-                            &playlist.tracks,
-                            4,
-                        );
-
-                        if thumb_tracks.len() >= 2 {
-                            let _ = self.scanner_tx.send(
-                                ScannerCommand::PlaylistThumbnail {
-                                    id: *pid,
-                                    tracks: thumb_tracks,
-                                }
-                            );
-                        }
                     }
                     cx.notify()
                 });
+                self.request_playlist_thumbnails(&[*pid], cx);
                 let state = self.state.read(cx).library.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
@@ -764,7 +734,9 @@ impl Controller {
                         )
                     };
 
-                    let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnail { id: *pid, tracks: thumb_tracks });
+                    if !thumb_tracks.is_empty() {
+                        let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnail { id: *pid, tracks: thumb_tracks });
+                    }
                 }
             }
         }
