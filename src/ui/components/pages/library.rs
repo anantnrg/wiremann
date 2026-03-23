@@ -12,7 +12,7 @@ use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::components::virtual_list::vlist;
 use gpui::prelude::FluentBuilder;
-use gpui::{div, img, px, App, AppContext, Context, Div, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage, Window};
+use gpui::{div, img, px, App, Context, Div, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage, Window};
 
 const THUMBNAIL_MARGIN: usize = 16;
 
@@ -33,6 +33,7 @@ enum HeaderKind {
     Albums,
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 enum LibraryRow {
     Header(HeaderKind),

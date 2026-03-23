@@ -30,7 +30,7 @@ enum ScanJob {
     Metadata(TrackSource, Option<PlaylistId>),
     Thumbnail(TrackId, ImageId, Vec<u8>),
     AlbumArt(TrackId, PathBuf),
-    InsertPlaylistThumbnail(PlaylistId, Vec<PathBuf>),
+    PlaylistThumbnail(PlaylistId, Vec<PathBuf>),
 }
 
 impl Scanner {
@@ -84,7 +84,7 @@ impl Scanner {
                 }
                 ScannerCommand::PlaylistThumbnail { id, tracks } => {
                     if inflight_playlists.insert(id) {
-                        let _ = playlist_thumb_tx.send(ScanJob::InsertPlaylistThumbnail(id, tracks));
+                        let _ = playlist_thumb_tx.send(ScanJob::PlaylistThumbnail(id, tracks));
                     }
                 }
                 ScannerCommand::MetaJobFinished(id) => {
@@ -233,7 +233,7 @@ impl Scanner {
         let events_tx = self.tx.clone();
 
         std::thread::spawn(move || {
-            while let Ok(ScanJob::InsertPlaylistThumbnail(id, tracks)) = playlist_thumb_rx.recv() {
+            while let Ok(ScanJob::PlaylistThumbnail(id, tracks)) = playlist_thumb_rx.recv() {
                 let mut images = Vec::with_capacity(4);
 
                 println!("received tracks: {:#?}", tracks);
@@ -315,6 +315,8 @@ impl Scanner {
 
             let _ = self.tx.send(ScannerEvent::InsertPlaylist(playlist));
 
+            let mut batch = Vec::with_capacity(16);
+
             for entry in WalkDir::new(scan_path)
                 .into_iter()
                 .filter_map(Result::ok)
@@ -340,7 +342,12 @@ impl Scanner {
 
                 if let Some((existing_id, size, modified)) = quick_lookup.get(file) {
                     if (*size, *modified) == (track_source.size, track_source.modified) {
-                        let _ = self.tx.send(ScannerEvent::InsertTrackIntoPlaylist(playlist_id, *existing_id));
+                        batch.push(*existing_id);
+                        if batch.len() >= 16 {
+                            let _ = self.tx.send(
+                                ScannerEvent::InsertTracksIntoPlaylist(playlist_id, std::mem::take(&mut batch))
+                            );
+                        }
                     } else {
                         let _ = self.tx.send(ScannerEvent::RemoveTrackSource(*existing_id, file.to_path_buf()));
 
@@ -349,6 +356,11 @@ impl Scanner {
                 } else {
                     let _ = meta_tx.send(ScanJob::Metadata(track_source, Some(playlist_id)));
                 }
+            }
+            if !batch.is_empty() {
+                let _ = self.tx.send(
+                    ScannerEvent::InsertTracksIntoPlaylist(playlist_id, batch)
+                );
             }
         }
 

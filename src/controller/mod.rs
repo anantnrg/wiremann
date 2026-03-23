@@ -115,7 +115,7 @@ impl Controller {
                 }
 
                 if let Some(track) = state.library.tracks.get(&track_id) && let Some(image_id) = track.image_id {
-                    let _ = self.cacher_tx.send(CacherCommand::GetImage(HashSet::from([image_id.clone()]), ImageKind::AlbumArt));
+                    let _ = self.cacher_tx.send(CacherCommand::GetImage(HashSet::from([image_id]), ImageKind::AlbumArt));
                 } else {
                     let _ = self.scanner_tx.send(ScannerCommand::GetCurrentAlbumArt(*track_id, path.clone()));
                 }
@@ -169,6 +169,7 @@ impl Controller {
             ScannerEvent::UpsertTracks(tracks) => {
                 self.state.update(cx, |this, cx| {
                     this.library.tracks.reserve(tracks.len());
+                    let mut modified_playlists = HashSet::new();
                     for (track, playlist_id) in tracks {
                         let id = track.id;
 
@@ -203,6 +204,25 @@ impl Controller {
                                 if !playlist.tracks.contains(&id) {
                                     playlist.tracks.push(id);
                                 }
+                                modified_playlists.insert(*pid);
+                            }
+                        }
+                    }
+                    for pid in modified_playlists {
+                        if let Some(playlist) = this.library.playlists.get(&pid) {
+                            let thumb_tracks = pick_playlist_thumbnail_tracks(
+                                &this.library.tracks,
+                                &playlist.tracks,
+                                4,
+                            );
+
+                            if !thumb_tracks.is_empty() {
+                                let _ = self.scanner_tx.send(
+                                    ScannerCommand::PlaylistThumbnail {
+                                        id: pid,
+                                        tracks: thumb_tracks,
+                                    }
+                                );
                             }
                         }
                     }
@@ -211,10 +231,28 @@ impl Controller {
                 let state = self.state.read(cx).library.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
-            ScannerEvent::InsertTrackIntoPlaylist(pid, tid) => {
+            ScannerEvent::InsertTracksIntoPlaylist(pid, tids) => {
                 self.state.update(cx, |this, cx| {
                     if let Some(playlist) = this.library.playlists.get_mut(pid) {
-                        playlist.tracks.push(*tid);
+                        for tid in tids {
+                            if !playlist.tracks.contains(tid) {
+                                playlist.tracks.push(*tid);
+                            }
+                        }
+                        let thumb_tracks = pick_playlist_thumbnail_tracks(
+                            &this.library.tracks,
+                            &playlist.tracks,
+                            4,
+                        );
+
+                        if thumb_tracks.len() >= 2 {
+                            let _ = self.scanner_tx.send(
+                                ScannerCommand::PlaylistThumbnail {
+                                    id: *pid,
+                                    tracks: thumb_tracks,
+                                }
+                            );
+                        }
                     }
                     cx.notify()
                 });
@@ -297,7 +335,7 @@ impl Controller {
                     let evicted = {
                         let thumbnail_cache = cx.global_mut::<ImageCache>();
                         thumbnail_cache.inflight.remove(id);
-                        thumbnail_cache.add(id.clone(), image.clone())
+                        thumbnail_cache.add(*id, image.clone())
                     };
 
                     if let Some(img) = evicted {
@@ -415,7 +453,7 @@ impl Controller {
 
                 let evicted = {
                     let image_cache = cx.global_mut::<ImageCache>();
-                    image_cache.add(id.clone(), thumbnail.clone())
+                    image_cache.add(*id, thumbnail.clone())
                 };
 
                 if let Some(img) = evicted {
@@ -487,7 +525,7 @@ impl Controller {
                             )
                         };
 
-                        let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnail { id: playlist_id.clone(), tracks: thumb_tracks });
+                        let _ = self.scanner_tx.send(ScannerCommand::PlaylistThumbnail { id: *playlist_id, tracks: thumb_tracks });
                     }
                 }
             }
