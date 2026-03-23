@@ -561,12 +561,19 @@ impl Controller {
 
             let insert_pos = this.playback.current_index + 1;
 
-            queue.tracks.insert(insert_pos, track_id);
+            if !queue.tracks.contains(&track_id) {
+                queue.tracks.insert(insert_pos, track_id);
 
-            queue.order = (0..queue.tracks.len()).collect();
+                queue.order = (0..queue.tracks.len()).collect();
 
-            this.playback.current_index = insert_pos;
+                this.playback.current_index = insert_pos;
+            }
+
             this.playback.current = Some(track_id);
+
+            if let Some(idx) = this.queue.get_index(*track_id) {
+                this.playback.current_index = idx;
+            }
 
             this.playback.current_playlist = None;
         });
