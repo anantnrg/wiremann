@@ -187,9 +187,7 @@ impl LibraryPage {
                             .on_click({
                                 let id = playlist.id.clone();
                                 move |_, _, cx| {
-                                    let mut controller = cx.global_mut::<Controller>().clone();
-
-                                    controller.load_playlist(id, cx);
+                                    cx.global::<Controller>().load_playlist(id, cx);
                                 }
                             })
                             .when(state.playback.current_playlist == Some(playlist.id), |this| this.bg(theme.accent_15))
@@ -306,7 +304,9 @@ impl LibraryPage {
                         .when(is_current, |this| this.bg(theme.accent_15))
                         .on_click({
                             let id = *id;
-                            move |_, _, cx| cx.global::<Controller>().load_audio(&id, cx)
+                            move |_, _, cx| {
+                                cx.global::<Controller>().load_track(id, cx)
+                            }
                         })
                         .child(
                             div()

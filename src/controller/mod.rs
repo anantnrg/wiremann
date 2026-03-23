@@ -541,7 +541,7 @@ impl Controller {
         });
     }
 
-    pub fn load_playlist(&mut self, id: PlaylistId, cx: &mut App) {
+    pub fn load_playlist(&self, id: PlaylistId, cx: &mut App) {
         self.state.update(cx, |this, cx| {
             if let Some(playlist) = this.library.playlists.get(&id) {
                 this.playback.current_playlist = Some(playlist.id);
@@ -551,7 +551,26 @@ impl Controller {
                 cx.notify();
             }
         });
-        
+
+        self.load_queue_current(cx);
+    }
+
+    pub fn load_track(&self, track_id: TrackId, cx: &mut App) {
+        self.state.update(cx, |this, _| {
+            let queue = &mut this.queue;
+
+            let insert_pos = this.playback.current_index + 1;
+
+            queue.tracks.insert(insert_pos, track_id);
+
+            queue.order = (0..queue.tracks.len()).collect();
+
+            this.playback.current_index = insert_pos;
+            this.playback.current = Some(track_id);
+
+            this.playback.current_playlist = None;
+        });
+
         self.load_queue_current(cx);
     }
 
