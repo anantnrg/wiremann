@@ -547,12 +547,17 @@ impl Controller {
                 this.playback.current_playlist = Some(playlist.id);
                 this.queue.tracks.clone_from(&playlist.tracks);
                 this.queue.order = (0..playlist.tracks.len()).collect();
+                this.playback.current_index = 0;
 
                 cx.notify();
             }
         });
 
         self.load_queue_current(cx);
+        let state = self.state.read(cx).queue.clone();
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WriteQueueState(state));
     }
 
     pub fn load_track(&self, track_id: TrackId, cx: &mut App) {
@@ -579,6 +584,10 @@ impl Controller {
         });
 
         self.load_queue_current(cx);
+        let state = self.state.read(cx).queue.clone();
+        let _ = self
+            .cacher_tx
+            .send(CacherCommand::WriteQueueState(state));
     }
 
     pub fn scan_track(&self, path: PathBuf) {

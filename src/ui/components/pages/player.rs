@@ -86,7 +86,7 @@ impl Render for PlayerPage {
                                         .rounded_xl(),
                                 )
                             } else {
-                                div().size_full()
+                                div().size_full().flex().flex_1()
                             })
                             .child(
                                 div()
