@@ -1,6 +1,10 @@
 use std::{cmp, ops::Range, rc::Rc};
 
-use gpui::{div, point, px, size, AnyElement, App, Bounds, ContentMask, Context, Div, Element, ElementId, Entity, GlobalElementId, Hitbox, InteractiveElement, IntoElement, Pixels, Render, ScrollHandle, Size, Stateful, StatefulInteractiveElement, Styled, Window};
+use gpui::{
+    AnyElement, App, Bounds, ContentMask, Context, Div, Element, ElementId, Entity,
+    GlobalElementId, Hitbox, InteractiveElement, IntoElement, Pixels, Render, ScrollHandle, Size,
+    Stateful, StatefulInteractiveElement, Styled, Window, div, point, px, size,
+};
 use smallvec::SmallVec;
 
 pub struct VirtualList {
@@ -46,7 +50,11 @@ where
         sum += *h;
     }
 
-    let base = div().id(id.clone()).size_full().overflow_scroll().track_scroll(&scroll_handle);
+    let base = div()
+        .id(id.clone())
+        .size_full()
+        .overflow_scroll()
+        .track_scroll(&scroll_handle);
 
     VirtualList {
         id,

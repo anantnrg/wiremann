@@ -3,7 +3,10 @@ use crate::ui::theme::Theme;
 
 use super::slider::{Slider, SliderState};
 use crate::ui::components::icons::{Icon, Icons};
-use gpui::{div, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled, Window};
+use gpui::{
+    Context, Entity, InteractiveElement, IntoElement, ParentElement, Render,
+    StatefulInteractiveElement, Styled, Window, div,
+};
 
 #[derive(Clone)]
 pub struct ControlBar {
@@ -61,7 +64,9 @@ impl Render for ControlBar {
                     .items_center()
                     .justify_center()
                     .child(
-                        Slider::new(&self.playback_slider_state.clone(), "playback_slider").text_color(theme.accent).bg(theme.white_08),
+                        Slider::new(&self.playback_slider_state.clone(), "playback_slider")
+                            .text_color(theme.accent)
+                            .bg(theme.white_08),
                     )
                     .child(
                         div()
@@ -129,7 +134,7 @@ impl Render for ControlBar {
                                                         _ => Icons::Volume2,
                                                     }
                                                 })
-                                                    .size_4(),
+                                                .size_4(),
                                             ),
                                     )
                                     .child(

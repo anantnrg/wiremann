@@ -1,5 +1,5 @@
 // Ref: https://github.com/longbridge/gpui-component/blob/main/crates/ui/src/element_ext.rs
-use gpui::{canvas, App, Bounds, ParentElement, Pixels, Styled, Window};
+use gpui::{App, Bounds, ParentElement, Pixels, Styled, Window, canvas};
 
 pub trait ElementExt: ParentElement + Sized {
     /// Add a prepaint callback to the element.
@@ -18,8 +18,8 @@ pub trait ElementExt: ParentElement + Sized {
                 move |bounds, window, cx| f(bounds, window, cx),
                 |_, _, _, _| {},
             )
-                .absolute()
-                .size_full(),
+            .absolute()
+            .size_full(),
         )
     }
 }

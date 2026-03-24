@@ -4,7 +4,11 @@ use crate::ui::theme::Theme;
 use crate::{controller::Controller, library::Track};
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
-use gpui::{div, img, px, uniform_list, App, AppContext, Context, Entity, InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, ScrollStrategy, StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window};
+use gpui::{
+    App, AppContext, Context, Entity, InteractiveElement, IntoElement, ObjectFit, ParentElement,
+    Render, ScrollStrategy, StatefulInteractiveElement, Styled, StyledImage,
+    UniformListScrollHandle, Window, div, img, px, uniform_list,
+};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -42,12 +46,14 @@ impl Render for Item {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let image_id = {
             let state = cx.global::<Controller>().state.read(cx);
-            state.library.tracks.get(&self.data.id).and_then(|t| t.image_id)
+            state
+                .library
+                .tracks
+                .get(&self.data.id)
+                .and_then(|t| t.image_id)
         };
 
-        let thumbnail = image_id.and_then(|id| {
-            cx.global_mut::<ImageCache>().get(&id)
-        });
+        let thumbnail = image_id.and_then(|id| cx.global_mut::<ImageCache>().get(&id));
 
         let theme = cx.global::<Theme>();
         let state = cx.global::<Controller>().state.read(cx);
@@ -60,7 +66,9 @@ impl Render for Item {
             None
         };
 
-        let path = if let Some(track) = current && let Some(source) = track.get_valid_source() {
+        let path = if let Some(track) = current
+            && let Some(source) = track.get_valid_source()
+        {
             source.path.clone()
         } else {
             PathBuf::new()
@@ -225,8 +233,7 @@ impl Render for Queue {
                     let thumb_tracks: Vec<TrackId> =
                         (start..end).map(|i| tracks[queue_order[i]]).collect();
 
-                    controller
-                        .request_track_thumbnails(&thumb_tracks, cx);
+                    controller.request_track_thumbnails(&thumb_tracks, cx);
 
                     views.update(cx, |map, _| {
                         map.retain(|id, _| visible_tracks.contains(id));
@@ -238,7 +245,9 @@ impl Render for Queue {
 
                             let real_index = &tracks[queue_order[i]];
 
-                            if let Some(track) = state.library.tracks.get(real_index) && let Some(source) = track.get_valid_source() {
+                            if let Some(track) = state.library.tracks.get(real_index)
+                                && let Some(source) = track.get_valid_source()
+                            {
                                 let path = source.path.clone();
 
                                 div()
@@ -261,11 +270,11 @@ impl Render for Queue {
                         })
                         .collect()
                 })
-                    .w_full()
-                    .h_full()
-                    .flex()
-                    .flex_col()
-                    .track_scroll(&scroll_handle),
+                .w_full()
+                .h_full()
+                .flex()
+                .flex_col()
+                .track_scroll(&scroll_handle),
             )
     }
 }

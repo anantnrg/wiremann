@@ -10,11 +10,11 @@ use std::{
 };
 
 use gpui::{
-    black, div, px, quad, rgb, white, AbsoluteLength, App,
-    Background, BorderStyle, Bounds, Corners, CursorStyle, DispatchPhase, Edges,
-    Element, ElementId, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId,
-    InteractiveElement, IntoElement, LayoutId, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement,
-    Pixels, Refineable, RenderOnce, ScrollHandle, ScrollWheelEvent, Style, StyleRefinement, Styled, UniformListScrollHandle, Window,
+    AbsoluteLength, App, Background, BorderStyle, Bounds, Corners, CursorStyle, DispatchPhase,
+    Edges, Element, ElementId, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId,
+    InteractiveElement, IntoElement, LayoutId, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
+    ParentElement, Pixels, Refineable, RenderOnce, ScrollHandle, ScrollWheelEvent, Style,
+    StyleRefinement, Styled, UniformListScrollHandle, Window, black, div, px, quad, rgb, white,
 };
 
 use crate::ui::theme::Theme;
@@ -195,11 +195,7 @@ impl Element for Scrollbar {
             .unwrap_or(black().into())
             .color()
             .unwrap();
-        let foreground: Background = self
-            .style
-            .text
-            .color
-            .map_or(white().into(), Into::into);
+        let foreground: Background = self.style.text.color.map_or(white().into(), Into::into);
 
         let mut corners = Corners::default();
         corners.refine(&self.style.corner_radii);
@@ -560,7 +556,7 @@ impl RenderOnce for FloatingScrollbar {
                     .h_full()
                     .bg(gpui::transparent_black())
                     .text_color(theme.accent)
-                    .rounded(px(0.0))
+                    .rounded(px(0.0)),
             )
     }
 }

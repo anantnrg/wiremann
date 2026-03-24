@@ -1,7 +1,10 @@
 use super::navbar::NavBar;
 use crate::ui::components::icons::Icons;
 use crate::ui::theme::Theme;
-use gpui::{div, rgb, App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, WindowControlArea};
+use gpui::{
+    App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render,
+    Styled, Window, WindowControlArea, div, rgb,
+};
 
 #[derive(Clone)]
 pub struct Titlebar {
