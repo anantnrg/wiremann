@@ -90,9 +90,11 @@ impl Controller {
                                         0
                                     };
                                     this.set_value(secs_to_slider(*pos, duration), cx);
+                                    cx.notify();
                                 });
                             });
                         });
+                        cx.notify();
                     });
                     self.state.update(cx, |this, cx| {
                         this.playback.position = *pos;
@@ -387,11 +389,20 @@ impl Controller {
                     PlaybackStatus::Playing => self.play(),
                 }
 
+                let duration = if let Some(current) = playback_state.current && let Some(track) = state.library.tracks.get(&current) {
+                    Some(track.duration)
+                } else { None };
+
                 view.update(cx, |this, cx| {
                     this.player_page.update(cx, |this, cx| {
                         this.controlbar.update(cx, |this, cx| {
                             this.vol_slider_state.update(cx, |this, cx| {
                                 this.set_value(playback_state.volume * 100.0, cx);
+                            });
+                            this.playback_slider_state.update(cx, |this, cx| {
+                                if let Some(duration) = duration {
+                                    this.set_value(secs_to_slider(playback_state.position, duration), cx);
+                                }
                             });
                         });
                     });
