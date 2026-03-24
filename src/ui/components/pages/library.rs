@@ -3,16 +3,17 @@ use std::rc::Rc;
 use crate::{controller::Controller, ui::theme::Theme};
 
 use crate::controller::state::LibraryState;
-use crate::library::TrackId;
 use crate::library::playlists::PlaylistId;
+use crate::library::TrackId;
 use crate::ui::components::image_cache::ImageCache;
-use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
+use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::components::virtual_list::vlist;
+use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    App, Context, Div, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement,
-    Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage, Window, div,
-    img, px,
+    div, img, px, App, Context, Div, FontWeight, InteractiveElement,
+    IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled,
+    StyledImage, Window,
 };
 
 const THUMBNAIL_MARGIN: usize = 16;
@@ -106,7 +107,7 @@ impl LibraryPage {
                                 controller.scan_folder(tracks, folder.path().into());
                             }
                         })
-                        .detach()
+                            .detach()
                     })
                     .child("Open Folder")
             } else if *kind == HeaderKind::Tracks {
@@ -134,7 +135,7 @@ impl LibraryPage {
                                 }
                             }
                         })
-                        .detach()
+                            .detach()
                     })
                     .child("Add Track")
             } else {
@@ -579,24 +580,4 @@ fn build_rows(library: &LibraryState, cols: usize) -> (Vec<LibraryRow>, Vec<Pixe
     }
 
     (rows, heights)
-}
-
-fn fingerprint_tracks(ids: impl IntoIterator<Item = TrackId>) -> u128 {
-    let mut acc = 0u128;
-
-    for id in ids {
-        acc ^= u128::from_le_bytes(id.0);
-    }
-
-    acc
-}
-
-fn fingerprint_playlists(ids: impl IntoIterator<Item = PlaylistId>) -> u128 {
-    let mut acc = 0u128;
-
-    for id in ids {
-        acc ^= u128::from_le_bytes(*id.0.as_bytes());
-    }
-
-    acc
 }
