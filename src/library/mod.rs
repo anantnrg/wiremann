@@ -35,7 +35,6 @@ pub struct TrackSource {
     pub modified: u64,
 }
 
-
 impl TrackId {
     #[allow(clippy::missing_errors_doc)]
     pub fn generate(name: &str, artist: &str, album: &str) -> Result<Self, io::Error> {

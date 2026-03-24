@@ -1,17 +1,21 @@
 use crate::{
-    controller::state::PlaybackStatus,
     controller::Controller,
+    controller::state::PlaybackStatus,
     ui::{
         components::controlbar::ControlBar,
         components::icons::{Icon, Icons},
         components::image_cache::ImageCache,
         components::queue::Queue,
-        components::scrollbar::{floating_scrollbar, RightPad},
+        components::scrollbar::{RightPad, floating_scrollbar},
         theme::Theme,
     },
 };
 use gpui::prelude::FluentBuilder;
-use gpui::{div, img, px, App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window};
+use gpui::{
+    App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit,
+    ParentElement, Render, StatefulInteractiveElement, Styled, StyledImage,
+    UniformListScrollHandle, Window, div, img, px,
+};
 
 #[derive(Clone)]
 pub struct PlayerPage {
@@ -86,7 +90,7 @@ impl Render for PlayerPage {
                                         .rounded_xl(),
                                 )
                             } else {
-                                div().size_full()
+                                div().size_full().flex().flex_1()
                             })
                             .child(
                                 div()

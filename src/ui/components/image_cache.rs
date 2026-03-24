@@ -35,25 +35,16 @@ impl ImageCache {
         self.images.clear();
     }
 
-    pub fn add(
-        &mut self,
-        id: ImageId,
-        image: Arc<RenderImage>,
-    ) -> Option<Arc<RenderImage>> {
+    pub fn add(&mut self, id: ImageId, image: Arc<RenderImage>) -> Option<Arc<RenderImage>> {
         let evicted = self.images.put(id, image);
         self.inflight.remove(&id);
 
         evicted
     }
 
-    pub fn request<I>(
-        &mut self,
-        ids: I,
-        tx: &Sender<CacherCommand>,
-        kind: ImageKind,
-    )
+    pub fn request<I>(&mut self, ids: I, tx: &Sender<CacherCommand>, kind: ImageKind)
     where
-        I: IntoIterator<Item=ImageId>,
+        I: IntoIterator<Item = ImageId>,
     {
         let mut to_request = HashSet::new();
 

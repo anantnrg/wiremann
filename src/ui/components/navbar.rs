@@ -2,7 +2,10 @@ use super::Page;
 use crate::ui::theme::Theme;
 
 use gpui::prelude::FluentBuilder;
-use gpui::{div, px, Context, FontWeight, InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled, Window};
+use gpui::{
+    Context, FontWeight, InteractiveElement, IntoElement, ParentElement, Render,
+    StatefulInteractiveElement, Styled, Window, div, px,
+};
 
 #[derive(Clone)]
 pub struct NavBar;
@@ -50,9 +53,9 @@ impl Render for NavBar {
                                 .left_0()
                                 .bg(theme.accent),
                         )
-                            .bg(theme.white_10)
-                            .font_weight(FontWeight::BLACK)
-                            .text_color(theme.text_primary)
+                        .bg(theme.white_10)
+                        .font_weight(FontWeight::BLACK)
+                        .text_color(theme.text_primary)
                     }),
             )
             .child(
@@ -79,9 +82,9 @@ impl Render for NavBar {
                                 .left_0()
                                 .bg(theme.accent),
                         )
-                            .bg(theme.white_10)
-                            .font_weight(FontWeight::BLACK)
-                            .text_color(theme.text_primary)
+                        .bg(theme.white_10)
+                        .font_weight(FontWeight::BLACK)
+                        .text_color(theme.text_primary)
                     }),
             )
             .child(
@@ -108,9 +111,9 @@ impl Render for NavBar {
                                 .left_0()
                                 .bg(theme.accent),
                         )
-                            .bg(theme.white_10)
-                            .font_weight(FontWeight::BLACK)
-                            .text_color(theme.text_primary)
+                        .bg(theme.white_10)
+                        .font_weight(FontWeight::BLACK)
+                        .text_color(theme.text_primary)
                     }),
             )
     }

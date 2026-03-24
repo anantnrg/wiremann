@@ -1,5 +1,9 @@
 // Ref: https://github.com/longbridge/gpui-component/blob/main/crates/ui/src/icon.rs
-use gpui::{prelude::FluentBuilder as _, svg, white, AnyElement, App, AppContext, Context, Entity, Hsla, IntoElement, Radians, Render, RenderOnce, SharedString, StyleRefinement, Styled, Svg, Transformation, Window};
+use gpui::{
+    AnyElement, App, AppContext, Context, Entity, Hsla, IntoElement, Radians, Render, RenderOnce,
+    SharedString, StyleRefinement, Styled, Svg, Transformation, Window,
+    prelude::FluentBuilder as _, svg, white,
+};
 
 /// Types implementing this trait can automatically be converted to [`Icon`].
 ///
@@ -199,7 +203,7 @@ impl IconNamed for Icons {
             Icons::Menu => "icons/menu.svg",
             Icons::Search => "icons/search.svg",
         }
-            .into()
+        .into()
     }
 }
 

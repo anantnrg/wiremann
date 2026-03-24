@@ -1,5 +1,10 @@
 use crate::ui::components::element_ext::ElementExt;
-use gpui::{div, px, relative, transparent_black, white, App, AppContext, Bounds, Context, DragMoveEvent, Entity, EntityId, EventEmitter, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement as _, Pixels, Point, Refineable, Render, RenderOnce, SharedString, StatefulInteractiveElement, StyleRefinement, Styled, Window};
+use gpui::{
+    App, AppContext, Bounds, Context, DragMoveEvent, Entity, EntityId, EventEmitter,
+    InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement as _, Pixels,
+    Point, Refineable, Render, RenderOnce, SharedString, StatefulInteractiveElement,
+    StyleRefinement, Styled, Window, div, px, relative, transparent_black, white,
+};
 
 pub enum SliderEvent {
     Change(f32),
@@ -138,11 +143,7 @@ impl RenderOnce for Slider {
             .and_then(|bg| bg.color())
             .unwrap_or(white().into());
 
-        let fill_color = self
-            .style
-            .text
-            .color
-            .unwrap_or_else(|| white().into());
+        let fill_color = self.style.text.color.unwrap_or_else(|| white().into());
 
         let mut root = div()
             .id(("slider", self.state.entity_id()))
@@ -166,27 +167,25 @@ impl RenderOnce for Slider {
                 .items_center()
                 .on_mouse_down(
                     MouseButton::Left,
-                    window.listener_for(&self.state, move |state, e: &MouseDownEvent, window, cx| {
-                        state.update_from_position(e.position, window, cx);
-                    }),
+                    window.listener_for(
+                        &self.state,
+                        move |state, e: &MouseDownEvent, window, cx| {
+                            state.update_from_position(e.position, window, cx);
+                        },
+                    ),
                 )
-                .on_drag(
-                    DragSlider(entity_id),
-                    |drag, _, _, cx| {
-                        cx.new(|_| drag.clone())
-                    },
-                )
+                .on_drag(DragSlider(entity_id), |drag, _, _, cx| {
+                    cx.new(|_| drag.clone())
+                })
                 .on_drag_move(window.listener_for(
                     &self.state,
-                    move |state, e: &DragMoveEvent<DragSlider>, window, cx| {
-                        match e.drag(cx) {
-                            DragSlider(id) => {
-                                if *id != entity_id {
-                                    return;
-                                }
-
-                                state.update_from_position(e.event.position, window, cx);
+                    move |state, e: &DragMoveEvent<DragSlider>, window, cx| match e.drag(cx) {
+                        DragSlider(id) => {
+                            if *id != entity_id {
+                                return;
                             }
+
+                            state.update_from_position(e.event.position, window, cx);
                         }
                     },
                 ))

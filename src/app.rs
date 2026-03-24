@@ -1,8 +1,8 @@
 use crate::cacher::Cacher;
-use crate::worker_config::{calculate_worker_config, WorkerConfig};
+use crate::worker_config::{WorkerConfig, calculate_worker_config};
 use crate::{
     audio::Audio,
-    controller::{state::AppState, Controller},
+    controller::{Controller, state::AppState},
     errors::AppError,
     scanner::Scanner,
     ui::{
@@ -11,9 +11,7 @@ use crate::{
         wiremann::Wiremann,
     },
 };
-use gpui::{
-    px, size, AppContext, Bounds, Result, TitlebarOptions, WindowBounds, WindowOptions,
-};
+use gpui::{AppContext, Bounds, Result, TitlebarOptions, WindowBounds, WindowOptions, px, size};
 use gpui_platform::application;
 use std::{
     sync::Arc,
@@ -136,7 +134,7 @@ pub fn run() -> Result<(), AppError> {
                             .await;
                     }
                 })
-                    .detach();
+                .detach();
 
                 let view_clone = view.clone();
 
@@ -157,11 +155,12 @@ pub fn run() -> Result<(), AppError> {
                         eprintln!("controller error: {e:?}");
                     }
                 })
-                    .detach();
+                .detach();
 
                 view
             },
-        ).expect("Application panicked.");
+        )
+        .expect("Application panicked.");
 
         cx.activate(true);
     });
