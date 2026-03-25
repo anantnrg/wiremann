@@ -245,7 +245,7 @@ impl Render for PlayerPage {
             .child(if *show_queue.read(cx) {
                 div()
                     .h_full()
-                    .w_80()
+                    .w_1_4()
                     .flex_shrink_0()
                     .flex()
                     .flex_col()

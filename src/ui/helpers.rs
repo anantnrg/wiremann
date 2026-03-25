@@ -1,3 +1,5 @@
+use crate::library::TrackId;
+use crate::library::playlists::PlaylistId;
 use gpui::RenderImage;
 use std::sync::Arc;
 
@@ -37,4 +39,24 @@ pub fn drop_image_from_app(cx: &mut gpui::App, image: Arc<RenderImage>) {
                 .ok();
         }
     });
+}
+
+pub fn fingerprint_tracks(ids: impl IntoIterator<Item = TrackId>) -> u128 {
+    let mut acc = 0u128;
+
+    for id in ids {
+        acc ^= u128::from_le_bytes(id.0);
+    }
+
+    acc
+}
+
+pub fn fingerprint_playlists(ids: impl IntoIterator<Item = PlaylistId>) -> u128 {
+    let mut acc = 0u128;
+
+    for id in ids {
+        acc ^= u128::from_le_bytes(*id.0.as_bytes());
+    }
+
+    acc
 }

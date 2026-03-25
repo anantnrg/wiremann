@@ -5,9 +5,11 @@ use crate::{controller::Controller, ui::theme::Theme};
 use crate::controller::state::LibraryState;
 use crate::library::TrackId;
 use crate::library::playlists::PlaylistId;
+use crate::ui::components::Page;
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
 use crate::ui::components::virtual_list::vlist;
+use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use gpui::prelude::FluentBuilder;
 use gpui::{
     App, Context, Div, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement,
@@ -27,6 +29,7 @@ pub struct LibraryPage {
     last_fp: u128,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, PartialEq)]
 enum HeaderKind {
     Playlists,
@@ -185,6 +188,7 @@ impl LibraryPage {
                                     let controller = cx.global::<Controller>().clone();
 
                                     controller.load_playlist(id, cx);
+                                    *cx.global_mut::<Page>() = Page::Player;
                                 }
                             })
                             .when(
@@ -317,7 +321,9 @@ impl LibraryPage {
                             move |_, _, cx| {
                                 let controller = cx.global::<Controller>().clone();
 
-                                controller.load_track(id, cx)
+                                controller.load_track(id, cx);
+
+                                *cx.global_mut::<Page>() = Page::Player;
                             }
                         })
                         .child(
@@ -440,6 +446,7 @@ impl Render for LibraryPage {
 
             self.rows = Rc::new(rows);
             self.heights = Rc::new(heights);
+            self.last_fp = combined_fp;
             self.grid_cols = cols;
         }
 
@@ -579,24 +586,4 @@ fn build_rows(library: &LibraryState, cols: usize) -> (Vec<LibraryRow>, Vec<Pixe
     }
 
     (rows, heights)
-}
-
-fn fingerprint_tracks(ids: impl IntoIterator<Item = TrackId>) -> u128 {
-    let mut acc = 0u128;
-
-    for id in ids {
-        acc ^= u128::from_le_bytes(id.0);
-    }
-
-    acc
-}
-
-fn fingerprint_playlists(ids: impl IntoIterator<Item = PlaylistId>) -> u128 {
-    let mut acc = 0u128;
-
-    for id in ids {
-        acc ^= u128::from_le_bytes(*id.0.as_bytes());
-    }
-
-    acc
 }
