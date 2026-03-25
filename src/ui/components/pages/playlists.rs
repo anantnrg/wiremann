@@ -362,18 +362,26 @@ impl Render for PlaylistsPage {
                                 move |range, _, cx| {
                                     range.map(|i| {
                                         let playlist = &playlists[i];
+                                        let is_current = Some(playlist.id) == *selected.read(cx);
+
+                                        let controller = cx.global_mut::<Controller>().clone();
+
+                                        controller.request_playlist_thumbnails(&[playlist.id], cx);
+
+                                        let thumbnail = playlist.image_id.and_then(|id| cx.global_mut::<ImageCache>().get(&id));
 
                                         div()
                                             .id(format!("playlist_sidebar_{}", playlist.id.0))
-                                            .px_4()
-                                            .py_3()
+                                            .h(px(64.))
+                                            .w_full()
+                                            .flex()
+                                            .items_center()
+                                            .p_3()
+                                            .gap_4()
+                                            .rounded_lg()
+                                            .hover(|d| d.bg(theme.white_05))
+                                            .when(is_current, |d| d.bg(theme.accent_15))
                                             .cursor_pointer()
-                                            .rounded_md()
-                                            .hover(|d| d.bg(theme.accent_10))
-                                            .when(
-                                                Some(playlist.id) == *selected.read(cx),
-                                                |d| d.bg(theme.accent_15),
-                                            )
                                             .on_click({
                                                 let id = playlist.id;
                                                 let selected = selected.clone();
@@ -384,7 +392,39 @@ impl Render for PlaylistsPage {
                                                     });
                                                 }
                                             })
-                                            .child(playlist.name.clone())
+                                            .child(match thumbnail {
+                                                Some(image) => div().size_12().flex_shrink_0().child(
+                                                    img(image.clone())
+                                                        .object_fit(ObjectFit::Contain)
+                                                        .size_full()
+                                                        .rounded_md(),
+                                                ),
+                                                None => div().size_12().flex_shrink_0(),
+                                            })
+                                            .child(
+                                                div()
+                                                    .flex_col()
+                                                    .flex_1()
+                                                    .justify_center()
+                                                    .child(
+                                                        div()
+                                                            .text_base()
+                                                            .truncate()
+                                                            .text_color(if is_current {
+                                                                theme.accent
+                                                            } else {
+                                                                theme.text_primary
+                                                            })
+                                                            .child(playlist.name.clone()),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_sm()
+                                                            .text_color(theme.text_muted)
+                                                            .truncate()
+                                                            .child(format!("{} tracks", playlist.tracks.len())),
+                                                    )
+                                            )
                                     }).collect::<Vec<_>>()
                                 }
                             })
