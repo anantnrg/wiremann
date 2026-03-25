@@ -8,6 +8,7 @@ use crate::library::TrackId;
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::components::virtual_list::vlist;
+use crate::ui::components::Page;
 use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use gpui::prelude::FluentBuilder;
 use gpui::{
@@ -187,6 +188,7 @@ impl LibraryPage {
                                     let controller = cx.global::<Controller>().clone();
 
                                     controller.load_playlist(id, cx);
+                                    *cx.global_mut::<Page>() = Page::Player;
                                 }
                             })
                             .when(
@@ -319,7 +321,9 @@ impl LibraryPage {
                             move |_, _, cx| {
                                 let controller = cx.global::<Controller>().clone();
 
-                                controller.load_track(id, cx)
+                                controller.load_track(id, cx);
+
+                                *cx.global_mut::<Page>() = Page::Player;
                             }
                         })
                         .child(
