@@ -2,6 +2,7 @@ use crate::controller::state::LibraryState;
 use crate::controller::Controller;
 use crate::library::playlists::PlaylistId;
 use crate::library::TrackId;
+use crate::ui::components::icons::{Icon, Icons};
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
 use crate::ui::components::virtual_list::vlist;
@@ -96,6 +97,75 @@ impl PlaylistsPage {
                         .child(
                             div().text_base().text_color(theme.text_secondary)
                                 .child(format!("{} tracks", playlist.tracks.len()))
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .gap_x_5()
+                                .my_2()
+                                .child(
+                                    div()
+                                        .id("play_playlist")
+                                        .py_1()
+                                        .px_4()
+                                        .text_base()
+                                        .text_color(theme.text_primary)
+                                        .bg(theme.accent_15)
+                                        .border_2()
+                                        .border_color(theme.accent_30)
+                                        .rounded_md()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .gap_3()
+                                        .child(Icon::new(Icons::Play).size_4())
+                                        .child("Play")
+                                        .cursor_pointer()
+                                        .hover(|this| this.bg(theme.accent_30))
+                                        .on_click({
+                                            let id = playlist.id.clone();
+                                            move |_, _, cx| {
+                                                let controller = cx.global::<Controller>().clone();
+
+                                                controller.load_playlist(id, cx);
+                                            }
+                                        })
+                                )
+                                .child(
+                                    div()
+                                        .id("shuffle_play_playlist")
+                                        .py_1()
+                                        .px_4()
+                                        .text_base()
+                                        .text_color(theme.text_primary)
+                                        .bg(theme.accent_15)
+                                        .border_2()
+                                        .border_color(theme.accent_30)
+                                        .rounded_md()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .gap_3()
+                                        .child(Icon::new(Icons::Shuffle).size_4())
+                                        .child("Shuffle Play")
+                                        .cursor_pointer()
+                                        .hover(|this| this.bg(theme.accent_30))
+                                        .on_click({
+                                            let id = playlist.id.clone();
+                                            move |_, _, cx| {
+                                                let controller = cx.global::<Controller>().clone();
+
+                                                controller.load_playlist(id, cx);
+                                                if controller.state.read(cx).playback.shuffling {
+                                                    // TODO: fix this abomination.
+                                                    controller.set_shuffle(cx);
+                                                    controller.set_shuffle(cx);
+                                                } else {
+                                                    controller.set_shuffle(cx);
+                                                }
+                                            }
+                                        })
+                                )
                         )
                 )
         } else {
