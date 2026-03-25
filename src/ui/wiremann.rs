@@ -6,14 +6,14 @@ use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::helpers::slider_to_secs;
 use crate::ui::theme::Theme;
 use components::{
+    Page,
     image_cache::ImageCache,
     pages::{library::LibraryPage, player::PlayerPage},
     titlebar::Titlebar,
-    Page,
 };
 use gpui::{
-    div, AppContext, BorrowAppContext, Context, Entity, InteractiveElement, IntoElement,
-    ParentElement, Render, Styled, Window,
+    AppContext, BorrowAppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement,
+    Render, Styled, Window, div,
 };
 
 pub struct Wiremann {
@@ -52,7 +52,7 @@ impl Wiremann {
                 }
             },
         )
-            .detach();
+        .detach();
 
         cx.subscribe(
             &playback_slider_state,
@@ -78,7 +78,7 @@ impl Wiremann {
                 }
             },
         )
-            .detach();
+        .detach();
 
         cx.set_global(Theme::default());
         cx.set_global(Page::Player);

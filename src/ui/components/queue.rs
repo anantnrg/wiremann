@@ -5,9 +5,9 @@ use crate::{controller::Controller, library::Track};
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    div, img, px, uniform_list, App, AppContext, Context, Entity,
-    InteractiveElement, IntoElement, ObjectFit, ParentElement, Render,
-    ScrollStrategy, StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window,
+    App, AppContext, Context, Entity, InteractiveElement, IntoElement, ObjectFit, ParentElement,
+    Render, ScrollStrategy, StatefulInteractiveElement, Styled, StyledImage,
+    UniformListScrollHandle, Window, div, img, px, uniform_list,
 };
 use std::sync::Arc;
 
@@ -230,8 +230,7 @@ impl Render for Queue {
 
                             let real_index = &tracks[queue_order[i]];
 
-                            if let Some(track) = state.library.tracks.get(real_index)
-                            {
+                            if let Some(track) = state.library.tracks.get(real_index) {
                                 div()
                                     .id(format!("track_{:?}", track.id.0))
                                     .child(Queue::get_or_create_item(&views, track.clone(), cx))
@@ -252,11 +251,11 @@ impl Render for Queue {
                         })
                         .collect()
                 })
-                    .w_full()
-                    .h_full()
-                    .flex()
-                    .flex_col()
-                    .track_scroll(&scroll_handle),
+                .w_full()
+                .h_full()
+                .flex()
+                .flex_col()
+                .track_scroll(&scroll_handle),
             )
     }
 }

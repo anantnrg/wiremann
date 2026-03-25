@@ -1,16 +1,20 @@
-use crate::controller::state::LibraryState;
 use crate::controller::Controller;
-use crate::library::playlists::PlaylistId;
+use crate::controller::state::LibraryState;
 use crate::library::TrackId;
+use crate::library::playlists::PlaylistId;
+use crate::ui::components::Page;
 use crate::ui::components::icons::{Icon, Icons};
 use crate::ui::components::image_cache::ImageCache;
-use crate::ui::components::scrollbar::{floating_scrollbar, RightPad};
+use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
 use crate::ui::components::virtual_list::vlist;
-use crate::ui::components::Page;
 use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use crate::ui::theme::Theme;
 use gpui::prelude::FluentBuilder;
-use gpui::{div, img, px, rems, uniform_list, App, AppContext, Context, Div, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window};
+use gpui::{
+    App, AppContext, Context, Div, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit,
+    ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage,
+    UniformListScrollHandle, Window, div, img, px, rems, uniform_list,
+};
 use std::rc::Rc;
 
 const THUMBNAIL_MARGIN: usize = 16;
@@ -39,7 +43,13 @@ impl PlaylistsPage {
         let sidebar_scroll_handle = UniformListScrollHandle::new();
         let main_scroll_handle = ScrollHandle::new();
 
-        let current_playlist = cx.global::<Controller>().state.read(cx).playback.current_playlist.clone();
+        let current_playlist = cx
+            .global::<Controller>()
+            .state
+            .read(cx)
+            .playback
+            .current_playlist
+            .clone();
 
         PlaylistsPage {
             sidebar_scroll_handle,
@@ -57,7 +67,9 @@ impl PlaylistsPage {
 
         let state = controller.state.read(cx).clone();
 
-        if let Some(id) = id && let Some(playlist) = state.library.playlists.get(&id) {
+        if let Some(id) = id
+            && let Some(playlist) = state.library.playlists.get(&id)
+        {
             controller.request_playlist_thumbnails(&[id], cx);
 
             let cache = cx.global_mut::<ImageCache>();
@@ -68,20 +80,15 @@ impl PlaylistsPage {
                 .w_full()
                 .h(height)
                 .child(
-                    div()
-                        .size(height)
-                        .p_6()
-                        .child(
-                            match thumbnail {
-                                Some(image) => div().size_full().child(
-                                    img(image.clone())
-                                        .object_fit(ObjectFit::Contain)
-                                        .size_full()
-                                        .rounded_lg(),
-                                ),
-                                None => div().size(height).flex_shrink_0(),
-                            }
-                        )
+                    div().size(height).p_6().child(match thumbnail {
+                        Some(image) => div().size_full().child(
+                            img(image.clone())
+                                .object_fit(ObjectFit::Contain)
+                                .size_full()
+                                .rounded_lg(),
+                        ),
+                        None => div().size(height).flex_shrink_0(),
+                    }),
                 )
                 .child(
                     div()
@@ -93,11 +100,19 @@ impl PlaylistsPage {
                         .px_2()
                         .py_4()
                         .child(
-                            div().text_size(rems(3.2)).font_weight(FontWeight::BLACK).truncate().text_ellipsis().text_color(theme.text_primary).child(playlist.name.clone())
+                            div()
+                                .text_size(rems(3.2))
+                                .font_weight(FontWeight::BLACK)
+                                .truncate()
+                                .text_ellipsis()
+                                .text_color(theme.text_primary)
+                                .child(playlist.name.clone()),
                         )
                         .child(
-                            div().text_base().text_color(theme.text_secondary)
-                                .child(format!("{} tracks", playlist.tracks.len()))
+                            div()
+                                .text_base()
+                                .text_color(theme.text_secondary)
+                                .child(format!("{} tracks", playlist.tracks.len())),
                         )
                         .child(
                             div()
@@ -132,7 +147,7 @@ impl PlaylistsPage {
 
                                                 *cx.global_mut::<Page>() = Page::Player;
                                             }
-                                        })
+                                        }),
                                 )
                                 .child(
                                     div()
@@ -163,9 +178,9 @@ impl PlaylistsPage {
 
                                                 *cx.global_mut::<Page>() = Page::Player;
                                             }
-                                        })
-                                )
-                        )
+                                        }),
+                                ),
+                        ),
                 )
         } else {
             div()
@@ -383,16 +398,12 @@ impl Render for PlaylistsPage {
         let combined_fp = tracks_fp ^ playlists_fp ^ selected_id;
 
         if combined_fp != self.last_fp {
-            let (rows, heights) = build_rows(
-                &state.library,
-                *self.selected_playlist.read(cx),
-            );
+            let (rows, heights) = build_rows(&state.library, *self.selected_playlist.read(cx));
 
             self.rows = Rc::new(rows);
             self.heights = Rc::new(heights);
             self.last_fp = combined_fp;
         }
-
 
         let rows = self.rows.clone();
         let heights = self.heights.clone();
@@ -406,7 +417,14 @@ impl Render for PlaylistsPage {
             .text_color(theme.text_primary)
             .flex()
             .child(
-                div().w_1_3().h_full().flex().flex_col().gap_2().border_r_1().border_color(theme.white_05)
+                div()
+                    .w_1_3()
+                    .h_full()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .border_r_1()
+                    .border_color(theme.white_05)
                     .bg(theme.bg_queue)
                     .child(
                         div()
@@ -439,21 +457,30 @@ impl Render for PlaylistsPage {
                                     let selected = selected.clone();
                                     let playlists = playlists.clone();
                                     move |range, _, cx| {
-                                        range.map(|i| {
-                                            let playlist = &playlists[i];
-                                            let is_current = Some(playlist.id) == *selected.read(cx);
+                                        range
+                                            .map(|i| {
+                                                let playlist = &playlists[i];
+                                                let is_current =
+                                                    Some(playlist.id) == *selected.read(cx);
 
-                                            let controller = cx.global_mut::<Controller>().clone();
+                                                let controller =
+                                                    cx.global_mut::<Controller>().clone();
 
-                                            controller.request_playlist_thumbnails(&[playlist.id], cx);
+                                                controller.request_playlist_thumbnails(
+                                                    &[playlist.id],
+                                                    cx,
+                                                );
 
-                                            let thumbnail = playlist.image_id.and_then(|id| cx.global_mut::<ImageCache>().get(&id));
+                                                let thumbnail = playlist.image_id.and_then(|id| {
+                                                    cx.global_mut::<ImageCache>().get(&id)
+                                                });
 
-                                            div()
-                                                .py(px(2.0))
-                                                .child(
+                                                div().py(px(2.0)).child(
                                                     div()
-                                                        .id(format!("playlist_sidebar_{}", playlist.id.0))
+                                                        .id(format!(
+                                                            "playlist_sidebar_{}",
+                                                            playlist.id.0
+                                                        ))
                                                         .h(px(64.))
                                                         .w_full()
                                                         .flex()
@@ -476,12 +503,17 @@ impl Render for PlaylistsPage {
                                                             }
                                                         })
                                                         .child(match thumbnail {
-                                                            Some(image) => div().size_12().flex_shrink_0().child(
-                                                                img(image.clone())
-                                                                    .object_fit(ObjectFit::Contain)
-                                                                    .size_full()
-                                                                    .rounded_md(),
-                                                            ),
+                                                            Some(image) => div()
+                                                                .size_12()
+                                                                .flex_shrink_0()
+                                                                .child(
+                                                                    img(image.clone())
+                                                                        .object_fit(
+                                                                            ObjectFit::Contain,
+                                                                        )
+                                                                        .size_full()
+                                                                        .rounded_md(),
+                                                                ),
                                                             None => div().size_12().flex_shrink_0(),
                                                         })
                                                         .child(
@@ -498,34 +530,48 @@ impl Render for PlaylistsPage {
                                                                         } else {
                                                                             theme.text_primary
                                                                         })
-                                                                        .child(playlist.name.clone()),
+                                                                        .child(
+                                                                            playlist.name.clone(),
+                                                                        ),
                                                                 )
                                                                 .child(
                                                                     div()
                                                                         .text_sm()
-                                                                        .text_color(theme.text_muted)
+                                                                        .text_color(
+                                                                            theme.text_muted,
+                                                                        )
                                                                         .truncate()
-                                                                        .child(format!("{} tracks", playlist.tracks.len())),
-                                                                )
-                                                        ))
-                                        }).collect::<Vec<_>>()
+                                                                        .child(format!(
+                                                                            "{} tracks",
+                                                                            playlist.tracks.len()
+                                                                        )),
+                                                                ),
+                                                        ),
+                                                )
+                                            })
+                                            .collect::<Vec<_>>()
                                     }
                                 })
-                                    .track_scroll(&sidebar_scroll_handle)
-                                    .w_full()
-                                    .h_full()
-                                    .flex()
-                                    .flex_col())
+                                .track_scroll(&sidebar_scroll_handle)
+                                .w_full()
+                                .h_full()
+                                .flex()
+                                .flex_col(),
+                            )
                             .child(floating_scrollbar(
                                 "queue_scrollbar",
                                 self.sidebar_scroll_handle.clone(),
                                 RightPad::Pad,
-                            ))
-                    )
+                            )),
+                    ),
             )
-            .child(
-                if selected.read(cx).is_some() {
-                    div().w_full().h_full().flex().flex_grow().child(vlist(
+            .child(if selected.read(cx).is_some() {
+                div()
+                    .w_full()
+                    .h_full()
+                    .flex()
+                    .flex_grow()
+                    .child(vlist(
                         cx.entity(),
                         "playlists_main",
                         heights.clone(),
@@ -549,7 +595,11 @@ impl Render for PlaylistsPage {
 
                                 range
                                     .map(|idx| match &rows[idx] {
-                                        PlaylistsRows::Header => Self::render_header(heights[idx], selected.read(cx).clone(), cx),
+                                        PlaylistsRows::Header => Self::render_header(
+                                            heights[idx],
+                                            selected.read(cx).clone(),
+                                            cx,
+                                        ),
 
                                         PlaylistsRows::TrackTableHeader => {
                                             Self::render_track_table_header(heights[idx], cx)
@@ -563,15 +613,21 @@ impl Render for PlaylistsPage {
                             }
                         },
                     ))
-                        .child(floating_scrollbar(
-                            "queue_scrollbar",
-                            self.main_scroll_handle.clone(),
-                            RightPad::Pad,
-                        ))
-                } else {
-                    div().size_full().flex().items_center().justify_center().text_base().text_color(theme.text_muted).child("Select a playlist to view...")
-                }
-            )
+                    .child(floating_scrollbar(
+                        "queue_scrollbar",
+                        self.main_scroll_handle.clone(),
+                        RightPad::Pad,
+                    ))
+            } else {
+                div()
+                    .size_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .text_base()
+                    .text_color(theme.text_muted)
+                    .child("Select a playlist to view...")
+            })
     }
 }
 
