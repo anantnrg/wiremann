@@ -64,25 +64,18 @@ jobs:
             libssl-dev
 
       - name: Build release (x86_64)
-        if: matrix.arch == 'x86_64'
         run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Build release (aarch64)
-        if: matrix.arch == 'aarch64'
-        run: |
-          cargo install cross
-          cross build --release --target ${{ matrix.target }}
 
       - name: Prepare portable directory
         run: |
-          mkdir -p dist/wiremann-linux-${{ matrix.arch }}
-          cp target/${{ matrix.target }}/release/wiremann dist/wiremann-linux-${{ matrix.arch }}/wiremann
-          chmod +x dist/wiremann-linux-${{ matrix.arch }}/wiremann
-          cp assets/icon.png dist/wiremann-linux-${{ matrix.arch }}/icon.png
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/wiremann dist/wiremann-${{ matrix.arch }}
+          chmod +x dist/wiremann-${{ matrix.arch }}
+          cp assets/icon.png dist/icon.png
 
       - name: Create .desktop file
         run: |
-          cat > dist/wiremann-linux-${{ matrix.arch }}/wiremann.desktop << 'EOF'
+          cat > dist/wiremann.desktop << 'EOF'
           [Desktop Entry]
           Type=Application
           Name=Wiremann
@@ -101,8 +94,10 @@ jobs:
           tag_name: latest-unstable
           name: Latest Unstable Build
           prerelease: true
-          allow_update: true
-          files: dist/wiremann-linux-${{ matrix.arch }}/wiremann
+          files: |
+            dist/wiremann-${{ matrix.arch }}
+            dist/icon.png
+            dist/wiremann.desktop
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -110,7 +105,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/wiremann-linux-${{ matrix.arch }}/wiremann
+          files: |
+            dist/wiremann-${{ matrix.arch }}
+            dist/icon.png
+            dist/wiremann.desktop
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
