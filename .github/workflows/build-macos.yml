@@ -88,10 +88,10 @@ jobs:
           </plist>
           EOF
 
-      - name: Create portable app directory
+      - name: Create portable .app.zip
         run: |
           mkdir -p dist
-          cp -r Wiremann.app dist/Wiremann-${{ matrix.arch }}.app
+          ditto -c -k --keepParent Wiremann.app dist/Wiremann-${{ matrix.arch }}.app.zip
 
       - name: Upload portable to Latest Unstable (main and PRs)
         if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
@@ -100,18 +100,17 @@ jobs:
           tag_name: latest-unstable
           name: Latest Unstable Build
           prerelease: true
-          allow_update: true
-          files: dist/Wiremann-${{ matrix.arch }}.app/**/*
+          files: dist/Wiremann-${{ matrix.arch }}.app.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Create DMG (only for semantic version tags)
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           mkdir -p dmg_temp
           cp -r Wiremann.app dmg_temp/Wiremann.app
           ln -s /Applications dmg_temp/Applications
-          hdiutil create -volname "Wiremann" -srcfolder dmg_temp -ov -format UDZO Wiremann-${{ matrix.arch }}.dmg
+          hdiutil create -volname "Wiremann" -srcfolder dmg_temp -ov -format UDZO dist/Wiremann-${{ matrix.arch }}.dmg
           rm -rf dmg_temp
 
       - name: Upload to semantic version release
@@ -119,8 +118,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/Wiremann-${{ matrix.arch }}.app
-            Wiremann-${{ matrix.arch }}.dmg
+            dist/Wiremann-${{ matrix.arch }}.app.zip
+            dist/Wiremann-${{ matrix.arch }}.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
