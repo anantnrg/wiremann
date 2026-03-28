@@ -1,3 +1,5 @@
+pub mod metadata;
+
 use crate::cacher::ImageKind;
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
 use crate::library::{ImageId, Track, TrackSource};
@@ -6,10 +8,10 @@ use crate::{
     errors::ScannerError,
     library::TrackId,
 };
-use crossbeam_channel::{Receiver, Sender, select, tick};
+use crossbeam_channel::{select, tick, Receiver, Sender};
 use fast_image_resize as fr;
 use gpui::RenderImage;
-use image::{DynamicImage, EncodableLayout, Frame, ImageReader, RgbaImage, imageops};
+use image::{imageops, DynamicImage, EncodableLayout, Frame, ImageReader, RgbaImage};
 use lofty::{prelude::*, probe::Probe};
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};

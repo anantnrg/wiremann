@@ -7222,6 +7222,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "smallvec",
+ "symphonia",
  "thiserror 2.0.18",
  "twox-hash",
  "uuid",
