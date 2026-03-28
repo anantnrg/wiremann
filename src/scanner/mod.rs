@@ -9,6 +9,7 @@ use crate::{
     library::TrackId,
 };
 use crossbeam_channel::{select, tick, Receiver, Sender};
+use dashmap::DashSet;
 use fast_image_resize as fr;
 use gpui::RenderImage;
 use image::{imageops, DynamicImage, EncodableLayout, Frame, RgbaImage};
@@ -24,6 +25,8 @@ use walkdir::WalkDir;
 pub struct Scanner {
     pub tx: Sender<ScannerEvent>,
     pub rx: Receiver<ScannerCommand>,
+
+    pub inflight_images: DashSet<ImageId>,
 }
 
 enum ScanJob {
