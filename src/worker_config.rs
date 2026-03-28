@@ -13,7 +13,7 @@ pub fn calculate_worker_config() -> WorkerConfig {
     let cacher = (usable / 4).max(1);
     let scanner_total = usable - cacher;
 
-    let metadata = (scanner_total / 3).max(1);
+    let metadata = (scanner_total * 2 / 3).max(1);
     let thumbnail = (scanner_total - metadata).max(1);
 
     WorkerConfig {
