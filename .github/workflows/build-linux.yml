@@ -16,8 +16,7 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             arch: x86_64
 
-    permissions:
-      contents: write
+    permissions: write-all
 
     steps:
       - name: Checkout code
