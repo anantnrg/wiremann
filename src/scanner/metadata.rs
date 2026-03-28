@@ -8,7 +8,7 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::{MetadataOptions, MetadataRevision, StandardTagKey};
 use symphonia::core::probe::Hint;
 
-fn read_full(path: &Path) -> Result<(Track, Option<Box<[u8]>>), ScannerError> {
+pub fn read_full(path: &Path) -> Result<(Track, Option<Box<[u8]>>), ScannerError> {
     let mut hint = Hint::new();
 
     if let Some(ext) = path.extension().and_then(|this| this.to_str()) {
@@ -88,7 +88,7 @@ fn read_full(path: &Path) -> Result<(Track, Option<Box<[u8]>>), ScannerError> {
     Ok((track, image))
 }
 
-fn read_album_art(path: &Path) -> Result<Option<Box<[u8]>>, ScannerError> {
+pub fn read_album_art(path: &Path) -> Result<Option<Box<[u8]>>, ScannerError> {
     let mut hint = Hint::new();
 
     if let Some(ext) = path.extension().and_then(|this| this.to_str()) {

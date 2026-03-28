@@ -29,7 +29,7 @@ pub struct Scanner {
 
 enum ScanJob {
     Metadata(TrackSource, Option<PlaylistId>),
-    Thumbnail(TrackId, ImageId, Vec<u8>),
+    Thumbnail(TrackId, ImageId, Box<[u8]>),
     AlbumArt(TrackId, PathBuf),
     PlaylistThumbnail(PlaylistId, Vec<PathBuf>),
 }
@@ -119,7 +119,7 @@ impl Scanner {
                     select! {
                         recv(meta_rx) -> job => {
                             if let Ok(ScanJob::Metadata(source, playlist_id)) = job {
-                                match get_track_metadata(source) {
+                                match metadata::read_full(source.path.as_path()) {
                                     Ok((track, image)) => {
                                         let id = track.id;
                                         batch.push((track, playlist_id));
@@ -206,7 +206,7 @@ impl Scanner {
 
         std::thread::spawn(move || {
             while let Ok(ScanJob::AlbumArt(id, path)) = album_art_rx.recv() {
-                match get_album_art(&path) {
+                match metadata::read_album_art(&path) {
                     Ok(Some(image)) => {
                         if let Ok(hash) = ImageId::generate(&image) {
                             let path = get_cached_image_path(hash, ImageKind::AlbumArt);
@@ -245,7 +245,7 @@ impl Scanner {
                         break;
                     }
 
-                    match get_album_art(&path) {
+                    match metadata::read_album_art(&path) {
                         Ok(Some(image)) => {
                             if let Ok(img) = image::load_from_memory(&image) {
                                 images.push(img);
