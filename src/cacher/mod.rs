@@ -766,7 +766,7 @@ impl Cacher {
         });
     }
 
-    fn build_cached_thumbnails_index(base: &Path) -> HashSet<ImageId> {
+    pub fn build_cached_thumbnails_index(base: &Path) -> HashSet<ImageId> {
         let mut set = HashSet::new();
 
         let images_dir = base.join("images");
