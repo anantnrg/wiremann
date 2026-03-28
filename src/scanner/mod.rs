@@ -12,14 +12,13 @@ use crossbeam_channel::{select, tick, Receiver, Sender};
 use fast_image_resize as fr;
 use gpui::RenderImage;
 use image::{imageops, DynamicImage, EncodableLayout, Frame, ImageReader, RgbaImage};
-use lofty::{prelude::*, probe::Probe};
+use lofty::prelude::*;
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
-use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{fs, path::PathBuf, time::UNIX_EPOCH};
+use std::{path::PathBuf, time::UNIX_EPOCH};
 use uuid::Uuid;
 use walkdir::WalkDir;
 
@@ -416,143 +415,6 @@ fn render_album_art(bytes: &[u8], is_thumbnail: bool) -> Result<Arc<RenderImage>
     let frame = Frame::new(image);
 
     Ok(Arc::new(RenderImage::new(smallvec![frame])))
-}
-
-fn get_track_metadata(source: TrackSource) -> Result<(Track, Option<Vec<u8>>), ScannerError> {
-    let path = source.path.clone();
-    let tagged_file = match Probe::open(path.clone())
-        .and_then(|p| Ok(p.guess_file_type()?))
-        .and_then(Probe::read)
-    {
-        Ok(file) => file,
-        Err(e) => {
-            eprintln!("Metadata decode failed {}: {e:?}", path.display());
-
-            let duration = 0;
-
-            let title = path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("Unknown")
-                .to_string();
-
-            let sources = vec![source];
-
-            let track_id = TrackId::generate(title.as_str(), "Unknown Artist", "Unknown Album")?;
-
-            return Ok((
-                Track {
-                    sources,
-                    id: track_id,
-                    title,
-                    artist: "Unknown Artist".to_string(),
-                    album: "Unknown Album".to_string(),
-                    duration,
-                    image_id: None,
-                },
-                None,
-            ));
-        }
-    };
-
-    let file_metadata = fs::metadata(path.clone())?;
-
-    let tag = tagged_file
-        .primary_tag()
-        .or_else(|| tagged_file.first_tag());
-
-    let title;
-    let artist;
-    let album;
-    let thumbnail;
-
-    if let Some(tag) = tag {
-        title = tag
-            .get_string(ItemKey::TrackTitle)
-            .unwrap_or("Untitled")
-            .to_string();
-
-        let artists: Vec<String> = tag
-            .get_strings(ItemKey::TrackArtist)
-            .map(ToOwned::to_owned)
-            .collect();
-
-        artist = if artists.is_empty() {
-            "Unknown Artist".to_string()
-        } else {
-            artists.join(", ")
-        };
-
-        album = tag
-            .get_string(ItemKey::AlbumTitle)
-            .unwrap_or("Unknown Album")
-            .to_string();
-
-        thumbnail = tag.pictures().first().map(|data| data.data().to_vec());
-    } else {
-        title = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("Untitled")
-            .to_string();
-
-        artist = "Unknown Artist".to_string();
-        album = "Unknown Album".to_string();
-
-        thumbnail = None;
-    }
-
-    let duration = tagged_file.properties().duration().as_secs();
-    let size = file_metadata.len();
-    let modified = file_metadata
-        .modified()?
-        .duration_since(UNIX_EPOCH)?
-        .as_secs();
-
-    let sources = vec![TrackSource {
-        path,
-        size,
-        modified,
-    }];
-
-    let track_id = TrackId::generate(title.as_str(), artist.as_str(), album.as_str())?;
-
-    Ok((
-        Track {
-            sources,
-            id: track_id,
-            title,
-            artist,
-            album,
-            duration,
-            image_id: None,
-        },
-        thumbnail,
-    ))
-}
-
-fn get_album_art(path: &Path) -> Result<Option<Vec<u8>>, ScannerError> {
-    let tagged_file = match Probe::open(path)
-        .and_then(|p| Ok(p.guess_file_type()?))
-        .and_then(Probe::read)
-    {
-        Ok(file) => file,
-        Err(e) => return Err(ScannerError::from(e)),
-    };
-
-    let tag = tagged_file
-        .primary_tag()
-        .or_else(|| tagged_file.first_tag());
-
-    let thumbnail;
-
-    if let Some(tag) = tag {
-        thumbnail = tag.pictures().first().map(|data| data.data().to_vec());
-    } else {
-        thumbnail = None;
-    }
-
-    Ok(thumbnail)
 }
 
 fn render_playlist_thumbnail(
