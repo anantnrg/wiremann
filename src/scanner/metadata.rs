@@ -109,7 +109,7 @@ pub fn read_album_art(path: &Path) -> Result<Option<Box<[u8]>>, ScannerError> {
     if let Some(meta) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
         if image.is_none() {
             if let Some(pic) = meta.visuals().first() {
-                *image = Some(pic.data.clone());
+                image = Some(pic.data.clone());
             }
         }
     }
@@ -117,7 +117,7 @@ pub fn read_album_art(path: &Path) -> Result<Option<Box<[u8]>>, ScannerError> {
     if let Some(meta) = probed.format.metadata().current() {
         if image.is_none() {
             if let Some(pic) = meta.visuals().first() {
-                *image = Some(pic.data.clone());
+                image = Some(pic.data.clone());
             }
         }
     }
