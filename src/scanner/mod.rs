@@ -130,7 +130,7 @@ impl Scanner {
             let scan_jobs = self.meta_scan_jobs.clone();
 
             std::thread::spawn(move || {
-                let mut batch: Vec<(Track, Option<PlaylistId>)> = Vec::with_capacity(16);
+                let mut batch: Vec<(Track, Option<PlaylistId>)> = Vec::with_capacity(128);
 
                 loop {
                     select! {
@@ -140,7 +140,7 @@ impl Scanner {
                                     Ok(track) => {
                                         batch.push((track, playlist_id));
 
-                                        if batch.len() >= 16 {
+                                        if batch.len() >= 128 {
                                             let _ = events_tx.send(
                                                 ScannerEvent::UpsertTracks(std::mem::take(&mut batch)),
                                             );
@@ -179,8 +179,8 @@ impl Scanner {
             let mut resizer = fr::Resizer::new();
 
             std::thread::spawn(move || {
-                let mut image_batch = HashMap::with_capacity(16);
-                let mut lookup_batch = HashMap::with_capacity(16);
+                let mut image_batch = HashMap::with_capacity(128);
+                let mut lookup_batch = HashMap::with_capacity(128);
                 let mut last_kind = ImageKind::ThumbnailSmall;
 
                 loop {
@@ -194,7 +194,7 @@ impl Scanner {
                                         if let Ok(image) = render_album_art(&bytes, kind, &mut resizer) {
                                             image_batch.insert(hash, image);
 
-                                            if image_batch.len() >= 16 {
+                                            if image_batch.len() >= 128 {
                                                 let _ = events_tx.send(
                                                     ScannerEvent::InsertThumbnails(std::mem::take(&mut image_batch), kind)
                                                 );
@@ -341,7 +341,7 @@ impl Scanner {
 
             let _ = self.tx.send(ScannerEvent::InsertPlaylist(playlist));
 
-            let mut batch = Vec::with_capacity(16);
+            let mut batch = Vec::with_capacity(128);
 
             for entry in WalkDir::new(scan_path)
                 .into_iter()
@@ -369,7 +369,7 @@ impl Scanner {
                 if let Some((existing_id, size, modified)) = quick_lookup.get(file) {
                     if (*size, *modified) == (track_source.size, track_source.modified) {
                         batch.push(*existing_id);
-                        if batch.len() >= 16 {
+                        if batch.len() >= 128 {
                             let _ = self.tx.send(ScannerEvent::InsertTracksIntoPlaylist(
                                 playlist_id,
                                 std::mem::take(&mut batch),
@@ -415,7 +415,7 @@ fn render_album_art(
         }
         ImageKind::ThumbnailSmall | ImageKind::ThumbnailLarge => {
             let (new_w, new_h) = match kind {
-                ImageKind::ThumbnailSmall => (64, 64),
+                ImageKind::ThumbnailSmall => (128, 128),
                 ImageKind::ThumbnailLarge => (256, 256),
                 _ => unreachable!(),
             };

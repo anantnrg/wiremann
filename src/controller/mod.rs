@@ -367,6 +367,7 @@ impl Controller {
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
             ScannerEvent::MetadataScanFinished => {
+                println!("scan finished");
                 let tracks = self.state.read(cx).library.tracks.clone();
 
                 let to_request: HashSet<(TrackId, PathBuf)> = tracks
