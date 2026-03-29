@@ -51,7 +51,7 @@ struct CacheFile<T> {
     payload: T,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum ImageKind {
     ThumbnailSmall,
     ThumbnailLarge,

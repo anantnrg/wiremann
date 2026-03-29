@@ -12,9 +12,10 @@ use crossbeam_channel::{select, tick, Receiver, Sender};
 use dashmap::DashSet;
 use fast_image_resize as fr;
 use gpui::RenderImage;
-use image::{imageops, DynamicImage, EncodableLayout, Frame, RgbaImage};
+use image::{imageops, DynamicImage, EncodableLayout, Frame, GenericImageView, RgbaImage};
 use lofty::prelude::*;
 use smallvec::smallvec;
+use std::cmp::PartialEq;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -189,7 +190,7 @@ impl Scanner {
                                         if let Ok(image) = render_album_art(&bytes, true) {
                                             image_batch.insert(hash, image);
                                             lookup_batch.insert(id, hash);
-    
+
                                             if image_batch.len() >= 16 {
                                                 let _ = events_tx.send(
                                                     ScannerEvent::InsertThumbnails(std::mem::take(&mut image_batch))
@@ -395,31 +396,30 @@ impl Scanner {
     }
 }
 
-fn render_album_art(bytes: &[u8], is_thumbnail: bool) -> Result<Arc<RenderImage>, ScannerError> {
-    let img = image::load_from_memory(bytes)?;
+fn render_album_art(bytes: &[u8], kind: ImageKind, resizer: &mut fr::Resizer) -> Result<Arc<RenderImage>, ScannerError> {
+    let raw_img = image::load_from_memory(bytes)?;
 
-    let rgba = img.into_rgba8();
+    let image = if kind == ImageKind::AlbumArt {
+        let bytes = raw_img.as_bytes();
+        let rgba = raw_img.into_rgba8();
+        rgba
+    } else {
+        let (new_w, new_h) = match kind {
+            ImageKind::ThumbnailSmall => (64, 64),
+            ImageKind::ThumbnailLarge => (256, 256),
+            _ => unreachable!()
+        };
 
-    let image = if is_thumbnail {
-        let (src_w, src_h) = rgba.dimensions();
-
-        let src =
-            fr::images::Image::from_vec_u8(src_w, src_h, rgba.into_raw(), fr::PixelType::U8x4)?;
-
-        let mut dst = fr::images::Image::new(256, 256, fr::PixelType::U8x4);
-
-        let mut resizer = fr::Resizer::new();
+        let mut dst = fr::images::Image::new(new_w, new_h, fr::PixelType::U8x4);
 
         resizer.resize(
-            &src,
+            &raw_img,
             &mut dst,
             &fr::ResizeOptions::new()
                 .resize_alg(fr::ResizeAlg::Convolution(fr::FilterType::Bilinear)),
         )?;
 
-        RgbaImage::from_raw(256, 256, dst.into_vec()).unwrap()
-    } else {
-        rgba
+        RgbaImage::from_raw(dst.width(), dst.height(), dst.into_vec()).unwrap()
     };
 
     let mut image = image;
