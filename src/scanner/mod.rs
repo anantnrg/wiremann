@@ -27,15 +27,14 @@ pub struct Scanner {
     pub tx: Sender<ScannerEvent>,
     pub rx: Receiver<ScannerCommand>,
 
-    seen_images: Arc<DashSet<ImageId>>,
+    seen_images: Arc<DashSet<(ImageId, ImageKind)>>,
     meta_scan_jobs: Arc<AtomicUsize>,
     album_art_scan_jobs: Arc<AtomicUsize>,
 }
 
 enum ScanJob {
     Metadata(TrackSource, Option<PlaylistId>),
-    SmallThumbnail(TrackId, PathBuf, Arc<HashSet<ImageId>>),
-    LargeThumbnail(TrackId, PathBuf, Arc<HashSet<ImageId>>),
+    Thumbnail(TrackId, PathBuf, ImageKind, Arc<HashSet<ImageId>>),
     AlbumArt(TrackId, PathBuf),
     PlaylistThumbnail(PlaylistId, Vec<PathBuf>),
 }
@@ -86,22 +85,10 @@ impl Scanner {
                 }
                 ScannerCommand::GetThumbnail(images, kind) => {
                     let cached_thumbnails_index = Arc::new(Cacher::build_cached_thumbnails_index(&Cacher::get_base_dir(), kind));
-                    match kind {
-                        ImageKind::ThumbnailSmall => {
-                            for image in images {
-                                let _ = thumb_tx.send(ScanJob::SmallThumbnail(image.0, image.1, cached_thumbnails_index.clone()));
-                                self.album_art_scan_jobs.fetch_add(1, Ordering::Relaxed);
-                            }
-                        }
-                        ImageKind::ThumbnailLarge => {
-                            for image in images {
-                                let _ = thumb_tx.send(ScanJob::LargeThumbnail(image.0, image.1, cached_thumbnails_index.clone()));
-                                self.album_art_scan_jobs.fetch_add(1, Ordering::Relaxed);
-                            }
-                        }
-                        _ => {}
+                    for image in images {
+                        let _ = thumb_tx.send(ScanJob::Thumbnail(image.0, image.1, kind, cached_thumbnails_index.clone()));
+                        self.album_art_scan_jobs.fetch_add(1, Ordering::Relaxed);
                     }
-                    
                 }
                 ScannerCommand::ScanFolder { path, tracks } => {
                     self.enqueue_folder(&tracks, &path, &meta_tx)?;
@@ -195,18 +182,20 @@ impl Scanner {
                 loop {
                     select! {
                         recv(thumb_rx) -> job => {
-                            if let Ok(ScanJob::Thumbnail(id, hash, bytes, cached_images)) = job {
-                                lookup_batch.insert(id, hash);
-                                if seen_images.insert(hash) && !cached_images.contains(&hash) {
-                                    if let Ok(image) = render_album_art(&bytes, true) {
-                                        image_batch.insert(hash, image);
-                                        lookup_batch.insert(id, hash);
-
-                                        if image_batch.len() >= 16 {
-                                            let _ = events_tx.send(
-                                                ScannerEvent::InsertThumbnails(std::mem::take(&mut image_batch))
-                                            );
-                                            let _ = events_tx.send(ScannerEvent::UpdateImageLookup(std::mem::take(&mut lookup_batch)));
+                            if let Ok(ScanJob::Thumbnail(id, path, kind, cached_images)) = job {
+                                if let Ok(Some(bytes)) = metadata::read_album_art(&path) && let Ok(hash) = ImageId::generate(&bytes) {
+                                    lookup_batch.insert(id, hash);
+                                    if seen_images.insert((hash, kind)) && !cached_images.contains(&hash) {
+                                        if let Ok(image) = render_album_art(&bytes, true) {
+                                            image_batch.insert(hash, image);
+                                            lookup_batch.insert(id, hash);
+    
+                                            if image_batch.len() >= 16 {
+                                                let _ = events_tx.send(
+                                                    ScannerEvent::InsertThumbnails(std::mem::take(&mut image_batch))
+                                                );
+                                                let _ = events_tx.send(ScannerEvent::UpdateImageLookup(std::mem::take(&mut lookup_batch)));
+                                            }
                                         }
                                     }
                                 }
@@ -522,7 +511,8 @@ fn get_cached_image_path(id: ImageId, kind: ImageKind) -> PathBuf {
     let folder = &hex[0..2];
 
     let name = match kind {
-        ImageKind::Thumbnail => format!("{hex}_thumb.bgra.zstd"),
+        ImageKind::ThumbnailSmall => format!("{hex}_tmbhs.bgra.zstd"),
+        ImageKind::ThumbnailLarge => format!("{hex}_tmbhl.bgra.zstd"),
         ImageKind::AlbumArt => format!("{hex}_art.bgra.zstd"),
         ImageKind::Playlist => format!("{hex}_playlist.bgra.zstd"),
     };
