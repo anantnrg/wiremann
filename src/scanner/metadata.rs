@@ -8,7 +8,7 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::{MetadataOptions, MetadataRevision, StandardTagKey};
 use symphonia::core::probe::Hint;
 
-pub fn read_full(path: &Path) -> Result<(Track, Option<Box<[u8]>>), ScannerError> {
+pub fn read_metadata(path: &Path) -> Result<Track, ScannerError> {
     let mut hint = Hint::new();
 
     if let Some(ext) = path.extension().and_then(|this| this.to_str()) {
@@ -28,14 +28,13 @@ pub fn read_full(path: &Path) -> Result<(Track, Option<Box<[u8]>>), ScannerError
     let mut title = None;
     let mut artist = None;
     let mut album = None;
-    let mut image: Option<Box<[u8]>> = None;
 
     if let Some(meta) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
-        apply_metadata(meta, &mut title, &mut artist, &mut album, &mut image);
+        apply_metadata(meta, &mut title, &mut artist, &mut album);
     }
 
     if let Some(meta) = probed.format.metadata().current() {
-        apply_metadata(meta, &mut title, &mut artist, &mut album, &mut image);
+        apply_metadata(meta, &mut title, &mut artist, &mut album);
     }
 
     let title = title.unwrap_or_else(|| {
@@ -73,7 +72,7 @@ pub fn read_full(path: &Path) -> Result<(Track, Option<Box<[u8]>>), ScannerError
         }]
     };
 
-    let track = Track {
+    Ok(Track {
         id: TrackId::generate(&title, &artist, &album)?,
         sources,
 
@@ -83,9 +82,7 @@ pub fn read_full(path: &Path) -> Result<(Track, Option<Box<[u8]>>), ScannerError
 
         duration,
         image_id: None,
-    };
-
-    Ok((track, image))
+    })
 }
 
 pub fn read_album_art(path: &Path) -> Result<Option<Box<[u8]>>, ScannerError> {
@@ -131,7 +128,6 @@ fn apply_metadata(
     title: &mut Option<String>,
     artist: &mut Option<String>,
     album: &mut Option<String>,
-    image: &mut Option<Box<[u8]>>,
 ) {
     for tag in meta.tags() {
         match tag.std_key {
@@ -145,12 +141,6 @@ fn apply_metadata(
                 *album = Some(tag.value.to_string());
             }
             _ => {}
-        }
-    }
-
-    if image.is_none() {
-        if let Some(pic) = meta.visuals().first() {
-            *image = Some(pic.data.clone());
         }
     }
 }

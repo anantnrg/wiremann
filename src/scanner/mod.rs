@@ -1,6 +1,6 @@
 pub mod metadata;
 
-use crate::cacher::{Cacher, ImageKind};
+use crate::cacher::ImageKind;
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
 use crate::library::{ImageId, Track, TrackSource};
 use crate::{
@@ -16,6 +16,7 @@ use image::{imageops, DynamicImage, EncodableLayout, Frame, RgbaImage};
 use lofty::prelude::*;
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{path::PathBuf, time::UNIX_EPOCH};
@@ -27,10 +28,11 @@ pub struct Scanner {
     pub rx: Receiver<ScannerCommand>,
 
     seen_images: Arc<DashSet<ImageId>>,
+    meta_scan_jobs: Arc<AtomicUsize>,
 }
 
 enum ScanJob {
-    Metadata(TrackSource, Option<PlaylistId>, Arc<HashSet<ImageId>>),
+    Metadata(TrackSource, Option<PlaylistId>),
     Thumbnail(TrackId, ImageId, Box<[u8]>, Arc<HashSet<ImageId>>),
     AlbumArt(TrackId, PathBuf),
     PlaylistThumbnail(PlaylistId, Vec<PathBuf>),
@@ -47,6 +49,7 @@ impl Scanner {
             rx: cmd_rx,
 
             seen_images: Arc::new(DashSet::new()),
+            meta_scan_jobs: Arc::new(AtomicUsize::new(0)),
         };
 
         (scanner, cmd_tx, event_rx)
@@ -63,7 +66,7 @@ impl Scanner {
         let (album_art_tx, album_art_rx) = crossbeam_channel::unbounded();
         let (playlist_thumb_tx, playlist_thumb_rx) = crossbeam_channel::unbounded();
 
-        self.spawn_metadata_worker(&meta_rx, &thumb_tx, metadata_workers);
+        self.spawn_metadata_worker(&meta_rx, metadata_workers);
         self.spawn_thumbnail_workers(&thumb_rx, thumbnail_workers);
         self.spawn_album_art_worker(album_art_rx);
         self.spawn_playlist_thumbnail_worker(playlist_thumb_rx);
@@ -105,16 +108,15 @@ impl Scanner {
     fn spawn_metadata_worker(
         &self,
         meta_rx: &Receiver<ScanJob>,
-        thumb_tx: &Sender<ScanJob>,
         workers: usize,
     ) {
         let ticker = tick(Duration::from_millis(128));
 
         for _ in 0..workers {
             let meta_rx = meta_rx.clone();
-            let thumb_tx = thumb_tx.clone();
             let events_tx = self.tx.clone();
             let ticker = ticker.clone();
+            let scan_jobs = self.meta_scan_jobs.clone();
 
             std::thread::spawn(move || {
                 let mut batch: Vec<(Track, Option<PlaylistId>)> = Vec::with_capacity(16);
@@ -122,10 +124,9 @@ impl Scanner {
                 loop {
                     select! {
                         recv(meta_rx) -> job => {
-                            if let Ok(ScanJob::Metadata(source, playlist_id, cached_images)) = job {
-                                match metadata::read_full(source.path.as_path()) {
-                                    Ok((track, image)) => {
-                                        let id = track.id;
+                            if let Ok(ScanJob::Metadata(source, playlist_id)) = job {
+                                match metadata::read_metadata(source.path.as_path()) {
+                                    Ok(track) => {
                                         batch.push((track, playlist_id));
 
                                         if batch.len() >= 16 {
@@ -134,8 +135,8 @@ impl Scanner {
                                             );
                                         }
 
-                                        if let Some(bytes) = image && let Ok(hash) = ImageId::generate(&bytes) {
-                                            let _ = thumb_tx.send(ScanJob::Thumbnail(id, hash, bytes, cached_images));
+                                        if scan_jobs.fetch_sub(1, Ordering::Relaxed) == 1 {
+                                            let _ = events_tx.send(ScannerEvent::MetadataScanFinished);
                                         }
                                     }
                                     Err(err) => eprintln!("Failed to get track metadata: {err}" ),
@@ -286,7 +287,8 @@ impl Scanner {
                 modified: duration.as_secs(),
                 size: meta.len(),
             };
-            let _ = meta_tx.send(ScanJob::Metadata(track_source, None, Arc::new(HashSet::new())));
+            let _ = meta_tx.send(ScanJob::Metadata(track_source, None));
+            self.meta_scan_jobs.fetch_add(1, Ordering::Relaxed);
         }
     }
 
@@ -324,8 +326,6 @@ impl Scanner {
             let _ = self.tx.send(ScannerEvent::InsertPlaylist(playlist));
 
             let mut batch = Vec::with_capacity(16);
-
-            let cached_thumbnails_index = Arc::new(Cacher::build_cached_thumbnails_index(&scan_path));
 
             for entry in WalkDir::new(scan_path)
                 .into_iter()
@@ -365,10 +365,12 @@ impl Scanner {
                             file.to_path_buf(),
                         ));
 
-                        let _ = meta_tx.send(ScanJob::Metadata(track_source, Some(playlist_id), cached_thumbnails_index.clone()));
+                        let _ = meta_tx.send(ScanJob::Metadata(track_source, Some(playlist_id)));
+                        self.meta_scan_jobs.fetch_add(1, Ordering::Relaxed);
                     }
                 } else {
-                    let _ = meta_tx.send(ScanJob::Metadata(track_source, Some(playlist_id), cached_thumbnails_index.clone()));
+                    let _ = meta_tx.send(ScanJob::Metadata(track_source, Some(playlist_id)));
+                    self.meta_scan_jobs.fetch_add(1, Ordering::Relaxed);
                 }
             }
             if !batch.is_empty() {
