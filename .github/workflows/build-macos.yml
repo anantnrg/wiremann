@@ -18,7 +18,8 @@ jobs:
           - target: x86_64-apple-darwin
             arch: x86_64
 
-    permissions: write-all
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code

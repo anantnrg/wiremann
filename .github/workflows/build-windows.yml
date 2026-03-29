@@ -18,7 +18,8 @@ jobs:
           - target: aarch64-pc-windows-msvc
             arch: aarch64
 
-    permissions: write-all
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
