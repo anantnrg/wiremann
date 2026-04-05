@@ -12,7 +12,6 @@ mod scanner_v2;
 pub mod ui;
 mod worker_config;
 
-use crate::scanner_v2::{ScannerV2, ScannerV2Command};
 use errors::AppError;
 
 fn main() -> Result<(), AppError> {
