@@ -13,13 +13,15 @@ use crate::{
 };
 use gpui::{AppContext, Bounds, Result, TitlebarOptions, WindowBounds, WindowOptions, px, size};
 use gpui_platform::application;
-use std::path::PathBuf;
 use std::{
+    fs,
+    path::PathBuf,
     sync::Arc,
     thread,
     time::{Duration, Instant},
 };
 
+#[derive(Clone)]
 pub struct AppPaths {
     pub cache: PathBuf,
     pub config: PathBuf,
@@ -48,8 +50,8 @@ pub fn run() -> Result<(), AppError> {
         ensure_app_paths(&app_paths);
 
         let (mut audio, audio_tx, audio_rx) = Audio::new();
-        let (mut scanner, scanner_tx, scanner_rx) = Scanner::new(app_paths);
-        let (cacher, cacher_tx, cacher_rx) = Cacher::new(app_paths));
+        let (mut scanner, scanner_tx, scanner_rx) = Scanner::new(app_paths.clone());
+        let (cacher, cacher_tx, cacher_rx) = Cacher::new(app_paths);
 
         let controller = Controller::new(
             cx.new(|_| AppState::default()),
@@ -194,7 +196,7 @@ fn get_app_paths() -> AppPaths {
 }
 
 fn ensure_app_paths(app_paths: &AppPaths) {
-    fs::create_dir_all(app_paths.cache).expect("failed to create cache directory");
-    fs::create_dir_all(app_paths.config).expect("failed to create cache directory");
-    fs::create_dir_all(app_paths.data).expect("failed to create cache directory");
+    fs::create_dir_all(app_paths.cache.as_path()).expect("failed to create cache directory");
+    fs::create_dir_all(app_paths.config.as_path()).expect("failed to create cache directory");
+    fs::create_dir_all(app_paths.data.as_path()).expect("failed to create cache directory");
 }
