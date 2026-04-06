@@ -28,7 +28,7 @@ pub struct Track {
     pub image_id: Option<ImageId>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash, Eq)]
 pub struct TrackSource {
     pub path: PathBuf,
     pub size: u64,

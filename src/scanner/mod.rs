@@ -8,18 +8,18 @@ use crate::{
     errors::ScannerError,
     library::TrackId,
 };
-use crossbeam_channel::{select, tick, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, select, tick};
 use dashmap::DashSet;
 use fast_image_resize as fr;
 use garb::bytes::rgba_to_bgra_inplace;
 use gpui::RenderImage;
-use image::{imageops, DynamicImage, EncodableLayout, Frame, GenericImageView, RgbaImage};
+use image::{DynamicImage, EncodableLayout, Frame, GenericImageView, RgbaImage, imageops};
 use lofty::prelude::*;
 use smallvec::smallvec;
 use std::cmp::PartialEq;
-use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
+use std::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use std::time::Duration;
 use std::{path::PathBuf, time::UNIX_EPOCH};
 use uuid::Uuid;
@@ -29,9 +29,16 @@ pub struct Scanner {
     pub tx: Sender<ScannerEvent>,
     pub rx: Receiver<ScannerCommand>,
 
+    scan_progress: Arc<ScanProgress>,
+    queue: VecDeque<PathBuf>,
+    scan_record: Arc<DashSet<TrackSource>>,
+
     seen_images: Arc<DashSet<(ImageId, ImageKind)>>,
-    meta_scan_jobs: Arc<AtomicUsize>,
-    album_art_scan_jobs: Arc<AtomicUsize>,
+}
+
+struct ScanProgress {
+    total: AtomicUsize,
+    processed: AtomicUsize,
 }
 
 enum ScanJob {
@@ -51,9 +58,14 @@ impl Scanner {
             tx: event_tx,
             rx: cmd_rx,
 
+            scan_progress: Arc::new(ScanProgress {
+                total: AtomicUsize::new(0),
+                processed: AtomicUsize::new(0),
+            }),
+            queue: VecDeque::new(),
+            scan_record: Arc::new(DashSet::new()),
+
             seen_images: Arc::new(DashSet::new()),
-            meta_scan_jobs: Arc::new(AtomicUsize::new(0)),
-            album_art_scan_jobs: Arc::new(AtomicUsize::new(0)),
         };
 
         (scanner, cmd_tx, event_rx)
@@ -66,24 +78,19 @@ impl Scanner {
         thumbnail_workers: usize,
     ) -> Result<(), ScannerError> {
         let (meta_tx, meta_rx) = crossbeam_channel::unbounded();
-        let (thumb_tx, thumb_rx) = crossbeam_channel::unbounded();
-        let (album_art_tx, album_art_rx) = crossbeam_channel::unbounded();
-        let (playlist_thumb_tx, playlist_thumb_rx) = crossbeam_channel::unbounded();
 
-        self.spawn_metadata_worker(&meta_rx, metadata_workers);
-        self.spawn_thumbnail_workers(&thumb_rx, thumbnail_workers);
-        self.spawn_album_art_worker(album_art_rx);
-        self.spawn_playlist_thumbnail_worker(playlist_thumb_rx);
-
-        let mut inflight_tracks = HashSet::new();
-        let mut inflight_playlists = HashSet::new();
+        self.spawn_metadata_workers(&meta_rx, metadata_workers);
 
         loop {
             match self.rx.recv()? {
-                _ => {}
+                ScannerCommand::ScanFolder(path) => self.scan_folder(path),
             }
         }
     }
+
+    fn spawn_metadata_workers(&self, meta_rx: &Receiver<ScanJob>, workers: usize) {}
+
+    fn scan_folder(&self, path: PathBuf) {}
 }
 
 fn render_album_art(

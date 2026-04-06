@@ -18,24 +18,7 @@ pub enum AudioCommand {
 }
 
 pub enum ScannerCommand {
-    GetTrackMetadata {
-        path: PathBuf,
-        track_id: TrackId,
-    },
-    GetThumbnails(HashSet<(TrackId, PathBuf)>, ImageKind),
-
-    ScanTrack(PathBuf),
-    ScanFolder {
-        path: PathBuf,
-        tracks: HashMap<TrackId, Arc<Track>>,
-    },
-    GetCurrentAlbumArt(TrackId, PathBuf),
-    PlaylistThumbnail {
-        id: PlaylistId,
-        tracks: Vec<PathBuf>,
-    },
-    MetaJobFinished(TrackId),
-    PlaylistThumbnailJobFinished(PlaylistId),
+    ScanFolder(PathBuf),
 }
 
 pub enum CacherCommand {
