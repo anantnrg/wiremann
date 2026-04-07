@@ -69,3 +69,22 @@ impl Track {
         self.sources.iter().find(|&t| t.path.exists())
     }
 }
+
+impl TrackSource {
+    pub fn generate(path: PathBuf) -> Result<Self, io::Error> {
+        let meta = std::fs::metadata(&path)?;
+        let modified = meta
+            .modified()?
+            .elapsed()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
+            .as_secs();
+
+        let size = meta.len();
+
+        Ok(TrackSource {
+            path: path.clone(),
+            modified,
+            size,
+        })
+    }
+}

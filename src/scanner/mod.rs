@@ -96,17 +96,58 @@ impl Scanner {
         worker_rx: &Receiver<(PathBuf, Option<PlaylistId>)>,
         workers: usize,
     ) {
+        let ticker = tick(Duration::from_millis(128));
+
         for _ in 0..workers {
             let worker_rx = worker_rx.clone();
             let scan_progress = self.scan_progress.clone();
             let tx = self.tx.clone();
             let scan_record = self.scan_record.clone();
-
-            let batch = Vec::with_capacity(64);
+            let ticker = ticker.clone();
 
             std::thread::spawn(move || {
-                while let Ok((path, pid)) = worker_rx.recv() {
-                    if let Ok(file) = fs::File::open(path) {}
+                let mut new: Vec<(Track, Option<PlaylistId>)> = Vec::with_capacity(32);
+                let mut existing: HashMap<PlaylistId, Vec<TrackId>> = HashMap::with_capacity(32);
+
+                loop {
+                    select! {
+                        recv(worker_rx) -> job => {
+                            if let Ok((path, pid)) = job {
+                                if let Ok(ts) = TrackSource::generate(path.clone()) {
+                                    if let Some(entry) = scan_record.get(&ts) {
+                                        if let Some(pid) = pid {
+                                            let batch = existing.entry(pid).or_default();
+                                            batch.push(*entry.value());
+
+                                            if batch.len() >= 32 {
+                                                let to_send = std::mem::take(batch);
+
+                                                tx.send(ScannerEvent::InsertTracksIntoPlaylist(
+                                                        pid,
+                                                        to_send,
+                                                )).ok();
+                                            }
+                                        }
+                                    } else {
+
+                                    }
+                                }
+                            }
+                        }
+
+                        recv(ticker) -> _ => {
+                            for (pid, batch) in existing.iter_mut() {
+                                if !batch.is_empty() {
+                                    let to_send = std::mem::take(batch);
+
+                                    tx.send(ScannerEvent::InsertTracksIntoPlaylist(
+                                            *pid,
+                                            to_send,
+                                    )).ok();
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
