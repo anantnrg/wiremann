@@ -608,8 +608,8 @@ impl Controller {
         let _ = self.audio_tx.send(AudioCommand::GetPosition);
     }
 
-    pub fn scan_folder(&self, _tracks: HashMap<TrackId, Arc<Track>>, path: PathBuf) {
-        let _ = self.scanner_tx.send(ScannerCommand::ScanFolder(path));
+    pub fn scan_dir(&self, path: PathBuf) {
+        let _ = self.scanner_tx.send(ScannerCommand::ScanDir(path));
     }
 
     pub fn load_playlist(&self, id: PlaylistId, cx: &mut App) {

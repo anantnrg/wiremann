@@ -10,7 +10,7 @@ use crate::{
     library::TrackId,
 };
 use crossbeam_channel::{Receiver, Sender, select, tick};
-use dashmap::DashSet;
+use dashmap::{DashMap, DashSet};
 use fast_image_resize as fr;
 use garb::bytes::rgba_to_bgra_inplace;
 use gpui::RenderImage;
@@ -20,6 +20,7 @@ use smallvec::smallvec;
 use std::cmp::PartialEq;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::ffi::OsStr;
+use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -36,7 +37,7 @@ pub struct Scanner {
 
     scan_progress: Arc<ScanProgress>,
     queue: VecDeque<PathBuf>,
-    scan_record: Arc<DashSet<TrackSource>>,
+    scan_record: Arc<DashMap<TrackSource, TrackId>>,
 
     seen_images: Arc<DashSet<(ImageId, ImageKind)>>,
 }
@@ -65,7 +66,7 @@ impl Scanner {
                 processed: AtomicUsize::new(0),
             }),
             queue: VecDeque::new(),
-            scan_record: Arc::new(DashSet::new()),
+            scan_record: Arc::new(DashMap::new()),
 
             seen_images: Arc::new(DashSet::new()),
         };
@@ -85,47 +86,74 @@ impl Scanner {
 
         loop {
             match self.rx.recv()? {
-                ScannerCommand::ScanFolder(path) => self.scan_folder(path, &worker_tx),
+                ScannerCommand::ScanDir(path) => self.scan_folder(path, &worker_tx),
             }
         }
     }
 
-    fn spawn_metadata_workers(&self, worker_rx: &Receiver<PathBuf>, workers: usize) {
+    fn spawn_metadata_workers(
+        &self,
+        worker_rx: &Receiver<(PathBuf, Option<PlaylistId>)>,
+        workers: usize,
+    ) {
         for _ in 0..workers {
             let worker_rx = worker_rx.clone();
             let scan_progress = self.scan_progress.clone();
             let tx = self.tx.clone();
+            let scan_record = self.scan_record.clone();
 
-            // let batch = Vec::with_capacity(64);
+            let batch = Vec::with_capacity(64);
 
-            while let Ok(path) = worker_rx.recv() {
-                println!("{path:#?}")
-            }
+            std::thread::spawn(move || {
+                while let Ok((path, pid)) = worker_rx.recv() {
+                    if let Ok(file) = fs::File::open(path) {}
+                }
+            });
         }
     }
 
-    fn scan_folder(&self, path: PathBuf, worker_tx: &Sender<PathBuf>) {
+    fn scan_folder(&self, path: PathBuf, worker_tx: &Sender<(PathBuf, Option<PlaylistId>)>) {
         let exts = ["mp3", "wav", "ogg", "aac", "m4a"];
 
-        for entry in WalkDir::new(&path)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.path()
-                    .extension()
-                    .and_then(OsStr::to_str)
-                    .map(|ext| exts.contains(&ext))
-                    .unwrap_or(false)
-            })
-        {
-            self.scan_progress.total.fetch_add(1, Ordering::Relaxed);
+        if path.is_dir() {
+            let playlist_id = PlaylistId(Uuid::new_v4());
 
-            let _ = worker_tx.send(entry.path().to_path_buf());
+            let playlist = Playlist {
+                id: playlist_id,
+                name: path
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("Unnamed Playlist")
+                    .to_string(),
+                source: PlaylistSource::Folder,
+                folder_path: Some(path.clone()),
+                tracks: Vec::new(),
+                duration: Duration::from_secs(0),
+                image_id: None,
+            };
+
+            let _ = self.tx.send(ScannerEvent::InsertPlaylist(playlist));
+
+            for entry in WalkDir::new(&path)
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    e.path()
+                        .extension()
+                        .and_then(OsStr::to_str)
+                        .map(|ext| exts.contains(&ext))
+                        .unwrap_or(false)
+                })
+            {
+                self.scan_progress.total.fetch_add(1, Ordering::Relaxed);
+
+                let _ = worker_tx.send((entry.path().to_path_buf(), Some(playlist_id)));
+            }
         }
 
         self.scan_progress
             .discovery_done
-            .store(true, Ordering::Relaxed);
+            .store(true, Ordering::Release);
     }
 }
 

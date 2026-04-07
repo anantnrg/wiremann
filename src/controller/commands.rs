@@ -18,7 +18,7 @@ pub enum AudioCommand {
 }
 
 pub enum ScannerCommand {
-    ScanFolder(PathBuf),
+    ScanDir(PathBuf),
 }
 
 pub enum CacherCommand {
