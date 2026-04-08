@@ -1,19 +1,187 @@
-use std::sync::Arc;
-
+use crate::controller::commands::ImageProcessorCommand;
+use crate::controller::events::ImageProcessorEvent;
+use crate::library::playlists::PlaylistId;
+use crate::library::{ImageId, TrackId, TrackSource};
+use crate::{cacher::ImageKind, errors::ImageProcessorError, scanner::metadata};
+use crossbeam_channel::{Receiver, Sender, select, tick};
+use dashmap::DashSet;
 use fast_image_resize as fr;
 use garb::bytes::rgba_to_bgra_inplace;
-use gpui::{ImageId, RenderImage};
+use gpui::RenderImage;
 use image::{DynamicImage, EncodableLayout, Frame, RgbaImage, imageops};
 use smallvec::smallvec;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 
-use crate::{cacher::ImageKind, errors::ScannerError};
-pub struct ImageProcessor {}
+pub struct ImageProcessor {
+    pub tx: Sender<ImageProcessorEvent>,
+    pub rx: Receiver<ImageProcessorCommand>,
+
+    seen_images: Arc<DashSet<ImageId>>,
+}
+
+enum ImageJob {
+    Thumbnail(TrackId, ImageId, Box<[u8]>, Arc<HashSet<ImageId>>),
+    AlbumArt(TrackId, PathBuf),
+    PlaylistThumbnail(PlaylistId, Vec<PathBuf>),
+}
+
+impl ImageProcessor {
+    #[must_use]
+    pub fn new() -> (
+        Self,
+        Sender<ImageProcessorCommand>,
+        Receiver<ImageProcessorEvent>,
+    ) {
+        let (cmd_tx, cmd_rx) = crossbeam_channel::unbounded();
+        let (event_tx, event_rx) = crossbeam_channel::unbounded();
+
+        let scanner = ImageProcessor {
+            tx: event_tx,
+            rx: cmd_rx,
+
+            seen_images: Arc::new(DashSet::new()),
+        };
+
+        (scanner, cmd_tx, event_rx)
+    }
+
+    fn spawn_thumbnail_workers(&self, thumb_rx: &Receiver<ImageJob>, workers: usize) {
+        let ticker = tick(Duration::from_millis(128));
+
+        for _ in 0..workers {
+            let events_tx = self.tx.clone();
+            let ticker = ticker.clone();
+            let thumb_rx = thumb_rx.clone();
+            let seen_images = self.seen_images.clone();
+            let mut resizer = fr::Resizer::new();
+
+            std::thread::spawn(move || {
+                let mut image_batch = HashMap::with_capacity(128);
+                let mut lookup_batch = HashMap::with_capacity(128);
+                let mut last_kind = ImageKind::ThumbnailSmall;
+
+                loop {
+                    select! {
+                        recv(thumb_rx) -> job => {
+                            if let Ok(ImageJob::Thumbnail(id, path, kind, cached_images)) = job {
+                                if let Ok(Some(bytes)) = metadata::read_album_art(&path) && let Ok(hash) = ImageId::generate(&bytes) {
+                                    lookup_batch.insert(id, hash);
+                                    last_kind = kind;
+                                    if seen_images.insert((hash, kind)) && !cached_images.contains(&hash) {
+                                        if let Ok(image) = render_album_art(&bytes, kind, &mut resizer) {
+                                            image_batch.insert(hash, image);
+
+                                            if image_batch.len() >= 128 {
+                                                let _ = events_tx.send(
+                                                    ImageProcessorEvent::InsertThumbnails(std::mem::take(&mut image_batch), kind)
+                                                );
+                                                let _ = events_tx.send(ImageProcessorEvent::UpdateImageLookup(std::mem::take(&mut lookup_batch)));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        recv(ticker) -> _ => {
+                            if !image_batch.is_empty() || !lookup_batch.is_empty() {
+                                let _ = events_tx.send(
+                                    ImageProcessorEvent::InsertThumbnails(std::mem::take(&mut image_batch), last_kind)
+                                );
+                                let _ = events_tx.send(ImageProcessorEvent::UpdateImageLookup(std::mem::take(&mut lookup_batch)));
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    fn spawn_album_art_worker(&self, album_art_rx: Receiver<ImageJob>) {
+        let events_tx = self.tx.clone();
+
+        std::thread::spawn(move || {
+            let mut resizer = fr::Resizer::new();
+            while let Ok(ImageJob::AlbumArt(id, path)) = album_art_rx.recv() {
+                match metadata::read_album_art(&path) {
+                    Ok(Some(image)) => {
+                        if let Ok(hash) = ImageId::generate(&image) {
+                            let path = get_cached_image_path(hash, ImageKind::AlbumArt);
+
+                            if !path.exists() {
+                                if let Ok(album_art) =
+                                    render_album_art(&image, ImageKind::AlbumArt, &mut resizer)
+                                {
+                                    let _ = events_tx
+                                        .send(ImageProcessorEvent::InsertAlbumArt(hash, album_art));
+                                    let _ = events_tx.send(ImageProcessorEvent::UpdateImageLookup(
+                                        HashMap::from([(id, hash)]),
+                                    ));
+                                }
+                            } else {
+                                let _ = events_tx.send(ImageProcessorEvent::UpdateImageLookup(
+                                    HashMap::from([(id, hash)]),
+                                ));
+                            }
+                        }
+                    }
+                    Err(err) => eprintln!("Failed album art: {err}"),
+                    _ => {}
+                }
+            }
+        });
+    }
+
+    fn spawn_playlist_thumbnail_worker(&self, playlist_thumb_rx: Receiver<ImageJob>) {
+        let events_tx = self.tx.clone();
+
+        std::thread::spawn(move || {
+            while let Ok(ImageJob::PlaylistThumbnail(id, tracks)) = playlist_thumb_rx.recv() {
+                let mut images = Vec::with_capacity(4);
+
+                for path in tracks {
+                    if images.len() == 4 {
+                        break;
+                    }
+
+                    match metadata::read_album_art(&path) {
+                        Ok(Some(image)) => {
+                            if let Ok(img) = image::load_from_memory(&image) {
+                                images.push(img);
+                            } else {
+                                eprintln!("Invalid album art in {:?}", path);
+                            }
+                        }
+                        Ok(None) => {}
+                        Err(err) => eprintln!("Failed album art for {:?}: {err}", path),
+                    }
+                }
+
+                if images.is_empty() {
+                    continue;
+                }
+
+                match render_playlist_thumbnail(images) {
+                    (Some(thumbnail), Some(hash)) => {
+                        let _ = events_tx.send(ImageProcessorEvent::InsertPlaylistThumbnail(
+                            id, hash, thumbnail,
+                        ));
+                    }
+                    _ => eprintln!("Failed to generate playlist thumbnail"),
+                }
+            }
+        });
+    }
+}
 
 fn render_album_art(
     bytes: &[u8],
     kind: ImageKind,
     resizer: &mut fr::Resizer,
-) -> Result<Arc<RenderImage>, ScannerError> {
+) -> Result<Arc<RenderImage>, ImageProcessorError> {
     let raw_img = image::load_from_memory(bytes)?;
 
     let image = match kind {

@@ -10,11 +10,6 @@ use crate::{
 };
 use crossbeam_channel::{Receiver, Sender, select, tick};
 use dashmap::DashMap;
-use fast_image_resize as fr;
-use garb::bytes::rgba_to_bgra_inplace;
-use gpui::RenderImage;
-use image::{DynamicImage, EncodableLayout, Frame, RgbaImage, imageops};
-use smallvec::smallvec;
 use std::cmp::PartialEq;
 use std::collections::{HashMap, VecDeque};
 use std::ffi::OsStr;

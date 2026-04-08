@@ -21,6 +21,8 @@ pub enum ScannerCommand {
     StartNextScan,
 }
 
+pub enum ImageProcessorCommand {}
+
 pub enum CacherCommand {
     GetAppState,
     WriteLibraryState(LibraryState),

@@ -367,7 +367,6 @@ impl Controller {
             //     let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             // }
             ScannerEvent::ScanFinished => {
-                println!("scan finished");
                 self.scanner_tx.send(ScannerCommand::StartNextScan).ok();
                 // let tracks = self.state.read(cx).library.tracks.clone();
                 //

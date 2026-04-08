@@ -29,6 +29,14 @@ pub enum ScannerEvent {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+pub enum ImageProcessorEvent {
+    InsertAlbumArt(ImageId, Arc<RenderImage>),
+    InsertThumbnails(HashMap<ImageId, Arc<RenderImage>>, ImageKind),
+    InsertPlaylistThumbnail(PlaylistId, ImageId, Arc<RenderImage>),
+    UpdateImageLookup(HashMap<TrackId, ImageId>),
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub enum CacherEvent {
     AppState(AppState),
     AlbumArt(Arc<RenderImage>),
