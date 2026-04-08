@@ -80,7 +80,7 @@ impl Scanner {
         metadata_workers: usize,
         _thumbnail_workers: usize,
     ) -> Result<(), ScannerError> {
-        let (worker_tx, worker_rx) = crossbeam_channel::unbounded();
+        let (worker_tx, worker_rx) = crossbeam_channel::bounded(64);
 
         self.spawn_metadata_workers(&worker_rx, metadata_workers);
 
@@ -113,11 +113,12 @@ impl Scanner {
                     select! {
                         recv(worker_rx) -> job => {
                             if let Ok((path, pid)) = job {
-                                if let Ok(ts) = TrackSource::generate(path.clone()) {
+                                if let Ok(ts) = TrackSource::generate(&path) {
                                     if let Some(entry) = scan_record.get(&ts) {
                                         if let Some(pid) = pid {
                                             let batch = existing.entry(pid).or_default();
                                             batch.push(*entry.value());
+                                            scan_progress.processed.fetch_add(1, Ordering::Relaxed);
 
                                             if batch.len() >= 32 {
                                                 let to_send = std::mem::take(batch);

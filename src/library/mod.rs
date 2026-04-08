@@ -2,7 +2,7 @@ pub mod playlists;
 
 use serde::{Deserialize, Serialize};
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use twox_hash::XxHash3_128;
 
 const AUDIO_HASH_SEED: u64 = 0x3141_5926_5358_9793;
@@ -71,8 +71,8 @@ impl Track {
 }
 
 impl TrackSource {
-    pub fn generate(path: PathBuf) -> Result<Self, io::Error> {
-        let meta = std::fs::metadata(&path)?;
+    pub fn generate(path: &Path) -> Result<Self, io::Error> {
+        let meta = std::fs::metadata(path)?;
         let modified = meta
             .modified()?
             .elapsed()
@@ -82,7 +82,7 @@ impl TrackSource {
         let size = meta.len();
 
         Ok(TrackSource {
-            path: path.clone(),
+            path: path.to_path_buf(),
             modified,
             size,
         })

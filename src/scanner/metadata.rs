@@ -1,146 +1,75 @@
 use crate::errors::ScannerError;
 use crate::library::{Track, TrackId, TrackSource};
+use lofty::file::{AudioFile, TaggedFileExt};
+use lofty::read_from_path;
+use lofty::tag::ItemKey;
 use std::fs::File;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
-use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::MediaSourceStream;
-use symphonia::core::meta::{MetadataOptions, MetadataRevision, StandardTagKey};
-use symphonia::core::probe::Hint;
 
-pub fn read_metadata(path: &Path) -> Result<Track, ScannerError> {
-    let mut hint = Hint::new();
+pub fn read_metadata(track_source: TrackSource) -> Result<Track, ScannerError> {
+    let path = track_source.path.as_path();
 
-    if let Some(ext) = path.extension().and_then(|this| this.to_str()) {
-        hint.with_extension(ext);
-    }
+    let file = read_from_path(path).ok();
 
-    let source = File::open(path)?;
-    let file_meta = source.metadata()?;
-    let mss = MediaSourceStream::new(Box::new(source), Default::default());
-    let mut probed = symphonia::default::get_probe().format(
-        &hint,
-        mss,
-        &FormatOptions::default(),
-        &MetadataOptions::default(),
-    )?;
+    let (mut title, mut artist, mut album) = fallback_metadata(path);
+    let mut duration = 0;
 
-    let mut title = None;
-    let mut artist = None;
-    let mut album = None;
-
-    if let Some(meta) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
-        apply_metadata(meta, &mut title, &mut artist, &mut album);
-    }
-
-    if let Some(meta) = probed.format.metadata().current() {
-        apply_metadata(meta, &mut title, &mut artist, &mut album);
-    }
-
-    let title = title.unwrap_or_else(|| {
-        path.file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("Unknown")
-            .to_string()
-    });
-
-    let artist = artist.unwrap_or_else(|| "Unknown Artist".to_string());
-    let album = album.unwrap_or_else(|| "Unknown Album".to_string());
-    let duration = probed
-        .format
-        .default_track()
-        .and_then(|track| {
-            let params = &track.codec_params;
-
-            match (params.n_frames, params.sample_rate) {
-                (Some(frames), Some(rate)) if rate > 0 => {
-                    Some(frames / rate as u64)
-                }
-                _ => None,
+    if let Some(tagged_file) = file {
+        if let Some(tag) = tagged_file
+            .primary_tag()
+            .or_else(|| tagged_file.first_tag())
+        {
+            if let Some(t) = tag.get_string(ItemKey::TrackTitle) {
+                title = t.to_string();
             }
-        })
-        .unwrap_or(0);
 
-    let sources = {
-        let size = file_meta.len();
-        let modified = file_meta.modified()?.duration_since(UNIX_EPOCH)?.as_secs();
-        let path = path.to_path_buf();
-        vec![TrackSource {
-            path,
-            size,
-            modified,
-        }]
-    };
+            let mut iter = tag.get_strings(ItemKey::TrackArtist);
+            artist = match iter.next() {
+                None => "Unknown Artist".to_string(),
+                Some(first) => {
+                    let mut result = first.to_string();
+                    for a in iter {
+                        result.push_str(", ");
+                        result.push_str(a);
+                    }
+                    result
+                }
+            };
+
+            if let Some(a) = tag.get_string(ItemKey::AlbumTitle) {
+                album = a.to_string();
+            }
+        }
+
+        duration = tagged_file.properties().duration().as_secs();
+    }
+
+    let track_id = TrackId::generate(&title, &artist, &album)?;
 
     Ok(Track {
-        id: TrackId::generate(&title, &artist, &album)?,
-        sources,
-
+        sources: vec![track_source],
+        id: track_id,
         title,
         artist,
         album,
-
         duration,
         image_id: None,
     })
 }
 
-pub fn read_album_art(path: &Path) -> Result<Option<Box<[u8]>>, ScannerError> {
-    let mut hint = Hint::new();
+pub fn read_album_art(path: &Path) -> Result<Option<Box<[u8]>>, ScannerError> {}
 
-    if let Some(ext) = path.extension().and_then(|this| this.to_str()) {
-        hint.with_extension(ext);
-    }
+fn fallback_metadata(path: &Path) -> (String, String, String) {
+    let title = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("Unknown")
+        .to_string();
 
-    let source = File::open(path)?;
-    let mss = MediaSourceStream::new(Box::new(source), Default::default());
-    let mut probed = symphonia::default::get_probe().format(
-        &hint,
-        mss,
-        &FormatOptions::default(),
-        &MetadataOptions::default(),
-    )?;
-
-    let mut image: Option<Box<[u8]>> = None;
-
-    if let Some(meta) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
-        if image.is_none() {
-            if let Some(pic) = meta.visuals().first() {
-                image = Some(pic.data.clone());
-            }
-        }
-    }
-
-    if let Some(meta) = probed.format.metadata().current() {
-        if image.is_none() {
-            if let Some(pic) = meta.visuals().first() {
-                image = Some(pic.data.clone());
-            }
-        }
-    }
-
-    Ok(image)
-}
-
-
-fn apply_metadata(
-    meta: &MetadataRevision,
-    title: &mut Option<String>,
-    artist: &mut Option<String>,
-    album: &mut Option<String>,
-) {
-    for tag in meta.tags() {
-        match tag.std_key {
-            Some(StandardTagKey::TrackTitle) if title.is_none() => {
-                *title = Some(tag.value.to_string());
-            }
-            Some(StandardTagKey::Artist) if artist.is_none() => {
-                *artist = Some(tag.value.to_string());
-            }
-            Some(StandardTagKey::Album) if album.is_none() => {
-                *album = Some(tag.value.to_string());
-            }
-            _ => {}
-        }
-    }
+    (
+        title,
+        "Unknown Artist".to_string(),
+        "Unknown Album".to_string(),
+    )
 }
