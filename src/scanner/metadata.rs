@@ -3,9 +3,7 @@ use crate::library::{Track, TrackId, TrackSource};
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
 use lofty::tag::ItemKey;
-use std::fs::File;
 use std::path::Path;
-use std::time::UNIX_EPOCH;
 
 pub fn read_metadata(track_source: TrackSource) -> Result<Track, ScannerError> {
     let path = track_source.path.as_path();
