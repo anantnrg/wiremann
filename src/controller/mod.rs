@@ -368,18 +368,19 @@ impl Controller {
             // }
             ScannerEvent::ScanFinished => {
                 println!("scan finished");
-                let tracks = self.state.read(cx).library.tracks.clone();
-
-                let to_request: HashSet<(TrackId, PathBuf)> = tracks
-                    .iter()
-                    .filter(|(_, track)| track.image_id.is_none())
-                    .filter_map(|(id, track)| {
-                        track
-                            .get_valid_source()
-                            .and_then(|src| Some(src.path.clone()))
-                            .map(|path| (*id, path))
-                    })
-                    .collect();
+                self.scanner_tx.send(ScannerCommand::StartNextScan).ok();
+                // let tracks = self.state.read(cx).library.tracks.clone();
+                //
+                // let to_request: HashSet<(TrackId, PathBuf)> = tracks
+                //     .iter()
+                //     .filter(|(_, track)| track.image_id.is_none())
+                //     .filter_map(|(id, track)| {
+                //         track
+                //             .get_valid_source()
+                //             .and_then(|src| Some(src.path.clone()))
+                //             .map(|path| (*id, path))
+                //     })
+                //     .collect();
                 // let _ = self.scanner_tx.send(ScannerCommand::GetThumbnails(to_request, ImageKind::ThumbnailSmall));
 
                 // self.request_playlist_thumbnails(
