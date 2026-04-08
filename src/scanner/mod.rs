@@ -1,5 +1,4 @@
 pub mod metadata;
-
 use crate::app::AppPaths;
 use crate::cacher::{Cacher, ImageKind};
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
@@ -177,6 +176,15 @@ impl Scanner {
 
                 tx.send(ScannerEvent::UpsertTracks(to_send)).ok();
             }
+        }
+
+        if scan_progress.discovery_done.load(Ordering::Acquire)
+            && scan_progress.processed.load(Ordering::Relaxed)
+                == scan_progress.total.load(Ordering::Relaxed)
+        {
+            Self::flush_batches(tx, existing, new);
+
+            tx.send(ScannerEvent::ScanFinished).ok();
         }
     }
 

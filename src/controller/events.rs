@@ -25,12 +25,7 @@ pub enum ScannerEvent {
 
     InsertPlaylist(Playlist),
 
-    InsertAlbumArt(ImageId, Arc<RenderImage>),
-    InsertThumbnails(HashMap<ImageId, Arc<RenderImage>>, ImageKind),
-    InsertPlaylistThumbnail(PlaylistId, ImageId, Arc<RenderImage>),
-    UpdateImageLookup(HashMap<TrackId, ImageId>),
-
-    MetadataScanFinished,
+    ScanFinished,
 }
 
 #[derive(Clone, PartialEq, Debug)]

@@ -8,7 +8,6 @@ pub mod errors;
 pub mod library;
 mod queue;
 pub mod scanner;
-mod scanner_v2;
 pub mod ui;
 mod worker_config;
 
