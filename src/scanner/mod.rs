@@ -1,6 +1,6 @@
 pub mod metadata;
 use crate::app::AppPaths;
-use crate::cacher::{Cacher, ImageKind};
+use crate::cacher::{CachedTrackSource, Cacher, ImageKind};
 use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
 use crate::library::{ImageId, Track, TrackSource};
 use crate::{
@@ -32,13 +32,19 @@ pub struct Scanner {
     pub tx: Sender<ScannerEvent>,
     pub rx: Receiver<ScannerCommand>,
 
+    state: State,
+    queue: VecDeque<PathBuf>,
+
     app_paths: AppPaths,
 
     scan_progress: Arc<ScanProgress>,
-    queue: VecDeque<PathBuf>,
     scan_record: ScanRecord,
+}
 
-    seen_images: Arc<DashSet<(ImageId, ImageKind)>>,
+#[derive(PartialEq)]
+enum State {
+    Idle,
+    Scanning,
 }
 
 struct ScanProgress {
@@ -59,6 +65,9 @@ impl Scanner {
             tx: event_tx,
             rx: cmd_rx,
 
+            state: State::Idle,
+            queue: VecDeque::new(),
+
             app_paths,
 
             scan_progress: Arc::new(ScanProgress {
@@ -66,10 +75,7 @@ impl Scanner {
                 total: AtomicUsize::new(0),
                 processed: AtomicUsize::new(0),
             }),
-            queue: VecDeque::new(),
             scan_record: Arc::new(DashMap::new()),
-
-            seen_images: Arc::new(DashSet::new()),
         };
 
         (scanner, cmd_tx, event_rx)
@@ -87,7 +93,27 @@ impl Scanner {
 
         loop {
             match self.rx.recv()? {
-                ScannerCommand::ScanDir(path) => self.scan_folder(path, &worker_tx),
+                ScannerCommand::ScanDir(path) => {
+                    self.queue.push_back(path);
+
+                    if self.state == State::Idle
+                        && let Some(path) = self.queue.pop_front()
+                    {
+                        self.state = State::Scanning;
+                        self.scan_folder(path, &worker_tx);
+                    }
+                }
+                ScannerCommand::StartNextScan => {
+                    self.state = State::Idle;
+                    self.write_scan_record();
+
+                    if self.state == State::Idle
+                        && let Some(path) = self.queue.pop_front()
+                    {
+                        self.state = State::Scanning;
+                        self.scan_folder(path, &worker_tx);
+                    }
+                }
             }
         }
     }
@@ -167,7 +193,8 @@ impl Scanner {
             return;
         }
 
-        if let Ok(track) = metadata::read_metadata(ts) {
+        if let Ok(track) = metadata::read_metadata(ts.clone()) {
+            let id = track.id.clone();
             new.push((track, pid));
             scan_progress.processed.fetch_add(1, Ordering::Relaxed);
 
@@ -176,6 +203,8 @@ impl Scanner {
 
                 tx.send(ScannerEvent::UpsertTracks(to_send)).ok();
             }
+
+            scan_record.insert(ts, id);
         }
 
         if scan_progress.discovery_done.load(Ordering::Acquire)
@@ -210,6 +239,14 @@ impl Scanner {
     }
 
     fn scan_folder(&self, path: PathBuf, worker_tx: &Sender<(PathBuf, Option<PlaylistId>)>) {
+        self.scan_progress.total.store(0, Ordering::Relaxed);
+        self.scan_progress.processed.store(0, Ordering::Relaxed);
+        self.scan_progress
+            .discovery_done
+            .store(false, Ordering::Release);
+
+        self.read_scan_record();
+
         let exts = ["mp3", "wav", "ogg", "aac", "m4a"];
 
         if path.is_dir() {
@@ -231,26 +268,64 @@ impl Scanner {
 
             let _ = self.tx.send(ScannerEvent::InsertPlaylist(playlist));
 
-            for entry in WalkDir::new(&path)
-                .into_iter()
-                .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.path()
-                        .extension()
-                        .and_then(OsStr::to_str)
-                        .map(|ext| exts.contains(&ext))
-                        .unwrap_or(false)
-                })
-            {
-                self.scan_progress.total.fetch_add(1, Ordering::Relaxed);
+            let scan_progress = self.scan_progress.clone();
+            let worker_tx = worker_tx.clone();
 
-                let _ = worker_tx.send((entry.path().to_path_buf(), Some(playlist_id)));
-            }
+            std::thread::spawn(move || {
+                for entry in WalkDir::new(&path)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                    .filter(|e| {
+                        e.path()
+                            .extension()
+                            .and_then(OsStr::to_str)
+                            .map(|ext| exts.contains(&ext))
+                            .unwrap_or(false)
+                    })
+                {
+                    scan_progress.total.fetch_add(1, Ordering::Relaxed);
+
+                    let _ = worker_tx.send((entry.path().to_path_buf(), Some(playlist_id)));
+                }
+            });
         }
 
         self.scan_progress
             .discovery_done
             .store(true, Ordering::Release);
+    }
+
+    fn write_scan_record(&self) {
+        let path = self.app_paths.cache.join("scan_record.bin");
+
+        let map: HashMap<CachedTrackSource, [u8; 16]> = self
+            .scan_record
+            .iter()
+            .map(|entry| (entry.key().into(), entry.value().0))
+            .collect();
+
+        let bytes = bitcode::encode(&map);
+        std::fs::write(path, bytes).unwrap();
+    }
+
+    fn read_scan_record(&self) {
+        let path = self.app_paths.cache.join("scan_record.bin");
+
+        let file = std::fs::read(path).ok();
+
+        if let Some(bytes) = file {
+            let raw: HashMap<CachedTrackSource, [u8; 16]> =
+                bitcode::decode(&bytes).unwrap_or_default();
+
+            let map: HashMap<TrackSource, TrackId> =
+                raw.iter().map(|(k, v)| (k.into(), TrackId(*v))).collect();
+
+            self.scan_record.clear();
+
+            for (k, v) in map {
+                self.scan_record.insert(k, v);
+            }
+        }
     }
 }
 

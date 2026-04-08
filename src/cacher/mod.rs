@@ -73,8 +73,8 @@ struct CachedTrack {
     pub image_id: Option<[u8; 16]>,
 }
 
-#[derive(Debug, Clone, PartialEq, Default, Encode, Decode)]
-struct CachedTrackSource {
+#[derive(Debug, Clone, PartialEq, Default, Hash, Eq, Encode, Decode)]
+pub struct CachedTrackSource {
     path: String,
     size: u64,
     modified: u64,
