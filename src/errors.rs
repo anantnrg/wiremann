@@ -34,20 +34,26 @@ pub enum ScannerError {
     LoadFolder(String),
     #[error("I/O Error occurred: `{0}`")]
     IoError(#[from] std::io::Error),
-    #[error("Image Error occurred: `{0}`")]
-    ImageError(#[from] ImageError),
     #[error("Lofty Error occurred: `{0}`")]
     LoftyError(#[from] LoftyError),
     #[error("SystemTime Error occurred: `{0}`")]
     SystemTimeError(#[from] SystemTimeError),
     #[error("Recv Error occurred: `{0}`")]
     RecvError(#[from] RecvError),
+}
+
+#[derive(Error, Debug)]
+pub enum ImageProcessorError {
+    #[error("Image Error occurred: `{0}`")]
+    ImageError(#[from] ImageError),
     #[error("Image Buffer Error occurred: `{0}`")]
     ImageBufferError(#[from] ImageBufferError),
     #[error("Image Resize Error occurred: `{0}`")]
     ImageResizeError(#[from] ResizeError),
-    #[error("Symphonia Error occurred: `{0}`")]
-    SymphoniaError(#[from] symphonia::core::errors::Error),
+    #[error("Garb Resize Error occurred: `{0}`")]
+    GarbSizeError(#[from] garb::SizeError),
+    #[error("Recv Error occurred: `{0}`")]
+    RecvError(#[from] RecvError),
 }
 
 #[derive(Error, Debug)]

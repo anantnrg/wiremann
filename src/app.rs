@@ -1,4 +1,5 @@
 use crate::cacher::Cacher;
+use crate::image_processor::ImageProcessor;
 use crate::worker_config::{WorkerConfig, calculate_worker_config};
 use crate::{
     audio::Audio,
@@ -14,10 +15,19 @@ use crate::{
 use gpui::{AppContext, Bounds, Result, TitlebarOptions, WindowBounds, WindowOptions, px, size};
 use gpui_platform::application;
 use std::{
+    fs,
+    path::PathBuf,
     sync::Arc,
     thread,
     time::{Duration, Instant},
 };
+
+#[derive(Clone)]
+pub struct AppPaths {
+    pub cache: PathBuf,
+    pub config: PathBuf,
+    pub data: PathBuf,
+}
 
 #[allow(
     clippy::too_many_lines,
@@ -32,14 +42,19 @@ pub fn run() -> Result<(), AppError> {
         assets.load_fonts(cx).expect("Could not load fonts");
 
         let WorkerConfig {
-            metadata,
-            thumbnail,
+            metadata: metadata_workers,
+            thumbnail: thumbnail_workers,
             cacher: cacher_workers,
         } = calculate_worker_config();
 
+        let app_paths = get_app_paths();
+        ensure_app_paths(&app_paths);
+
         let (mut audio, audio_tx, audio_rx) = Audio::new();
-        let (mut scanner, scanner_tx, scanner_rx) = Scanner::new();
-        let (cacher, cacher_tx, cacher_rx) = Cacher::new();
+        let (mut scanner, scanner_tx, scanner_rx) = Scanner::new(app_paths.clone());
+        let (cacher, cacher_tx, cacher_rx) = Cacher::new(app_paths.clone());
+        let (mut image_processor, image_processor_tx, image_processor_rx) =
+            ImageProcessor::new(app_paths);
 
         let controller = Controller::new(
             cx.new(|_| AppState::default()),
@@ -49,6 +64,8 @@ pub fn run() -> Result<(), AppError> {
             scanner_rx,
             cacher_tx,
             cacher_rx,
+            image_processor_tx,
+            image_processor_rx,
         );
 
         thread::spawn(move || {
@@ -58,7 +75,7 @@ pub fn run() -> Result<(), AppError> {
         });
 
         thread::spawn(move || {
-            if let Err(e) = scanner.run(metadata, thumbnail) {
+            if let Err(e) = scanner.run(metadata_workers) {
                 eprintln!("Scanner thread crashed with error: {e:?}");
             }
         });
@@ -66,6 +83,12 @@ pub fn run() -> Result<(), AppError> {
         thread::spawn(move || {
             if let Err(e) = cacher.run(cacher_workers) {
                 eprintln!("Cacher thread crashed with error: {e:?}");
+            }
+        });
+
+        thread::spawn(move || {
+            if let Err(e) = image_processor.run(thumbnail_workers) {
+                eprintln!("Image processor thread crashed with error: {e:?}");
             }
         });
 
@@ -117,6 +140,12 @@ pub fn run() -> Result<(), AppError> {
                             });
                         }
 
+                        while let Ok(e) = controller.image_processor_rx.try_recv() {
+                            arc_res.update(cx, |res_handler, cx| {
+                                res_handler.handle(cx, Event::ImageProcessor(e));
+                            });
+                        }
+
                         if last_pos_request.elapsed() >= Duration::from_millis(256) {
                             controller.get_pos();
 
@@ -143,13 +172,14 @@ pub fn run() -> Result<(), AppError> {
                         Event::Audio(event) => {
                             controller_clone.handle_audio_event(cx, event, &view_clone)
                         }
-
                         Event::Scanner(event) => {
                             controller_clone.handle_scanner_event(cx, event, &view_clone)
                         }
-
                         Event::Cacher(event) => {
                             controller_clone.handle_cacher_event(cx, event, &view_clone)
+                        }
+                        Event::ImageProcessor(event) => {
+                            controller_clone.handle_image_processor_event(cx, event, &view_clone)
                         }
                     } {
                         eprintln!("controller error: {e:?}");
@@ -166,4 +196,25 @@ pub fn run() -> Result<(), AppError> {
     });
 
     Ok(())
+}
+
+fn get_app_paths() -> AppPaths {
+    let project_dir = directories::ProjectDirs::from("app", "wiremann", "wiremann")
+        .expect("Couldn't get application paths");
+
+    let cache = project_dir.cache_dir().to_path_buf();
+    let config = project_dir.config_dir().to_path_buf();
+    let data = project_dir.data_dir().to_path_buf();
+
+    AppPaths {
+        cache,
+        config,
+        data,
+    }
+}
+
+fn ensure_app_paths(app_paths: &AppPaths) {
+    fs::create_dir_all(app_paths.cache.as_path()).expect("failed to create cache directory");
+    fs::create_dir_all(app_paths.config.as_path()).expect("failed to create cache directory");
+    fs::create_dir_all(app_paths.data.as_path()).expect("failed to create cache directory");
 }

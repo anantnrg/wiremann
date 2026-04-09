@@ -2,7 +2,7 @@ pub mod playlists;
 
 use serde::{Deserialize, Serialize};
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use twox_hash::XxHash3_128;
 
 const AUDIO_HASH_SEED: u64 = 0x3141_5926_5358_9793;
@@ -28,7 +28,7 @@ pub struct Track {
     pub image_id: Option<ImageId>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash, Eq)]
 pub struct TrackSource {
     pub path: PathBuf,
     pub size: u64,
@@ -67,5 +67,24 @@ impl ImageId {
 impl Track {
     pub fn get_valid_source(&self) -> Option<&TrackSource> {
         self.sources.iter().find(|&t| t.path.exists())
+    }
+}
+
+impl TrackSource {
+    pub fn generate(path: &Path) -> Result<Self, io::Error> {
+        let meta = std::fs::metadata(path)?;
+        let modified = meta
+            .modified()?
+            .elapsed()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
+            .as_secs();
+
+        let size = meta.len();
+
+        Ok(TrackSource {
+            path: path.to_path_buf(),
+            modified,
+            size,
+        })
     }
 }

@@ -103,10 +103,9 @@ impl LibraryPage {
                     .hover(|this| this.bg(theme.accent_15))
                     .on_click(move |_, _, cx| {
                         let controller = cx.global::<Controller>().clone();
-                        let tracks = controller.state.read(cx).library.tracks.clone();
                         cx.spawn(async move |_| {
                             if let Some(folder) = rfd::AsyncFileDialog::new().pick_folder().await {
-                                controller.scan_folder(tracks, folder.path().into());
+                                controller.scan_dir(folder.path().into());
                             }
                         })
                         .detach()

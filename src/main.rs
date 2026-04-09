@@ -1,10 +1,11 @@
 #![warn(clippy::pedantic)]
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 pub mod app;
 pub mod audio;
 mod cacher;
 pub mod controller;
 pub mod errors;
+pub mod image_processor;
 pub mod library;
 mod queue;
 pub mod scanner;
@@ -14,5 +15,9 @@ mod worker_config;
 use errors::AppError;
 
 fn main() -> Result<(), AppError> {
+    if cfg!(debug_assertions) {
+        eprintln!("WARNING: running in debug mode — performance will be garbage");
+    }
+
     app::run()
 }
