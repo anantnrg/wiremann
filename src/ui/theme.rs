@@ -26,6 +26,19 @@ pub struct Theme {
     pub accent_12: Rgba,
     pub accent_15: Rgba,
     pub accent_30: Rgba,
+
+    // REFACTOR
+    // Titlebar
+    pub titlebar_bg: Rgba,
+
+    // Page Switcher
+    pub switcher_bg: Rgba,
+    pub switcher_text: Rgba,
+    pub switcher_text_hover: Rgba,
+    pub switcher_active: Rgba,
+
+    // Common
+    pub border: Rgba,
 }
 
 impl Default for Theme {
@@ -50,6 +63,15 @@ impl Default for Theme {
             accent_12: rgba(0x8B7BF71F),
             accent_15: rgba(0x8B7BF726),
             accent_30: rgba(0x8B7BF74D),
+
+            titlebar_bg: rgb(0x090909),
+
+            switcher_bg: rgb(0x161616),
+            switcher_text: rgb(0x9A9A9A),
+            switcher_text_hover: rgb(0xFFFFFF),
+            switcher_active: rgb(0xFFFFFF),
+
+            border: rgb(0x202020),
         }
     }
 }
