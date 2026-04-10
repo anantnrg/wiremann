@@ -81,8 +81,8 @@ impl Render for Titlebar {
                     .child(
                         div()
                             .id("win_close_btn")
-                            .h_7()
-                            .w_7()
+                            .h_8()
+                            .w_8()
                             .rounded_full()
                             .flex()
                             .items_center()
