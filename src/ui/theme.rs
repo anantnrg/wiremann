@@ -33,9 +33,10 @@ pub struct Theme {
 
     // Page Switcher
     pub switcher_bg: Rgba,
+    pub switcher_active: Rgba,
     pub switcher_text: Rgba,
     pub switcher_text_hover: Rgba,
-    pub switcher_active: Rgba,
+    pub switcher_text_active: Rgba,
 
     // Common
     pub border: Rgba,
@@ -67,9 +68,10 @@ impl Default for Theme {
             titlebar_bg: rgb(0x090909),
 
             switcher_bg: rgb(0x161616),
+            switcher_active: rgb(0xFFFFFF),
             switcher_text: rgb(0x9A9A9A),
             switcher_text_hover: rgb(0xFFFFFF),
-            switcher_active: rgb(0xFFFFFF),
+            switcher_text_active: rgb(0x090909),
 
             border: rgb(0x202020),
         }
