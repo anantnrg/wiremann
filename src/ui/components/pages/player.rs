@@ -271,6 +271,8 @@ impl Render for PlayerPage {
                     .flex()
                     .flex_col()
                     .bg(theme.queue_bg)
+                    .border_l_1()
+                    .border_color(theme.border)
                     .child(
                         div()
                             .w_full()

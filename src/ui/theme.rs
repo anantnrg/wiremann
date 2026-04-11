@@ -56,6 +56,12 @@ pub struct Theme {
     pub queue_show_hide_text: Rgba,
     pub queue_show_hide_text_hover: Rgba,
     pub queue_show_hide_bg_hover: Rgba,
+    pub queue_item_title: Rgba,
+    pub queue_item_title_current: Rgba,
+    pub queue_item_artist: Rgba,
+    pub queue_item_bg_hover: Rgba,
+    pub queue_item_bg_current: Rgba,
+    pub queue_item_border_current: Rgba,
 
     // Controlbar
     pub playback_slider_track: Rgba,
@@ -116,6 +122,12 @@ impl Default for Theme {
             queue_show_hide_text: rgba(0xFFFFFFCC),
             queue_show_hide_text_hover: rgb(0xFFFFFF),
             queue_show_hide_bg_hover: rgba(0xFFFFFF1A),
+            queue_item_title: rgba(0xFFFFFFF2),
+            queue_item_title_current: rgb(0xFFFFFF),
+            queue_item_artist: rgba(0xFFFFFF80),
+            queue_item_bg_hover: rgba(0xFFFFFF1A),
+            queue_item_bg_current: rgba(0xFFFFFF1A),
+            queue_item_border_current: rgba(0xFFFFFF66),
 
             playback_slider_track: rgba(0xFFFFFF1A),
             playback_slider_fill: rgb(0xFFFFFF),
