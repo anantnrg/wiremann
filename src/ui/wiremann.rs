@@ -1,5 +1,5 @@
 use crate::controller::Controller;
-use crate::ui::animations::{ease_in_out_expo, ease_in_out_quart};
+use crate::ui::animations::ease_in_out_expo;
 use crate::ui::components;
 use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::pages::playlists::PlaylistsPage;
@@ -109,8 +109,8 @@ impl Render for Wiremann {
 
         let page = cx.global::<Page>().clone();
 
-        let page_state = window.use_keyed_state("page_transition", cx, |_, _| (page, page));
-        let (current_page, prev_page) = page_state.read(cx).clone();
+        let page_state = window.use_keyed_state("page_transition", cx, |_, _| page);
+        let prev_page = page_state.read(cx).clone();
 
         let direction = match (prev_page, page) {
             (Page::Library, Page::Player) => 1.0,
@@ -150,7 +150,7 @@ impl Render for Wiremann {
                                 async move |_, cx| {
                                     cx.background_executor().timer(duration).await;
                                     _ = page_state.update(cx, |state, _| {
-                                        *state = (page, page);
+                                        *state = page;
                                     });
                                 }
                             })

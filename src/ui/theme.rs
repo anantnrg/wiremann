@@ -5,8 +5,6 @@ use gpui::{Rgba, rgb, rgba};
 pub struct Theme {
     // Backgrounds
     pub bg_main: Rgba,
-    pub bg_titlebar: Rgba,
-    pub bg_queue: Rgba,
 
     // Accent
     pub accent: Rgba,
@@ -38,6 +36,26 @@ pub struct Theme {
     pub switcher_text_hover: Rgba,
     pub switcher_text_active: Rgba,
 
+    // Player
+    pub player_bg: Rgba,
+    pub player_title_text: Rgba,
+    pub player_artist_text: Rgba,
+    pub player_icons_text: Rgba,
+    pub player_icons_text_hover: Rgba,
+    pub player_icons_text_active: Rgba,
+    pub player_icons_bg: Rgba,
+    pub player_icons_bg_hover: Rgba,
+    pub player_icons_bg_active: Rgba,
+    pub player_play_pause_bg: Rgba,
+    pub player_play_pause_hover: Rgba,
+    pub player_play_pause_text: Rgba,
+    // Queue
+    pub queue_bg: Rgba,
+    pub queue_heading_text: Rgba,
+    pub queue_show_hide_text: Rgba,
+    pub queue_show_hide_text_hover: Rgba,
+    pub queue_show_hide_bg_hover: Rgba,
+
     // Common
     pub border: Rgba,
 }
@@ -47,8 +65,6 @@ impl Default for Theme {
     fn default() -> Self {
         Theme {
             bg_main: rgb(0x0A070F),
-            bg_titlebar: rgb(0x0A0515),
-            bg_queue: rgb(0x0F0C17),
 
             accent: rgb(0x8B7BF7),
 
@@ -72,6 +88,25 @@ impl Default for Theme {
             switcher_text: rgba(0xFFFFFF99),
             switcher_text_hover: rgb(0xFFFFFF),
             switcher_text_active: rgb(0x090909),
+
+            player_bg: rgb(0x0a0a0a),
+            player_title_text: rgba(0xFFFFFFF2),
+            player_artist_text: rgba(0xFFFFFF66),
+            player_icons_text: rgba(0xFFFFFF80),
+            player_icons_text_hover: rgb(0xFFFFFF),
+            player_icons_text_active: rgb(0xFFFFFF),
+            player_icons_bg: rgba(0xFFFFFF00),
+            player_icons_bg_hover: rgba(0xFFFFFF1A),
+            player_icons_bg_active: rgba(0xFFFFFF1A),
+            player_play_pause_bg: rgb(0xFFFFFF),
+            player_play_pause_hover: rgba(0xFFFFFFE6),
+            player_play_pause_text: rgb(0x090909),
+
+            queue_bg: rgba(0x090909),
+            queue_heading_text: rgba(0xFFFFFFF2),
+            queue_show_hide_text: rgba(0xFFFFFFCC),
+            queue_show_hide_text_hover: rgb(0xFFFFFF),
+            queue_show_hide_bg_hover: rgba(0xFFFFFF1A),
 
             border: rgba(0xFFFFFF1A),
         }

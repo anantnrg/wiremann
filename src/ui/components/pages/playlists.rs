@@ -425,7 +425,7 @@ impl Render for PlaylistsPage {
                     .gap_2()
                     .border_r_1()
                     .border_color(theme.white_05)
-                    .bg(theme.bg_queue)
+                    // .bg(theme.queue)
                     .child(
                         div()
                             .w_full()

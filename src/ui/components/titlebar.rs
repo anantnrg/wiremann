@@ -3,7 +3,7 @@ use crate::ui::components::icons::Icons;
 use crate::ui::theme::Theme;
 use gpui::{
     App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render,
-    Styled, Window, WindowControlArea, div, rgb, rgba, white,
+    Styled, Window, WindowControlArea, div, rgba, white,
 };
 
 #[derive(Clone)]
@@ -13,7 +13,7 @@ pub struct Titlebar {
 
 impl Render for Titlebar {
     #[allow(clippy::unreadable_literal)]
-    fn render(&mut self, win: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
         div()
             .id("titlebar")
