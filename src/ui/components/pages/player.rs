@@ -88,7 +88,7 @@ impl Render for PlayerPage {
                                         .object_fit(ObjectFit::Contain)
                                         .size_full()
                                         .rounded_xl()
-                                        .border_1()
+                                        .border_2()
                                         .border_color(theme.border),
                                 )
                             } else {

@@ -114,14 +114,16 @@ pub struct Slider {
     state: Entity<SliderState>,
     style: StyleRefinement,
     id: SharedString,
+    height: Pixels,
 }
 
 impl Slider {
-    pub fn new<T: Into<SharedString>>(state: &Entity<SliderState>, id: T) -> Self {
+    pub fn new<T: Into<SharedString>>(state: &Entity<SliderState>, id: T, height: f32) -> Self {
         Self {
             state: state.clone(),
             style: StyleRefinement::default(),
             id: id.into(),
+            height: px(height),
         }
     }
 }
@@ -194,7 +196,7 @@ impl RenderOnce for Slider {
                         .id("inner_visual_bar")
                         .relative()
                         .w_full()
-                        .h(px(4.))
+                        .h(self.height)
                         .bg(bar_color)
                         .rounded_full()
                         .child(

@@ -49,12 +49,21 @@ pub struct Theme {
     pub player_play_pause_bg: Rgba,
     pub player_play_pause_hover: Rgba,
     pub player_play_pause_text: Rgba,
+
     // Queue
     pub queue_bg: Rgba,
     pub queue_heading_text: Rgba,
     pub queue_show_hide_text: Rgba,
     pub queue_show_hide_text_hover: Rgba,
     pub queue_show_hide_bg_hover: Rgba,
+
+    // Controlbar
+    pub playback_slider_track: Rgba,
+    pub playback_slider_fill: Rgba,
+    pub playback_position_text: Rgba,
+    pub volume_icon: Rgba,
+    pub volume_slider_track: Rgba,
+    pub volume_slider_fill: Rgba,
 
     // Common
     pub border: Rgba,
@@ -107,6 +116,13 @@ impl Default for Theme {
             queue_show_hide_text: rgba(0xFFFFFFCC),
             queue_show_hide_text_hover: rgb(0xFFFFFF),
             queue_show_hide_bg_hover: rgba(0xFFFFFF1A),
+
+            playback_slider_track: rgba(0xFFFFFF1A),
+            playback_slider_fill: rgb(0xFFFFFF),
+            playback_position_text: rgba(0xFFFFFF66),
+            volume_icon: rgba(0xFFFFFF66),
+            volume_slider_track: rgba(0xFFFFFF1A),
+            volume_slider_fill: rgb(0xFFFFFF),
 
             border: rgba(0xFFFFFF1A),
         }
