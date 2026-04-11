@@ -1,4 +1,5 @@
 use crate::controller::Controller;
+use crate::ui::animations::{ease_in_out_expo, ease_in_out_quart};
 use crate::ui::components;
 use crate::ui::components::controlbar::ControlBar;
 use crate::ui::components::pages::playlists::PlaylistsPage;
@@ -158,7 +159,7 @@ impl Render for Wiremann {
                             this.child(page_el)
                                 .with_animation(
                                     ElementId::NamedInteger("page_slide".into(), page as u64),
-                                    Animation::new(duration).with_easing(gpui::ease_out_quint()),
+                                    Animation::new(duration).with_easing(ease_in_out_expo()),
                                     move |this, delta| {
                                         let offset = 360.0 * direction * (1.0 - delta);
                                         this.left(px(offset)).opacity(delta)

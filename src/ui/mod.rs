@@ -1,3 +1,4 @@
+pub mod animations;
 pub mod assets;
 pub mod components;
 pub mod helpers;
