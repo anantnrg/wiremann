@@ -116,8 +116,6 @@ pub struct Theme {
     pub playlist_track_bg_current: Rgba,
     pub playlist_track_title_current: Rgba,
 
-    pub playlist_sidebar_border: Rgba,
-
     pub playlist_sidebar_item_title: Rgba,
     pub playlist_sidebar_item_title_current: Rgba,
     pub playlist_sidebar_item_meta: Rgba,
@@ -129,6 +127,7 @@ pub struct Theme {
 
     // Common
     pub border: Rgba,
+    pub scrollbar_thumb: Rgba,
 }
 
 impl Default for Theme {
@@ -242,8 +241,6 @@ impl Default for Theme {
             playlist_track_bg_current: rgba(0x8B7BF726),
             playlist_track_title_current: rgb(0x8B7BF7),
 
-            playlist_sidebar_border: rgba(0xFFFFFF1A),
-
             playlist_sidebar_item_title: rgb(0xFFFFFF),
             playlist_sidebar_item_title_current: rgb(0x8B7BF7),
             playlist_sidebar_item_meta: rgb(0x5A5A6B),
@@ -253,7 +250,8 @@ impl Default for Theme {
 
             playlist_empty_text: rgb(0x5A5A6B),
 
-            border: rgba(0xFFFFFF1A),
+            border: rgba(0xFFFFFF29),
+            scrollbar_thumb: rgb(0x8B7BF7),
         }
     }
 }

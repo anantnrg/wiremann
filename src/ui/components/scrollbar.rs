@@ -555,7 +555,7 @@ impl RenderOnce for FloatingScrollbar {
                     .w(px(8.0))
                     .h_full()
                     .bg(gpui::transparent_black())
-                    .text_color(theme.accent)
+                    .text_color(theme.scrollbar_thumb)
                     .rounded(px(0.0)),
             )
     }

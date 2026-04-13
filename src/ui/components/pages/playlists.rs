@@ -419,7 +419,7 @@ impl Render for PlaylistsPage {
                     .flex_col()
                     .gap_2()
                     .border_r_1()
-                    .border_color(theme.playlist_sidebar_border)
+                    .border_color(theme.border)
                     .child(
                         div()
                             .w_full()
