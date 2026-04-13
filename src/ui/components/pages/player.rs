@@ -92,7 +92,14 @@ impl Render for PlayerPage {
                                         .border_color(theme.border),
                                 )
                             } else {
-                                div().size_full().flex().flex_1()
+                                div().flex().flex_1().child(
+                                    img("icons/placeholder.svg")
+                                        .object_fit(ObjectFit::Contain)
+                                        .size_full()
+                                        .rounded_xl()
+                                        .border_2()
+                                        .border_color(theme.border),
+                                )
                             })
                             .child(
                                 div()

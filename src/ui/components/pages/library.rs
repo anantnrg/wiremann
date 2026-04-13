@@ -200,7 +200,12 @@ impl LibraryPage {
                                         .size_full()
                                         .rounded_lg(),
                                 ),
-                                None => div().size_48().flex_shrink_0(),
+                                None => div().size_full().mb_3().child(
+                                    img("icons/placeholder.svg")
+                                        .object_fit(ObjectFit::Contain)
+                                        .size_full()
+                                        .rounded_lg(),
+                                ),
                             })
                             .child(
                                 div()
@@ -353,7 +358,12 @@ impl LibraryPage {
                                             .size_full()
                                             .rounded_sm(),
                                     ),
-                                    None => div().size_11().flex_shrink_0(),
+                                    None => div().size_11().flex_shrink_0().child(
+                                        img("icons/placeholder.svg")
+                                            .object_fit(ObjectFit::Contain)
+                                            .size_full()
+                                            .rounded_sm(),
+                                    ),
                                 })
                                 .when(is_current, |this| {
                                     this.text_color(theme.library_track_title_text_active)
