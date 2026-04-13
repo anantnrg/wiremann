@@ -15,7 +15,6 @@ pub enum Page {
     Library,
     Player,
     Playlists,
-    Settings,
 }
 
 impl gpui::Global for Page {}

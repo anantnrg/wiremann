@@ -41,12 +41,11 @@ impl PlayerPage {
 impl Render for PlayerPage {
     #[allow(clippy::too_many_lines)]
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.global::<Theme>();
+        let theme = cx.global::<Theme>().clone();
 
         let controller = cx.global::<Controller>().clone();
         let state = controller.state.read(cx);
         let thumbnail = cx.global::<ImageCache>().current.clone();
-        // let scanner_state = cx.global::<Controller>().scanner_state.clone();
         let scroll_handle = self.queue_scroll_handle.clone();
         let show_queue = self.show_queue.clone();
 
@@ -71,6 +70,7 @@ impl Render for PlayerPage {
                     .px_16()
                     .pt_8()
                     .pb_2()
+                    .bg(theme.player_bg)
                     .child(if let Some(track) = current {
                         div()
                             .w_auto()
@@ -87,10 +87,19 @@ impl Render for PlayerPage {
                                     img(thumbnail)
                                         .object_fit(ObjectFit::Contain)
                                         .size_full()
-                                        .rounded_xl(),
+                                        .rounded_xl()
+                                        .border_2()
+                                        .border_color(theme.border),
                                 )
                             } else {
-                                div().size_full().flex().flex_1()
+                                div().flex().flex_1().child(
+                                    img("icons/placeholder.svg")
+                                        .object_fit(ObjectFit::Contain)
+                                        .size_full()
+                                        .rounded_xl()
+                                        .border_2()
+                                        .border_color(theme.border),
+                                )
                             })
                             .child(
                                 div()
@@ -102,7 +111,7 @@ impl Render for PlayerPage {
                                     .child(
                                         div()
                                             .text_2xl()
-                                            .text_color(theme.text_primary)
+                                            .text_color(theme.player_title_text)
                                             .font_weight(FontWeight(500.0))
                                             .max_w_96()
                                             .truncate()
@@ -111,7 +120,7 @@ impl Render for PlayerPage {
                                     .child(
                                         div()
                                             .text_base()
-                                            .text_color(theme.text_muted)
+                                            .text_color(theme.player_artist_text)
                                             .font_weight(FontWeight(400.0))
                                             .max_w_96()
                                             .truncate()
@@ -139,12 +148,18 @@ impl Render for PlayerPage {
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .text_color(theme.text_primary)
+                                    .text_color(theme.player_icons_text)
                                     .when(
                                         cx.global::<Controller>().state.read(cx).playback.shuffling,
-                                        |this| this.text_color(theme.accent),
+                                        |this| {
+                                            this.text_color(theme.player_icons_text_active)
+                                                .bg(theme.player_icons_bg_active)
+                                        },
                                     )
-                                    .hover(|this| this.bg(theme.white_05))
+                                    .hover(|this| {
+                                        this.bg(theme.player_icons_bg_hover)
+                                            .text_color(theme.player_icons_text_hover)
+                                    })
                                     .on_click({
                                         let controller = controller.clone();
                                         move |_, _, cx| controller.set_shuffle(cx)
@@ -160,9 +175,12 @@ impl Render for PlayerPage {
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .hover(|this| this.bg(theme.white_05))
+                                    .hover(|this| {
+                                        this.bg(theme.player_icons_bg_hover)
+                                            .text_color(theme.player_icons_text_hover)
+                                    })
                                     .on_click(|_, _, cx| cx.global::<Controller>().clone().prev(cx))
-                                    .text_color(theme.text_primary)
+                                    .text_color(theme.player_icons_text)
                                     .cursor_pointer()
                                     .child(Icon::new(Icons::Prev).size_4()),
                             )
@@ -174,8 +192,8 @@ impl Render for PlayerPage {
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .bg(theme.accent)
-                                    .hover(|this| this.bg(theme.accent_30))
+                                    .bg(theme.player_play_pause_bg)
+                                    .hover(|this| this.bg(theme.player_play_pause_hover))
                                     .on_click(|_, _, cx| {
                                         match cx
                                             .global::<Controller>()
@@ -192,7 +210,7 @@ impl Render for PlayerPage {
                                             }
                                         }
                                     })
-                                    .text_color(theme.text_primary)
+                                    .text_color(theme.player_play_pause_text)
                                     .cursor_pointer()
                                     .child(
                                         if cx.global::<Controller>().state.read(cx).playback.status
@@ -212,10 +230,13 @@ impl Render for PlayerPage {
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .hover(|this| this.bg(theme.white_05))
+                                    .hover(|this| {
+                                        this.bg(theme.player_icons_bg_hover)
+                                            .text_color(theme.player_icons_text_hover)
+                                    })
                                     .on_click(|_, _, cx| cx.global::<Controller>().clone().next(cx))
                                     .cursor_pointer()
-                                    .text_color(theme.text_primary)
+                                    .text_color(theme.player_icons_text)
                                     .child(Icon::new(Icons::Next).size_4()),
                             )
                             .child(
@@ -226,11 +247,18 @@ impl Render for PlayerPage {
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .hover(|this| this.bg(theme.white_05))
-                                    .text_color(theme.text_primary)
+                                    .cursor_pointer()
+                                    .hover(|this| {
+                                        this.bg(theme.player_icons_bg_hover)
+                                            .text_color(theme.player_icons_text_hover)
+                                    })
+                                    .text_color(theme.player_icons_text)
                                     .when(
                                         cx.global::<Controller>().state.read(cx).playback.repeat,
-                                        |this| this.text_color(theme.accent),
+                                        |this| {
+                                            this.text_color(theme.player_icons_text_active)
+                                                .bg(theme.player_icons_bg_active)
+                                        },
                                     )
                                     .on_click({
                                         let controller = controller.clone();
@@ -241,7 +269,7 @@ impl Render for PlayerPage {
                     )
                     .child(self.controlbar.clone()),
             )
-            .child(div().w(px(1.0)).h_full().bg(theme.white_05))
+            .child(div().w(px(1.0)).h_full().bg(theme.border))
             .child(if *show_queue.read(cx) {
                 div()
                     .h_full()
@@ -249,7 +277,9 @@ impl Render for PlayerPage {
                     .flex_shrink_0()
                     .flex()
                     .flex_col()
-                    .bg(theme.bg_queue)
+                    .bg(theme.queue_bg)
+                    .border_l_1()
+                    .border_color(theme.border)
                     .child(
                         div()
                             .w_full()
@@ -260,7 +290,7 @@ impl Render for PlayerPage {
                             .child(
                                 div()
                                     .text_base()
-                                    .text_color(theme.text_primary)
+                                    .text_color(theme.queue_heading_text)
                                     .font_weight(FontWeight(500.0))
                                     .child("Queue"),
                             ),
@@ -296,9 +326,12 @@ impl Render for PlayerPage {
                     .rounded_md()
                     .text_sm()
                     .font_weight(FontWeight(400.0))
-                    .text_color(theme.text_muted)
+                    .text_color(theme.queue_show_hide_text)
                     .cursor_pointer()
-                    .hover(|this| this.bg(theme.white_05).text_color(theme.text_primary))
+                    .hover(|this| {
+                        this.bg(theme.queue_show_hide_bg_hover)
+                            .text_color(theme.queue_show_hide_text_hover)
+                    })
                     .on_click(move |_, _, cx| show_queue.update(cx, |this, _| *this = !*this))
                     .child(if *self.show_queue.read(cx) {
                         "Hide"

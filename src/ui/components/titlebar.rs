@@ -3,7 +3,7 @@ use crate::ui::components::icons::Icons;
 use crate::ui::theme::Theme;
 use gpui::{
     App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render,
-    Styled, Window, WindowControlArea, div, rgb,
+    Styled, Window, WindowControlArea, div, rgba, white,
 };
 
 #[derive(Clone)]
@@ -13,80 +13,88 @@ pub struct Titlebar {
 
 impl Render for Titlebar {
     #[allow(clippy::unreadable_literal)]
-    fn render(&mut self, win: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.global::<Theme>();
         div()
             .id("titlebar")
-            .h_10()
+            .h_12()
             .w_full()
             .flex()
             .items_center()
-            .justify_between()
+            .justify_center()
             .border_b_1()
-            .border_color(theme.white_05)
-            .bg(theme.bg_titlebar)
+            .border_color(theme.border)
+            .bg(theme.titlebar_bg)
             .child(
                 div()
-                    .flex()
-                    .flex_shrink_0()
+                    .w_full()
                     .h_full()
-                    .w_auto()
-                    .child(self.navbar.clone()),
+                    .flex()
+                    .items_center()
+                    .justify_start()
+                    .px_4()
+                    .text_color(white())
+                    .child(
+                        div()
+                            .id("drag_area")
+                            .w_full()
+                            .h_full()
+                            .window_control_area(WindowControlArea::Drag),
+                    ),
             )
             .child(
                 div()
-                    .flex()
+                    .w_full()
                     .h_full()
-                    .flex_1()
-                    .window_control_area(WindowControlArea::Drag),
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .px_4()
+                    .py_1()
+                    .text_color(white())
+                    .child(
+                        div()
+                            .id("drag_area")
+                            .w_full()
+                            .h_full()
+                            .window_control_area(WindowControlArea::Drag),
+                    )
+                    .child(self.navbar.clone())
+                    .child(
+                        div()
+                            .id("drag_area")
+                            .w_full()
+                            .h_full()
+                            .window_control_area(WindowControlArea::Drag),
+                    ),
             )
             .child(
                 div()
+                    .w_full()
                     .h_full()
-                    .flex_shrink_0()
                     .flex()
+                    .items_center()
                     .justify_end()
+                    .px_4()
+                    .text_color(white())
                     .child(
                         div()
-                            .id("win_min")
+                            .id("drag_area")
+                            .w_full()
                             .h_full()
-                            .w_12()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(theme.text_primary)
-                            .child(Icons::WinMin)
-                            .cursor_pointer()
-                            .hover(|this| this.bg(theme.white_08))
-                            .window_control_area(WindowControlArea::Min),
+                            .window_control_area(WindowControlArea::Drag),
                     )
                     .child(
                         div()
-                            .id("win_max")
-                            .h_full()
-                            .w_12()
+                            .id("win_close_btn")
+                            .h_8()
+                            .w_8()
+                            .rounded_full()
                             .flex()
                             .items_center()
                             .justify_center()
-                            .hover(|this| this.bg(theme.white_08))
-                            .text_color(theme.text_primary)
-                            .cursor_pointer()
-                            .child(if win.is_maximized() {
-                                Icons::WinRes
-                            } else {
-                                Icons::WinMax
-                            })
-                            .window_control_area(WindowControlArea::Max),
-                    )
-                    .child(
-                        div()
-                            .h_full()
-                            .w_12()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .hover(|this| this.bg(rgb(0xe81123)))
-                            .text_color(theme.text_primary)
+                            .hover(|this| this.bg(theme.titlebar_window_icons_bg_hover))
+                            .text_color(theme.titlebar_window_icons_text)
                             .cursor_pointer()
                             .child(Icons::WinClose)
                             .window_control_area(WindowControlArea::Close),

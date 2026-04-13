@@ -69,15 +69,21 @@ impl Render for Item {
             .gap_4()
             .mb_2()
             .rounded_lg()
-            .hover(|d| d.bg(theme.white_05))
-            .when(is_current, |d| d.bg(theme.accent_15))
+            .hover(|d| d.bg(theme.queue_item_bg_hover))
+            .when(is_current, |d| {
+                d.bg(theme.queue_item_bg_current)
+                    .border_1()
+                    .border_color(theme.border)
+            })
             .cursor_pointer()
             .child(match thumbnail {
                 Some(image) => div().size_12().flex_shrink_0().child(
                     img(image.clone())
                         .object_fit(ObjectFit::Contain)
                         .size_full()
-                        .rounded_md(),
+                        .rounded_md()
+                        .border_1()
+                        .border_color(theme.border),
                 ),
                 None => div().size_12().flex_shrink_0(),
             })
@@ -90,9 +96,9 @@ impl Render for Item {
                             .text_base()
                             .truncate()
                             .text_color(if is_current {
-                                theme.accent
+                                theme.queue_item_title_current
                             } else {
-                                theme.text_primary
+                                theme.queue_item_title
                             })
                             .child(self.data.title.clone()),
                     )
@@ -100,7 +106,7 @@ impl Render for Item {
                         div()
                             .text_sm()
                             .truncate()
-                            .text_color(theme.text_muted)
+                            .text_color(theme.queue_item_artist)
                             .child(self.data.artist.clone()),
                     ),
             )

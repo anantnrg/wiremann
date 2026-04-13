@@ -64,9 +64,9 @@ impl Render for ControlBar {
                     .items_center()
                     .justify_center()
                     .child(
-                        Slider::new(&self.playback_slider_state.clone(), "playback_slider")
-                            .text_color(theme.accent)
-                            .bg(theme.white_08),
+                        Slider::new(&self.playback_slider_state.clone(), "playback_slider", 6.0)
+                            .text_color(theme.playback_slider_fill)
+                            .bg(theme.playback_slider_track),
                     )
                     .child(
                         div()
@@ -81,7 +81,7 @@ impl Render for ControlBar {
                                     .flex_shrink_0()
                                     .font_family("JetBrains Mono")
                                     .text_sm()
-                                    .text_color(theme.text_muted)
+                                    .text_color(theme.playback_position_text)
                                     .child(format!(
                                         "{:02}:{:02}",
                                         state.playback.position / 60,
@@ -94,7 +94,7 @@ impl Render for ControlBar {
                                     .flex_shrink_0()
                                     .font_family("JetBrains Mono")
                                     .text_sm()
-                                    .text_color(theme.text_muted)
+                                    .text_color(theme.playback_position_text)
                                     .child(format!("{:02}:{:02}", duration / 60, duration % 60)),
                             ),
                     )
@@ -122,7 +122,7 @@ impl Render for ControlBar {
                                                 let controller = controller.clone();
                                                 move |_, _, cx| controller.set_mute(cx)
                                             })
-                                            .text_color(theme.text_primary)
+                                            .text_color(theme.volume_icon)
                                             .child(
                                                 Icon::new(if state.playback.mute {
                                                     Icons::VolumeMute
@@ -139,9 +139,13 @@ impl Render for ControlBar {
                                     )
                                     .child(
                                         div().w_40().flex().flex_shrink_0().child(
-                                            Slider::new(&self.vol_slider_state, "volume_slider")
-                                                .bg(theme.white_08)
-                                                .text_color(theme.accent),
+                                            Slider::new(
+                                                &self.vol_slider_state,
+                                                "volume_slider",
+                                                4.0,
+                                            )
+                                            .bg(theme.volume_slider_track)
+                                            .text_color(theme.volume_slider_fill),
                                         ),
                                     ),
                             ),
