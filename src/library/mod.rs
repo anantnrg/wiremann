@@ -55,6 +55,7 @@ impl TrackId {
 }
 
 impl ImageId {
+    #[allow(clippy::missing_errors_doc)]
     pub fn generate(bytes: &[u8]) -> Result<Self, io::Error> {
         let mut hasher = XxHash3_128::with_seed(IMAGE_HASH_SEED);
 
