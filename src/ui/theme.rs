@@ -3,29 +3,6 @@ use gpui::{Rgba, rgb, rgba};
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug)]
 pub struct Theme {
-    // Backgrounds
-    pub bg_main: Rgba,
-
-    // Accent
-    pub accent: Rgba,
-
-    // Text
-    pub text_primary: Rgba,
-    pub text_secondary: Rgba,
-    pub text_muted: Rgba,
-
-    // White overlays
-    pub white_05: Rgba,
-    pub white_08: Rgba,
-    pub white_10: Rgba,
-
-    // Accent overlays
-    pub accent_10: Rgba,
-    pub accent_12: Rgba,
-    pub accent_15: Rgba,
-    pub accent_30: Rgba,
-
-    // REFACTOR
     // Titlebar
     pub titlebar_bg: Rgba,
 
@@ -134,23 +111,6 @@ impl Default for Theme {
     #[allow(clippy::unreadable_literal)]
     fn default() -> Self {
         Theme {
-            bg_main: rgb(0x0A070F),
-
-            accent: rgb(0x8B7BF7),
-
-            text_primary: rgb(0xFFFFFF),
-            text_secondary: rgb(0x6B6B7B),
-            text_muted: rgb(0x5A5A6B),
-
-            white_05: rgba(0xFFFFFF0D),
-            white_08: rgba(0xFFFFFF14),
-            white_10: rgba(0xFFFFFF1A),
-
-            accent_10: rgba(0x8B7BF71A),
-            accent_12: rgba(0x8B7BF71F),
-            accent_15: rgba(0x8B7BF726),
-            accent_30: rgba(0x8B7BF74D),
-
             titlebar_bg: rgb(0x0A070F),
 
             switcher_bg: rgba(0xFFFFFF0D),
