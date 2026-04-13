@@ -93,8 +93,8 @@ impl Render for Titlebar {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .hover(|this| this.bg(rgba(0xFFFFFF1A)))
-                            .text_color(theme.text_primary)
+                            .hover(|this| this.bg(theme.titlebar_window_icons_bg_hover))
+                            .text_color(theme.titlebar_window_icons_text)
                             .cursor_pointer()
                             .child(Icons::WinClose)
                             .window_control_area(WindowControlArea::Close),

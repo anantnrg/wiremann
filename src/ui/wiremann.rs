@@ -134,7 +134,7 @@ impl Render for Wiremann {
             .flex_col()
             .justify_center()
             .items_center()
-            .bg(theme.bg_main)
+            .bg(theme.app_bg)
             .child(self.titlebar.clone())
             .child(
                 div()

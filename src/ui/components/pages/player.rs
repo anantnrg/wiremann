@@ -262,7 +262,7 @@ impl Render for PlayerPage {
                     )
                     .child(self.controlbar.clone()),
             )
-            .child(div().w(px(1.0)).h_full().bg(theme.white_05))
+            .child(div().w(px(1.0)).h_full().bg(theme.border))
             .child(if *show_queue.read(cx) {
                 div()
                     .h_full()

@@ -3,8 +3,13 @@ use gpui::{Rgba, rgb, rgba};
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug)]
 pub struct Theme {
+    // App
+    pub app_bg: Rgba,
+
     // Titlebar
     pub titlebar_bg: Rgba,
+    pub titlebar_window_icons_text: Rgba,
+    pub titlebar_window_icons_bg_hover: Rgba,
 
     // Page Switcher
     pub switcher_bg: Rgba,
@@ -111,8 +116,12 @@ impl Default for Theme {
     #[allow(clippy::unreadable_literal)]
     fn default() -> Self {
         Theme {
-            titlebar_bg: rgb(0x0A070F),
+            app_bg: rgb(0x0A070F),
 
+            titlebar_bg: rgb(0x0A070F),
+            titlebar_window_icons_text: rgba(0xFFFFFFCC),
+            titlebar_window_icons_bg_hover: rgba(0xFFFFFF29),
+            
             switcher_bg: rgba(0xFFFFFF0D),
             switcher_active: rgb(0x8B7BF7),
             switcher_text: rgba(0xFFFFFFCC),
