@@ -105,19 +105,17 @@ impl Wiremann {
 
 impl Render for Wiremann {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.global::<Theme>().clone();
+        let theme = *cx.global::<Theme>();
 
-        let page = cx.global::<Page>().clone();
+        let page = *cx.global::<Page>();
 
         let page_state = window.use_keyed_state("page_transition", cx, |_, _| page);
-        let prev_page = page_state.read(cx).clone();
+        let prev_page = *page_state.read(cx);
 
         let direction = match (prev_page, page) {
-            (Page::Library, Page::Player) => 1.0,
-            (Page::Player, Page::Playlists) => 1.0,
-            (Page::Playlists, Page::Player) => -1.0,
-            (Page::Player, Page::Library) => -1.0,
-            _ => 1.0,
+            (Page::Library, Page::Player) | (Page::Player, Page::Playlists) => 1.0,
+            (Page::Playlists, Page::Player) | (Page::Player, Page::Library) => -1.0,
+            _ => 0.0,
         };
 
         let page_el = match page {
@@ -142,14 +140,16 @@ impl Render for Wiremann {
                     .w_full()
                     .h_full()
                     .map(move |this| {
-                        if prev_page != page {
+                        if prev_page == page {
+                            this.child(page_el).into_any_element()
+                        } else {
                             let duration = std::time::Duration::from_millis(300);
 
                             cx.spawn({
                                 let page_state = page_state.clone();
                                 async move |_, cx| {
                                     cx.background_executor().timer(duration).await;
-                                    _ = page_state.update(cx, |state, _| {
+                                    () = page_state.update(cx, |state, _| {
                                         *state = page;
                                     });
                                 }
@@ -166,8 +166,6 @@ impl Render for Wiremann {
                                     },
                                 )
                                 .into_any_element()
-                        } else {
-                            this.child(page_el).into_any_element()
                         }
                     }),
             )

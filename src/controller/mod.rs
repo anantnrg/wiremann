@@ -44,6 +44,7 @@ pub struct Controller {
 
 impl Controller {
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         state: Entity<AppState>,
         audio_tx: Sender<AudioCommand>,
@@ -77,7 +78,7 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         match event {
             AudioEvent::Position(pos) => {
-                let last_pos = self.state.read(cx).playback.position.clone();
+                let last_pos = self.state.read(cx).playback.position;
 
                 if *pos != last_pos {
                     view.update(cx, |this, cx| {
@@ -116,13 +117,13 @@ impl Controller {
             }
             AudioEvent::TrackLoaded(track_id, path) => {
                 let state = self.state.read(cx);
-                if !state.library.tracks.contains_key(&track_id) {
+                if !state.library.tracks.contains_key(track_id) {
                     let _ = self
                         .scanner_tx
                         .send(ScannerCommand::ScanTrack(path.clone()));
                 }
 
-                if let Some(track) = state.library.tracks.get(&track_id)
+                if let Some(track) = state.library.tracks.get(track_id)
                     && let Some(image_id) = track.image_id
                 {
                     let _ = self.cacher_tx.send(CacherCommand::GetImage(
@@ -176,7 +177,7 @@ impl Controller {
         Ok(())
     }
 
-    #[allow(clippy::missing_errors_doc)]
+    #[allow(clippy::missing_errors_doc, clippy::too_many_lines)]
     pub fn handle_scanner_event(
         &mut self,
         cx: &mut App,
@@ -201,27 +202,27 @@ impl Controller {
                             }
 
                             if existing.title.is_empty() && !track.title.is_empty() {
-                                existing.title = track.title.clone();
+                                existing.title.clone_from(&track.title);
                             }
 
                             if existing.artist.is_empty() && !track.artist.is_empty() {
-                                existing.artist = track.artist.clone();
+                                existing.artist.clone_from(&track.artist);
                             }
 
                             if existing.album.is_empty() && !track.album.is_empty() {
-                                existing.album = track.album.clone();
+                                existing.album.clone_from(&track.album);
                             }
                         } else {
                             this.library.tracks.insert(id, Arc::new(track.clone()));
                         }
 
-                        if let Some(pid) = playlist_id {
-                            if let Some(playlist) = this.library.playlists.get_mut(pid) {
-                                if !playlist.tracks.contains(&id) {
-                                    playlist.tracks.push(id);
-                                }
-                                modified_playlists.insert(*pid);
+                        if let Some(pid) = playlist_id
+                            && let Some(playlist) = this.library.playlists.get_mut(pid)
+                        {
+                            if !playlist.tracks.contains(&id) {
+                                playlist.tracks.push(id);
                             }
+                            modified_playlists.insert(*pid);
                         }
                     }
                     cx.notify();
@@ -238,14 +239,14 @@ impl Controller {
                             }
                         }
                     }
-                    cx.notify()
+                    cx.notify();
                 });
                 let state = self.state.read(cx).library.clone();
                 let _ = self.cacher_tx.send(CacherCommand::WriteLibraryState(state));
             }
             ScannerEvent::AddTrackSource(id, source) => {
                 self.state.update(cx, |this, cx| {
-                    if let Some(track) = this.library.tracks.get_mut(&id) {
+                    if let Some(track) = this.library.tracks.get_mut(id) {
                         Arc::make_mut(track).sources.push(source.clone());
                     }
 
@@ -256,12 +257,11 @@ impl Controller {
             }
             ScannerEvent::RemoveTrackSource(id, path) => {
                 self.state.update(cx, |this, cx| {
-                    if let Some(track) = this.library.tracks.get_mut(&id) {
-                        if let Some(source) =
+                    if let Some(track) = this.library.tracks.get_mut(id)
+                        && let Some(source) =
                             track.sources.iter().position(|this| this.path == *path)
-                        {
-                            Arc::make_mut(track).sources.remove(source);
-                        }
+                    {
+                        Arc::make_mut(track).sources.remove(source);
                     }
 
                     cx.notify();
@@ -289,7 +289,7 @@ impl Controller {
                     .filter_map(|(id, track)| {
                         track
                             .get_valid_source()
-                            .and_then(|src| Some(src.path.clone()))
+                            .map(|src| src.path.clone())
                             .map(|path| (*id, path))
                     })
                     .collect();
@@ -372,7 +372,7 @@ impl Controller {
             ImageProcessorEvent::UpdateImageLookup(lookup) => {
                 self.state.update(cx, |this, cx| {
                     for (id, image_id) in lookup {
-                        if let Some(track) = this.library.tracks.get_mut(&id) {
+                        if let Some(track) = this.library.tracks.get_mut(id) {
                             Arc::make_mut(track).image_id = Some(*image_id);
                         }
                     }
@@ -420,7 +420,7 @@ impl Controller {
         Ok(())
     }
 
-    #[allow(clippy::missing_errors_doc)]
+    #[allow(clippy::missing_errors_doc, clippy::too_many_lines)]
     pub fn handle_cacher_event(
         &mut self,
         cx: &mut App,
@@ -518,17 +518,16 @@ impl Controller {
                     }
                 });
 
-                if let Some(track_id) = track_id {
-                    if let Some(track) = tracks.get(track_id) {
-                        if let Some(source) = track.get_valid_source() {
-                            let _ = self.image_processor_tx.send(
-                                ImageProcessorCommand::GetCurrentAlbumArt(
-                                    *track_id,
-                                    source.path.clone(),
-                                ),
-                            );
-                        }
-                    }
+                if let Some(track_id) = track_id
+                    && let Some(track) = tracks.get(track_id)
+                    && let Some(source) = track.get_valid_source()
+                {
+                    let _ =
+                        self.image_processor_tx
+                            .send(ImageProcessorCommand::GetCurrentAlbumArt(
+                                *track_id,
+                                source.path.clone(),
+                            ));
                 }
             }
             CacherEvent::MissingThumbnails(ids) => {
@@ -550,19 +549,18 @@ impl Controller {
                         }
                     });
 
-                    if let Some(track_id) = track_id {
-                        if let Some(track) = tracks.get(track_id) {
-                            if let Some(source) = track.get_valid_source() {
-                                let mut set = HashSet::new();
-                                set.insert((*track_id, source.path.clone()));
-                                let _ = self.image_processor_tx.send(
-                                    ImageProcessorCommand::GetThumbnails(
-                                        set,
-                                        ImageKind::ThumbnailSmall,
-                                    ),
-                                );
-                            }
-                        }
+                    if let Some(track_id) = track_id
+                        && let Some(track) = tracks.get(track_id)
+                        && let Some(source) = track.get_valid_source()
+                    {
+                        let mut set = HashSet::new();
+                        set.insert((*track_id, source.path.clone()));
+                        let _ = self
+                            .image_processor_tx
+                            .send(ImageProcessorCommand::GetThumbnails(
+                                set,
+                                ImageKind::ThumbnailSmall,
+                            ));
                     }
                 }
             }
@@ -580,26 +578,22 @@ impl Controller {
                     }
                 });
 
-                if let Some(playlist_id) = playlist_id {
-                    if let Some(playlist) = playlists.get(playlist_id) {
-                        let playlist_tracks = playlist.tracks.clone();
-                        let thumb_tracks = {
-                            let state = self.state.read(cx);
+                if let Some(playlist_id) = playlist_id
+                    && let Some(playlist) = playlists.get(playlist_id)
+                {
+                    let playlist_tracks = playlist.tracks.clone();
+                    let thumb_tracks = {
+                        let state = self.state.read(cx);
 
-                            pick_playlist_thumbnail_tracks(
-                                &state.library.tracks,
-                                &playlist_tracks,
-                                4,
-                            )
-                        };
+                        pick_playlist_thumbnail_tracks(&state.library.tracks, &playlist_tracks, 4)
+                    };
 
-                        let _ = self.image_processor_tx.send(
-                            ImageProcessorCommand::PlaylistThumbnail {
+                    let _ =
+                        self.image_processor_tx
+                            .send(ImageProcessorCommand::PlaylistThumbnail {
                                 id: *playlist_id,
                                 tracks: thumb_tracks,
-                            },
-                        );
-                    }
+                            });
                 }
             }
         }
@@ -608,18 +602,18 @@ impl Controller {
 
     pub fn load_audio(&self, id: &TrackId, cx: &App) {
         let state = self.state.read(cx);
-        if let Some(track) = state.library.tracks.get(id) {
-            if let Some(source) = track.get_valid_source() {
-                let _ = self
-                    .audio_tx
-                    .send(AudioCommand::Load(*id, source.path.clone()));
-                self.image_processor_tx
-                    .send(ImageProcessorCommand::GetCurrentAlbumArt(
-                        *id,
-                        source.path.clone(),
-                    ))
-                    .ok();
-            }
+        if let Some(track) = state.library.tracks.get(id)
+            && let Some(source) = track.get_valid_source()
+        {
+            let _ = self
+                .audio_tx
+                .send(AudioCommand::Load(*id, source.path.clone()));
+            self.image_processor_tx
+                .send(ImageProcessorCommand::GetCurrentAlbumArt(
+                    *id,
+                    source.path.clone(),
+                ))
+                .ok();
         }
     }
 
@@ -628,18 +622,17 @@ impl Controller {
 
         if let Some(track_id) = state.queue.get_id(state.playback.current_index)
             && let Some(track) = state.library.tracks.get(&track_id)
+            && let Some(source) = track.get_valid_source()
         {
-            if let Some(source) = track.get_valid_source() {
-                self.audio_tx
-                    .send(AudioCommand::Load(track_id, source.path.clone()))
-                    .ok();
-                self.image_processor_tx
-                    .send(ImageProcessorCommand::GetCurrentAlbumArt(
-                        track_id,
-                        source.path.clone(),
-                    ))
-                    .ok();
-            }
+            self.audio_tx
+                .send(AudioCommand::Load(track_id, source.path.clone()))
+                .ok();
+            self.image_processor_tx
+                .send(ImageProcessorCommand::GetCurrentAlbumArt(
+                    track_id,
+                    source.path.clone(),
+                ))
+                .ok();
         }
     }
 
@@ -677,11 +670,11 @@ impl Controller {
             let insert_pos = this.playback.current_index + 1;
 
             if !queue.tracks.contains(&track_id) {
-                if queue.tracks.len() > 0 {
-                    queue.tracks.insert(insert_pos, track_id)
-                } else {
+                if queue.tracks.is_empty() {
                     queue.tracks.push(track_id);
-                };
+                } else {
+                    queue.tracks.insert(insert_pos, track_id);
+                }
 
                 queue.order = (0..queue.tracks.len()).collect();
 
@@ -855,10 +848,8 @@ impl Controller {
             if let Some(track) = tracks.get(tid) {
                 if let Some(image_id) = track.image_id {
                     cache_ids.push(image_id);
-                } else {
-                    if let Some(source) = track.get_valid_source() {
-                        scan_jobs.insert((track.id, source.path.clone()));
-                    }
+                } else if let Some(source) = track.get_valid_source() {
+                    scan_jobs.insert((track.id, source.path.clone()));
                 }
             }
         }
@@ -914,8 +905,9 @@ impl Controller {
 
 impl Global for Controller {}
 
-pub fn pick_playlist_thumbnail_tracks(
-    library_tracks: &HashMap<TrackId, Arc<Track>>,
+#[must_use]
+pub fn pick_playlist_thumbnail_tracks<S: ::std::hash::BuildHasher>(
+    library_tracks: &HashMap<TrackId, Arc<Track>, S>,
     playlist_tracks: &[TrackId],
     count: usize,
 ) -> Vec<PathBuf> {
@@ -926,12 +918,11 @@ pub fn pick_playlist_thumbnail_tracks(
     let candidates = playlist_tracks.iter().copied().sample(&mut rng, count * 3);
 
     for id in candidates {
-        if let Some(track) = library_tracks.get(&id) {
-            if albums.insert(track.album.clone()) {
-                if let Some(source) = track.get_valid_source() {
-                    chosen.push(source.path.clone());
-                }
-            }
+        if let Some(track) = library_tracks.get(&id)
+            && albums.insert(track.album.clone())
+            && let Some(source) = track.get_valid_source()
+        {
+            chosen.push(source.path.clone());
         }
 
         if chosen.len() == count {
@@ -945,12 +936,11 @@ pub fn pick_playlist_thumbnail_tracks(
                 break;
             }
 
-            if let Some(track) = library_tracks.get(id) {
-                if albums.insert(track.album.clone()) {
-                    if let Some(source) = track.get_valid_source() {
-                        chosen.push(source.path.clone());
-                    }
-                }
+            if let Some(track) = library_tracks.get(id)
+                && albums.insert(track.album.clone())
+                && let Some(source) = track.get_valid_source()
+            {
+                chosen.push(source.path.clone());
             }
         }
     }

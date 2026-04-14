@@ -7,6 +7,7 @@ use gpui::{
 };
 use smallvec::SmallVec;
 
+#[allow(clippy::type_complexity)]
 pub struct VirtualList {
     id: ElementId,
     base: Stateful<Div>,
@@ -37,7 +38,7 @@ where
         view.update(cx, |this, cx| {
             f(this, range, window, cx)
                 .into_iter()
-                .map(|r| r.into_any_element())
+                .map(gpui::IntoElement::into_any_element)
                 .collect()
         })
     };
@@ -203,6 +204,6 @@ impl Element for VirtualList {
                     item.paint(window, cx);
                 }
             },
-        )
+        );
     }
 }

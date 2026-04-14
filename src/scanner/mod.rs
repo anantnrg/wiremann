@@ -13,7 +13,7 @@ use dashmap::DashMap;
 use std::cmp::PartialEq;
 use std::collections::{HashMap, VecDeque};
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
@@ -132,7 +132,7 @@ impl Scanner {
                         recv(worker_rx) -> job => {
                             if let Ok((path, pid)) = job {
                                 Self::handle_job(
-                                    path,
+                                    path.as_path(),
                                     pid,
                                     &scan_record,
                                     &scan_progress,
@@ -153,7 +153,7 @@ impl Scanner {
     }
 
     fn handle_job(
-        path: PathBuf,
+        path: &Path,
         pid: Option<PlaylistId>,
         scan_record: &ScanRecord,
         scan_progress: &ScanProgress,
@@ -161,9 +161,8 @@ impl Scanner {
         existing: &mut HashMap<PlaylistId, Vec<TrackId>>,
         new: &mut Vec<(Track, Option<PlaylistId>)>,
     ) {
-        let ts = match TrackSource::generate(&path) {
-            Ok(ts) => ts,
-            Err(_) => return,
+        let Ok(ts) = TrackSource::generate(path) else {
+            return;
         };
 
         if let Some(entry) = scan_record.get(&ts) {
@@ -185,7 +184,7 @@ impl Scanner {
         }
 
         if let Ok(track) = metadata::read_metadata(ts.clone()) {
-            let id = track.id.clone();
+            let id = track.id;
             new.push((track, pid));
             scan_progress.processed.fetch_add(1, Ordering::Relaxed);
 
@@ -265,13 +264,12 @@ impl Scanner {
             std::thread::spawn(move || {
                 for entry in WalkDir::new(&path)
                     .into_iter()
-                    .filter_map(|e| e.ok())
+                    .filter_map(std::result::Result::ok)
                     .filter(|e| {
                         e.path()
                             .extension()
                             .and_then(OsStr::to_str)
-                            .map(|ext| exts.contains(&ext))
-                            .unwrap_or(false)
+                            .is_some_and(|ext| exts.contains(&ext))
                     })
                 {
                     scan_progress.total.fetch_add(1, Ordering::Relaxed);

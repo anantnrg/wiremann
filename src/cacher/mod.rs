@@ -140,7 +140,7 @@ impl From<&Track> for CachedTrack {
     fn from(track: &Track) -> Self {
         Self {
             id: track.id.0,
-            sources: track.sources.iter().map(|this| this.into()).collect(),
+            sources: track.sources.iter().map(Into::into).collect(),
             title: track.title.clone(),
             artist: track.artist.clone(),
             album: track.album.clone(),
@@ -154,12 +154,12 @@ impl From<CachedTrack> for Track {
     fn from(c: CachedTrack) -> Self {
         Self {
             id: TrackId(c.id),
-            sources: c.sources.iter().map(|this| this.into()).collect(),
+            sources: c.sources.iter().map(Into::into).collect(),
             title: c.title,
             artist: c.artist,
             album: c.album,
             duration: c.duration,
-            image_id: c.image_id.map(|id| ImageId(id)),
+            image_id: c.image_id.map(ImageId),
         }
     }
 }
@@ -215,10 +215,10 @@ impl From<CachedPlaylist> for Playlist {
                 CachedPlaylistSource::Generated => PlaylistSource::Generated,
                 CachedPlaylistSource::User => PlaylistSource::User,
             },
-            folder_path: cached_playlist.folder_path.map(|path| PathBuf::from(path)),
+            folder_path: cached_playlist.folder_path.map(PathBuf::from),
             tracks: cached_playlist.tracks.iter().map(|t| TrackId(*t)).collect(),
             duration: Duration::from_secs(cached_playlist.duration),
-            image_id: cached_playlist.image_id.map(|id| ImageId(id)),
+            image_id: cached_playlist.image_id.map(ImageId),
         }
     }
 }
@@ -468,7 +468,7 @@ impl Cacher {
         Ok(())
     }
 
-    fn cached_image_path(&self, id: ImageId, kind: &ImageKind) -> PathBuf {
+    fn cached_image_path(&self, id: ImageId, kind: ImageKind) -> PathBuf {
         let hex = hex::encode(id.0);
         let folder = &hex[0..2];
 
@@ -485,7 +485,7 @@ impl Cacher {
     fn write_cached_image(
         &self,
         id: ImageId,
-        kind: &ImageKind,
+        kind: ImageKind,
         cached_image: &CachedImage,
     ) -> Result<(), CacherError> {
         let final_path = self.cached_image_path(id, kind);
@@ -566,7 +566,7 @@ impl Cacher {
     fn read_cached_image(
         &self,
         id: ImageId,
-        kind: &ImageKind,
+        kind: ImageKind,
     ) -> Result<Option<Arc<RenderImage>>, CacherError> {
         let path = self.cached_image_path(id, kind);
 
@@ -648,14 +648,14 @@ impl Cacher {
                                         height,
                                         image
                                     };
-                                    match cacher.write_cached_image(id, &kind, &cached_image) {
+                                    match cacher.write_cached_image(id, kind, &cached_image) {
                                         Ok(()) => {}
                                         Err(err) => {eprintln!("Error occurred: {err:#?}");}
                                     }
                                 }
                                 Ok(CacheJob::LoadThumbnails(ids, kind)) => {
                                     for id in ids {
-                                        match cacher.read_cached_image(id, &kind) {
+                                        match cacher.read_cached_image(id, kind) {
                                             Ok(Some(image)) => { batch.insert(id, image); },
                                             Ok(None) | Err(_) => { missing.push(id); },
                                         }
@@ -695,7 +695,7 @@ impl Cacher {
             while let Ok(job) = rx.recv() {
                 match job {
                     CacheJob::LoadAlbumArt(id) => {
-                        match cacher.read_cached_image(id, &ImageKind::AlbumArt) {
+                        match cacher.read_cached_image(id, ImageKind::AlbumArt) {
                             Ok(Some(image)) => {
                                 let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
                             }
@@ -720,7 +720,7 @@ impl Cacher {
                             height,
                             image,
                         };
-                        match cacher.write_cached_image(id, &kind, &cached_image) {
+                        match cacher.write_cached_image(id, kind, &cached_image) {
                             Ok(()) => {}
                             Err(err) => {
                                 eprintln!("Error occurred: {err:#?}");
@@ -740,7 +740,7 @@ impl Cacher {
             while let Ok(job) = rx.recv() {
                 match job {
                     CacheJob::LoadPlaylistThumbnail(id) => {
-                        match cacher.read_cached_image(id, &ImageKind::Playlist) {
+                        match cacher.read_cached_image(id, ImageKind::Playlist) {
                             Ok(Some(image)) => {
                                 let _ = cacher.tx.send(CacherEvent::PlaylistThumbnail(id, image));
                             }
@@ -765,7 +765,7 @@ impl Cacher {
                             height,
                             image,
                         };
-                        match cacher.write_cached_image(id, &kind, &cached_image) {
+                        match cacher.write_cached_image(id, kind, &cached_image) {
                             Ok(()) => {}
                             Err(err) => {
                                 eprintln!("Error occurred: {err:#?}");
@@ -795,13 +795,12 @@ impl Cacher {
             };
             if let Some(name) = entry.file_name().to_str()
                 && name.ends_with(ends_with)
+                && let Some((hex_part, _rest)) = name.split_once('_')
             {
-                if let Some((hex_part, _rest)) = name.split_once('_') {
-                    let mut arr = [0u8; 16];
+                let mut arr = [0u8; 16];
 
-                    if hex::decode_to_slice(hex_part, &mut arr).is_ok() {
-                        set.insert(ImageId(arr));
-                    }
+                if hex::decode_to_slice(hex_part, &mut arr).is_ok() {
+                    set.insert(ImageId(arr));
                 }
             }
         }
