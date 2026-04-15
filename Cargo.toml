@@ -31,11 +31,12 @@ thiserror = "2.0.18"
 twox-hash = "2.1.2"
 hex = "0.4.3"
 zstd = "0.13.3"
-lru = "0.16.3"
+lru = "0.17.0"
 fast_image_resize = { version = "6.0.0", features = ["image"] }
 rfd = "0.17.2"
 dashmap = "7.0.0-rc2"
 garb = "0.2.5"
+souvlaki = "0.8.3"
 
 [build-dependencies]
 winres = "0.1.12"
