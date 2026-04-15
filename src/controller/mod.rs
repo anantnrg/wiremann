@@ -2,8 +2,8 @@ pub mod commands;
 pub mod events;
 pub mod state;
 use crate::cacher::ImageKind;
-use crate::controller::commands::{CacherCommand, ImageProcessorCommand};
-use crate::controller::events::{CacherEvent, ImageProcessorEvent};
+use crate::controller::commands::{CacherCommand, ImageProcessorCommand, SystemIntegrationCommand};
+use crate::controller::events::{CacherEvent, ImageProcessorEvent, SystemIntegrationEvent};
 use crate::controller::state::PlaybackStatus;
 use crate::library::playlists::PlaylistId;
 use crate::library::{Track, TrackId};
@@ -40,6 +40,10 @@ pub struct Controller {
     // Image processor channel
     pub image_processor_tx: Sender<ImageProcessorCommand>,
     pub image_processor_rx: Receiver<ImageProcessorEvent>,
+
+    // System integration channel
+    pub system_integration_tx: Sender<SystemIntegrationCommand>,
+    pub system_integration_rx: Receiver<SystemIntegrationEvent>,
 }
 
 impl Controller {
@@ -55,6 +59,8 @@ impl Controller {
         cacher_rx: Receiver<CacherEvent>,
         image_processor_tx: Sender<ImageProcessorCommand>,
         image_processor_rx: Receiver<ImageProcessorEvent>,
+        system_integration_tx: Sender<SystemIntegrationCommand>,
+        system_integration_rx: Receiver<SystemIntegrationEvent>,
     ) -> Self {
         Controller {
             state,
@@ -66,6 +72,8 @@ impl Controller {
             cacher_rx,
             image_processor_tx,
             image_processor_rx,
+            system_integration_tx,
+            system_integration_rx,
         }
     }
 
