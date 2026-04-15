@@ -163,6 +163,12 @@ pub fn run() -> Result<(), AppError> {
                             });
                         }
 
+                        while let Ok(e) = controller.system_integration_rx.try_recv() {
+                            arc_res.update(cx, |res_handler, cx| {
+                                res_handler.handle(cx, Event::SystemIntegration(e));
+                            });
+                        }
+
                         if last_pos_request.elapsed() >= Duration::from_millis(256) {
                             controller.get_pos();
 
@@ -185,20 +191,23 @@ pub fn run() -> Result<(), AppError> {
                 let view_clone = view.clone();
 
                 cx.subscribe(&res_handler, move |_, event, cx| {
-                    if let Err(e) = match event {
-                        Event::Audio(event) => {
-                            controller_clone.handle_audio_event(cx, event, &view_clone)
+                    if let Err(e) =
+                        match event {
+                            Event::Audio(event) => {
+                                controller_clone.handle_audio_event(cx, event, &view_clone)
+                            }
+                            Event::Scanner(event) => {
+                                controller_clone.handle_scanner_event(cx, event, &view_clone)
+                            }
+                            Event::Cacher(event) => {
+                                controller_clone.handle_cacher_event(cx, event, &view_clone)
+                            }
+                            Event::ImageProcessor(event) => controller_clone
+                                .handle_image_processor_event(cx, event, &view_clone),
+                            Event::SystemIntegration(event) => controller_clone
+                                .handle_system_integration_event(cx, event, &view_clone),
                         }
-                        Event::Scanner(event) => {
-                            controller_clone.handle_scanner_event(cx, event, &view_clone)
-                        }
-                        Event::Cacher(event) => {
-                            controller_clone.handle_cacher_event(cx, event, &view_clone)
-                        }
-                        Event::ImageProcessor(event) => {
-                            controller_clone.handle_image_processor_event(cx, event, &view_clone)
-                        }
-                    } {
+                    {
                         eprintln!("controller error: {e:?}");
                     }
                 })

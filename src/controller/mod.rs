@@ -117,6 +117,10 @@ impl Controller {
                         cx.notify();
                     });
 
+                    self.system_integration_tx
+                        .send(SystemIntegrationCommand::SetPosition(*pos))
+                        .ok();
+
                     let state = self.state.read(cx).playback.clone();
                     let _ = self
                         .cacher_tx
@@ -131,22 +135,28 @@ impl Controller {
                         .send(ScannerCommand::ScanTrack(path.clone()));
                 }
 
-                if let Some(track) = state.library.tracks.get(track_id)
-                    && let Some(image_id) = track.image_id
-                {
-                    let _ = self.cacher_tx.send(CacherCommand::GetImage(
-                        HashSet::from([image_id]),
-                        ImageKind::AlbumArt,
-                    ));
-                } else {
-                    let _ =
-                        self.image_processor_tx
-                            .send(ImageProcessorCommand::GetCurrentAlbumArt(
-                                *track_id,
-                                path.clone(),
-                            ));
-                }
+                if let Some(track) = state.library.tracks.get(track_id) {
+                    if let Some(image_id) = track.image_id {
+                        let _ = self.cacher_tx.send(CacherCommand::GetImage(
+                            HashSet::from([image_id]),
+                            ImageKind::AlbumArt,
+                        ));
+                    } else {
+                        let _ = self.image_processor_tx.send(
+                            ImageProcessorCommand::GetCurrentAlbumArt(*track_id, path.clone()),
+                        );
+                    }
 
+                    self.system_integration_tx
+                        .send(SystemIntegrationCommand::SetMetadata {
+                            title: track.title.clone(),
+                            artist: track.artist.clone(),
+                            album: track.album.clone(),
+                            image: None,
+                            duration: track.duration,
+                        })
+                        .ok();
+                }
                 self.state.update(cx, |this, cx| {
                     this.playback.current = Some(*track_id);
 
@@ -168,6 +178,12 @@ impl Controller {
                     cx.notify();
                 });
                 let state = self.state.read(cx).playback.clone();
+                self.system_integration_tx
+                    .send(SystemIntegrationCommand::SetPlaybackStatus(
+                        *status,
+                        state.position,
+                    ))
+                    .ok();
                 let _ = self
                     .cacher_tx
                     .send(CacherCommand::WritePlaybackState(state));
@@ -605,6 +621,34 @@ impl Controller {
                 }
             }
         }
+        Ok(())
+    }
+
+    #[allow(clippy::missing_errors_doc, clippy::too_many_lines)]
+    pub fn handle_system_integration_event(
+        &mut self,
+        cx: &mut App,
+        event: &SystemIntegrationEvent,
+        _view: &Entity<Wiremann>,
+    ) -> Result<(), ControllerError> {
+        match event {
+            SystemIntegrationEvent::PlayPause => {
+                let status = self.state.read(cx).playback.status;
+
+                if status == PlaybackStatus::Stopped || status == PlaybackStatus::Paused {
+                    self.play();
+                } else {
+                    self.pause();
+                }
+            }
+            SystemIntegrationEvent::Next => {
+                self.next(cx);
+            }
+            SystemIntegrationEvent::Prev => {
+                self.prev(cx);
+            }
+        }
+
         Ok(())
     }
 
