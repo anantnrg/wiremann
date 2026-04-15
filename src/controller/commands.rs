@@ -53,7 +53,8 @@ pub enum SystemIntegrationCommand {
         artist: String,
         album: String,
         image: Option<Vec<u8>>,
+        duration: u64,
     },
     SetPosition(u64),
-    SetPlaybackStatus(PlaybackStatus),
+    SetPlaybackStatus(PlaybackStatus, u64),
 }

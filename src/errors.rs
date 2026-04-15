@@ -75,3 +75,9 @@ pub enum CacherError {
     #[error("RON Spanned Error occurred: `{0}`")]
     RonSpannedError(#[from] ron::de::SpannedError),
 }
+
+#[derive(Error, Debug)]
+pub enum SystemIntegrationError {
+    #[error("Souvlaki error occurred: `{0}`")]
+    SouvlakiError(#[from] souvlaki::Error),
+}
