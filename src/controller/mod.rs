@@ -525,6 +525,26 @@ impl Controller {
 
                 image_cache.current = Some(image.clone());
 
+                let image = image.clone();
+                let width = image.size(0).width.0.cast_unsigned();
+                let height = image.size(0).height.0.cast_unsigned();
+                if let Some(image) = image.as_bytes(0) {
+                    let image = image.to_vec();
+                    let state = self.state.read(cx);
+                    if let Some(track_id) = &state.playback.current
+                        && let Some(track) = state.library.tracks.get(track_id)
+                    {
+                        self.system_integration_tx
+                            .send(SystemIntegrationCommand::SetMetadata {
+                                title: track.title.clone(),
+                                artist: track.artist.clone(),
+                                album: track.album.clone(),
+                                image: Some((width, height, image)),
+                                duration: track.duration,
+                            })
+                            .ok();
+                    }
+                }
                 cx.notify(view.entity_id());
             }
             CacherEvent::PlaylistThumbnail(id, thumbnail) => {

@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::BufWriter,
+    io::{BufWriter, Write},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -109,27 +109,35 @@ impl SystemIntegration {
                     image,
                     duration,
                 } => {
-                    let path = self
-                        .app_paths
-                        .cache
-                        .join("images")
-                        .join("current_album_art.jpg");
-
-                    if let Some((width, height, bytes)) = image {
-                        let mut rgb = Vec::with_capacity((width * height * 3) as usize);
-                        bgra_to_rgb(&bytes, &mut rgb)?;
-                        println!("rgb len: {}", rgb.len());
-                        let file = File::create(&path)?;
-                        let mut writer = BufWriter::new(file);
-
-                        let mut encoder = JpegEncoder::new_with_quality(&mut writer, 80);
-                        encoder.encode(&rgb, width, height, ExtendedColorType::Rgb8)?;
-                    }
-
                     let version = SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .unwrap()
                         .as_millis();
+                    let name = format!("current_album_art_{}.jpg", version);
+
+                    let path = self
+                        .app_paths
+                        .cache
+                        .join(&name);
+
+                    if let Some((width, height, bytes)) = image {
+                        let mut rgb = vec![0u8; (width * height * 3) as usize];
+
+                        bgra_to_rgb(&bytes, &mut rgb)?;
+
+                        let tmp_path = path.with_extension("jpg.tmp");
+
+                        {
+                            let file = File::create(&tmp_path)?;
+                            let mut writer = BufWriter::new(file);
+
+                            let mut encoder = JpegEncoder::new_with_quality(&mut writer, 80);
+                            encoder.encode(&rgb, width, height, ExtendedColorType::Rgb8)?;
+                            writer.flush()?;
+                        }
+
+                        std::fs::rename(&tmp_path, &path)?;
+                    }
 
                     let cover_url = format!("file://{}?v={}", path.display(), version);
 
@@ -140,6 +148,8 @@ impl SystemIntegration {
                         cover_url: Some(&cover_url),
                         duration: Some(Duration::from_secs(duration)),
                     })?;
+
+                    self.cleanup_images(&name)?;
                 }
                 SystemIntegrationCommand::SetPosition(pos) => {
                     controls.set_playback(MediaPlayback::Playing {
@@ -209,6 +219,24 @@ impl SystemIntegration {
             }
             _ => {}
         }
+        Ok(())
+    }
+
+    fn cleanup_images(&self, current_name: &str) -> std::io::Result<()> {
+        let path = &self
+        .app_paths
+        .cache;
+        for entry in std::fs::read_dir(path)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if name.starts_with("current_album_art_") && name.ends_with(".jpg") && name != current_name {
+                    let _ = std::fs::remove_file(path);
+                }
+            }
+        }
+
         Ok(())
     }
 }
