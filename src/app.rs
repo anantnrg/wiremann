@@ -1,5 +1,6 @@
 use crate::cacher::Cacher;
 use crate::image_processor::ImageProcessor;
+use crate::system_integration::SystemIntegration;
 use crate::worker_config::{WorkerConfig, calculate_worker_config};
 use crate::{
     audio::Audio,
@@ -14,6 +15,7 @@ use crate::{
 };
 use gpui::{AppContext, Bounds, Result, TitlebarOptions, WindowBounds, WindowOptions, px, size};
 use gpui_platform_gpui_unofficial::application;
+use raw_window_handle::HasWindowHandle;
 use std::{
     fs,
     path::PathBuf,
@@ -50,48 +52,6 @@ pub fn run() -> Result<(), AppError> {
         let app_paths = get_app_paths();
         ensure_app_paths(&app_paths);
 
-        let (mut audio, audio_tx, audio_rx) = Audio::new();
-        let (mut scanner, scanner_tx, scanner_rx) = Scanner::new(app_paths.clone());
-        let (cacher, cacher_tx, cacher_rx) = Cacher::new(app_paths.clone());
-        let (mut image_processor, image_processor_tx, image_processor_rx) =
-            ImageProcessor::new(app_paths);
-
-        let controller = Controller::new(
-            cx.new(|_| AppState::default()),
-            audio_tx,
-            audio_rx,
-            scanner_tx,
-            scanner_rx,
-            cacher_tx,
-            cacher_rx,
-            image_processor_tx,
-            image_processor_rx,
-        );
-
-        thread::spawn(move || {
-            if let Err(e) = audio.run() {
-                eprintln!("Audio thread crashed with error: {e:?}");
-            }
-        });
-
-        thread::spawn(move || {
-            if let Err(e) = scanner.run(metadata_workers) {
-                eprintln!("Scanner thread crashed with error: {e:?}");
-            }
-        });
-
-        thread::spawn(move || {
-            if let Err(e) = cacher.run(cacher_workers) {
-                eprintln!("Cacher thread crashed with error: {e:?}");
-            }
-        });
-
-        thread::spawn(move || {
-            if let Err(e) = image_processor.run(thumbnail_workers) {
-                eprintln!("Image processor thread crashed with error: {e:?}");
-            }
-        });
-
         cx.open_window(
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -108,7 +68,63 @@ pub fn run() -> Result<(), AppError> {
                 }),
                 ..Default::default()
             },
-            |_, cx| {
+            |window, cx| {
+                let (mut audio, audio_tx, audio_rx) = Audio::new();
+                let (mut scanner, scanner_tx, scanner_rx) = Scanner::new(app_paths.clone());
+                let (cacher, cacher_tx, cacher_rx) = Cacher::new(app_paths.clone());
+                let (mut image_processor, image_processor_tx, image_processor_rx) =
+                    ImageProcessor::new(app_paths.clone());
+
+                let raw_window_handle = window
+                    .window_handle()
+                    .ok().map(|this| this.as_raw());
+                let (mut system_integraton, system_integration_tx, system_integration_rx) =
+                    SystemIntegration::new(raw_window_handle, app_paths);
+
+                let controller = Controller::new(
+                    cx.new(|_| AppState::default()),
+                    audio_tx,
+                    audio_rx,
+                    scanner_tx,
+                    scanner_rx,
+                    cacher_tx,
+                    cacher_rx,
+                    image_processor_tx,
+                    image_processor_rx,
+                    system_integration_tx,
+                    system_integration_rx,
+                );
+
+                thread::spawn(move || {
+                    if let Err(e) = audio.run() {
+                        eprintln!("Audio thread crashed with error: {e:?}");
+                    }
+                });
+
+                thread::spawn(move || {
+                    if let Err(e) = scanner.run(metadata_workers) {
+                        eprintln!("Scanner thread crashed with error: {e:?}");
+                    }
+                });
+
+                thread::spawn(move || {
+                    if let Err(e) = cacher.run(cacher_workers) {
+                        eprintln!("Cacher thread crashed with error: {e:?}");
+                    }
+                });
+
+                thread::spawn(move || {
+                    if let Err(e) = image_processor.run(thumbnail_workers) {
+                        eprintln!("Image processor thread crashed with error: {e:?}");
+                    }
+                });
+
+                thread::spawn(move || {
+                    if let Err(e) = system_integraton.run() {
+                        eprintln!("System integration thread crashed with error: {e:?}");
+                    }
+                });
+
                 cx.set_global(controller.clone());
 
                 let view = cx.new(Wiremann::new);
@@ -146,6 +162,12 @@ pub fn run() -> Result<(), AppError> {
                             });
                         }
 
+                        while let Ok(e) = controller.system_integration_rx.try_recv() {
+                            arc_res.update(cx, |res_handler, cx| {
+                                res_handler.handle(cx, Event::SystemIntegration(e));
+                            });
+                        }
+
                         if last_pos_request.elapsed() >= Duration::from_millis(256) {
                             controller.get_pos();
 
@@ -168,20 +190,23 @@ pub fn run() -> Result<(), AppError> {
                 let view_clone = view.clone();
 
                 cx.subscribe(&res_handler, move |_, event, cx| {
-                    if let Err(e) = match event {
-                        Event::Audio(event) => {
-                            controller_clone.handle_audio_event(cx, event, &view_clone)
+                    if let Err(e) =
+                        match event {
+                            Event::Audio(event) => {
+                                controller_clone.handle_audio_event(cx, event, &view_clone)
+                            }
+                            Event::Scanner(event) => {
+                                controller_clone.handle_scanner_event(cx, event, &view_clone)
+                            }
+                            Event::Cacher(event) => {
+                                controller_clone.handle_cacher_event(cx, event, &view_clone)
+                            }
+                            Event::ImageProcessor(event) => controller_clone
+                                .handle_image_processor_event(cx, event, &view_clone),
+                            Event::SystemIntegration(event) => controller_clone
+                                .handle_system_integration_event(cx, event, &view_clone),
                         }
-                        Event::Scanner(event) => {
-                            controller_clone.handle_scanner_event(cx, event, &view_clone)
-                        }
-                        Event::Cacher(event) => {
-                            controller_clone.handle_cacher_event(cx, event, &view_clone)
-                        }
-                        Event::ImageProcessor(event) => {
-                            controller_clone.handle_image_processor_event(cx, event, &view_clone)
-                        }
-                    } {
+                    {
                         eprintln!("controller error: {e:?}");
                     }
                 })

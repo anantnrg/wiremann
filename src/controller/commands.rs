@@ -1,5 +1,5 @@
 use crate::cacher::ImageKind;
-use crate::controller::state::{LibraryState, PlaybackState, QueueState};
+use crate::controller::state::{LibraryState, PlaybackState, PlaybackStatus, QueueState};
 use crate::library::playlists::PlaylistId;
 use crate::library::{ImageId, TrackId};
 use std::collections::HashSet;
@@ -45,4 +45,16 @@ pub enum CacherCommand {
         image: Vec<u8>,
     },
     GetImage(HashSet<ImageId>, ImageKind),
+}
+
+pub enum SystemIntegrationCommand {
+    SetMetadata {
+        title: String,
+        artist: String,
+        album: String,
+        image: Option<(u32, u32, Vec<u8>)>,
+        duration: u64,
+    },
+    SetPosition(u64),
+    SetPlaybackStatus(PlaybackStatus, u64),
 }

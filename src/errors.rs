@@ -1,5 +1,4 @@
 use crossbeam_channel::RecvError;
-use fast_image_resize::{ImageBufferError, ResizeError};
 use image::ImageError;
 use lofty::error::LoftyError;
 use rodio::source::SeekError;
@@ -46,10 +45,6 @@ pub enum ScannerError {
 pub enum ImageProcessorError {
     #[error("Image Error occurred: `{0}`")]
     ImageError(#[from] ImageError),
-    #[error("Image Buffer Error occurred: `{0}`")]
-    ImageBufferError(#[from] ImageBufferError),
-    #[error("Image Resize Error occurred: `{0}`")]
-    ImageResizeError(#[from] ResizeError),
     #[error("Garb Resize Error occurred: `{0}`")]
     GarbSizeError(#[from] garb::SizeError),
     #[error("Recv Error occurred: `{0}`")]
@@ -74,4 +69,18 @@ pub enum CacherError {
     RonError(#[from] ron::Error),
     #[error("RON Spanned Error occurred: `{0}`")]
     RonSpannedError(#[from] ron::de::SpannedError),
+}
+
+#[derive(Error, Debug)]
+pub enum SystemIntegrationError {
+    #[error("Souvlaki error occurred: `{0}`")]
+    SouvlakiError(#[from] souvlaki::Error),
+    #[error("Garb Resize Error occurred: `{0}`")]
+    GarbSizeError(#[from] garb::SizeError),
+    #[error("I/O Error occurred: `{0}`")]
+    IoError(#[from] std::io::Error),
+    #[error("Image Error occurred: `{0}`")]
+    ImageError(#[from] ImageError),
+    #[error("SystemTime Error occurred: `{0}`")]
+    SystemTimeError(#[from] SystemTimeError),
 }

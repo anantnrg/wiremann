@@ -46,3 +46,17 @@ pub enum CacherEvent {
     MissingAlbumArt(ImageId),
     MissingPlaylistThumbnail(ImageId),
 }
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum SystemIntegrationEvent {
+    Play,
+    Pause,
+    PlayPause,
+    Next,
+    Prev,
+    Stop,
+    SeekForward(u64),
+    SeekBackward(u64),
+    Position(u64),
+    Volume(f64),
+}
