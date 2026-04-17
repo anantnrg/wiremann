@@ -77,7 +77,7 @@ impl Controller {
         }
     }
 
-    #[allow(clippy::missing_errors_doc)]
+    #[allow(clippy::missing_errors_doc, clippy::too_many_lines)]
     pub fn handle_audio_event(
         &mut self,
         cx: &mut App,
@@ -699,6 +699,7 @@ impl Controller {
                 self.seek(pos.saturating_sub(*duration));
             }
             SystemIntegrationEvent::Volume(vol) => {
+                #[allow(clippy::cast_possible_truncation)]
                 self.set_volume(*vol as f32, cx);
             }
             SystemIntegrationEvent::Position(pos) => {

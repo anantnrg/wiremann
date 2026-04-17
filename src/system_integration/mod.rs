@@ -74,6 +74,7 @@ impl SystemIntegration {
         )
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn run(&mut self) -> Result<(), SystemIntegrationError> {
         let (souvlaki_tx, souvlaki_rx) = crossbeam_channel::unbounded();
 
@@ -88,7 +89,7 @@ impl SystemIntegration {
                         if let Ok(cmd) = msg {self.handle_commands(cmd)?;}
                     }
                     recv(souvlaki_rx) -> msg => {
-                        if let Ok(cmd) = msg {self.handle_system_events(cmd)?;}
+                        if let Ok(cmd) = msg {self.handle_system_events(&cmd);}
                     }
                 }
             }
@@ -97,6 +98,7 @@ impl SystemIntegration {
         Ok(())
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn handle_commands(
         &mut self,
         cmd: SystemIntegrationCommand,
@@ -110,10 +112,7 @@ impl SystemIntegration {
                     image,
                     duration,
                 } => {
-                    let version = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
-                        .as_millis();
+                    let version = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
                     let name = format!("current_album_art_{version}.jpg");
 
                     let path = self.app_paths.cache.join(&name);
@@ -172,10 +171,7 @@ impl SystemIntegration {
         Ok(())
     }
 
-    fn handle_system_events(
-        &mut self,
-        event: MediaControlEvent,
-    ) -> Result<(), SystemIntegrationError> {
+    fn handle_system_events(&mut self, event: &MediaControlEvent) {
         match event {
             MediaControlEvent::Play => {
                 self.tx.send(SystemIntegrationEvent::Play).ok();
@@ -213,11 +209,10 @@ impl SystemIntegration {
                     .ok();
             }
             MediaControlEvent::SetVolume(vol) => {
-                self.tx.send(SystemIntegrationEvent::Volume(vol)).ok();
+                self.tx.send(SystemIntegrationEvent::Volume(*vol)).ok();
             }
             _ => {}
         }
-        Ok(())
     }
 
     fn cleanup_images(&self, current_name: &str) -> std::io::Result<()> {
@@ -226,13 +221,14 @@ impl SystemIntegration {
             let entry = entry?;
             let path = entry.path();
 
+            #[allow(clippy::case_sensitive_file_extension_comparisons)]
             if let Some(name) = path.file_name().and_then(|n| n.to_str())
                 && name.starts_with("current_album_art_")
-                    && name.ends_with(".jpg")
-                    && name != current_name
-                {
-                    let _ = std::fs::remove_file(path);
-                }
+                && name.ends_with(".jpg")
+                && name != current_name
+            {
+                let _ = std::fs::remove_file(path);
+            }
         }
 
         Ok(())

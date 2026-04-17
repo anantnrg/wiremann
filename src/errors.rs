@@ -81,4 +81,6 @@ pub enum SystemIntegrationError {
     IoError(#[from] std::io::Error),
     #[error("Image Error occurred: `{0}`")]
     ImageError(#[from] ImageError),
+    #[error("SystemTime Error occurred: `{0}`")]
+    SystemTimeError(#[from] SystemTimeError),
 }
