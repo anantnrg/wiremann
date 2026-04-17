@@ -73,14 +73,14 @@ pub fn run() -> Result<(), AppError> {
                 let (mut scanner, scanner_tx, scanner_rx) = Scanner::new(app_paths.clone());
                 let (cacher, cacher_tx, cacher_rx) = Cacher::new(app_paths.clone());
                 let (mut image_processor, image_processor_tx, image_processor_rx) =
-                    ImageProcessor::new(app_paths);
+                    ImageProcessor::new(app_paths.clone());
 
                 let raw_window_handle = window
                     .window_handle()
                     .ok()
                     .and_then(|this| Some(this.as_raw()));
                 let (mut system_integraton, system_integration_tx, system_integration_rx) =
-                    SystemIntegration::new(raw_window_handle);
+                    SystemIntegration::new(raw_window_handle, app_paths);
 
                 let controller = Controller::new(
                     cx.new(|_| AppState::default()),

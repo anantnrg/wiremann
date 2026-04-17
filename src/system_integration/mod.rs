@@ -1,12 +1,19 @@
-use std::time::Duration;
+use std::{
+    fs::File,
+    io::BufWriter,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use crate::{
+    app::AppPaths,
     controller::{
         commands::SystemIntegrationCommand, events::SystemIntegrationEvent, state::PlaybackStatus,
     },
     errors::SystemIntegrationError,
 };
 use crossbeam_channel::{Receiver, Sender, select};
+use garb::bytes::bgra_to_rgb;
+use image::{ExtendedColorType, codecs::jpeg::JpegEncoder};
 use raw_window_handle::RawWindowHandle;
 use souvlaki::{
     MediaControlEvent, MediaControls, MediaMetadata, MediaPlayback, MediaPosition, PlatformConfig,
@@ -16,6 +23,7 @@ use souvlaki::{
 pub struct SystemIntegration {
     pub tx: Sender<SystemIntegrationEvent>,
     pub rx: Receiver<SystemIntegrationCommand>,
+    app_paths: AppPaths,
 
     media_controls: Option<MediaControls>,
 }
@@ -24,6 +32,7 @@ impl SystemIntegration {
     #[allow(unused_variables)]
     pub fn new(
         raw_window_handle: Option<RawWindowHandle>,
+        app_paths: AppPaths,
     ) -> (
         Self,
         Sender<SystemIntegrationCommand>,
@@ -56,6 +65,7 @@ impl SystemIntegration {
             Self {
                 tx: event_tx,
                 rx: cmd_rx,
+                app_paths,
                 media_controls,
             },
             cmd_tx,
@@ -99,11 +109,35 @@ impl SystemIntegration {
                     image,
                     duration,
                 } => {
+                    let path = self
+                        .app_paths
+                        .cache
+                        .join("images")
+                        .join("current_album_art.jpg");
+
+                    if let Some((width, height, bytes)) = image {
+                        let mut rgb = Vec::with_capacity((width * height * 3) as usize);
+                        bgra_to_rgb(&bytes, &mut rgb)?;
+                        println!("rgb len: {}", rgb.len());
+                        let file = File::create(&path)?;
+                        let mut writer = BufWriter::new(file);
+
+                        let mut encoder = JpegEncoder::new_with_quality(&mut writer, 80);
+                        encoder.encode(&rgb, width, height, ExtendedColorType::Rgb8)?;
+                    }
+
+                    let version = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis();
+
+                    let cover_url = format!("file://{}?v={}", path.display(), version);
+
                     controls.set_metadata(MediaMetadata {
                         title: Some(title.as_str()),
                         album: Some(album.as_str()),
                         artist: Some(artist.as_str()),
-                        cover_url: None,
+                        cover_url: Some(&cover_url),
                         duration: Some(Duration::from_secs(duration)),
                     })?;
                 }

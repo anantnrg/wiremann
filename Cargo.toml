@@ -13,7 +13,10 @@ gpui-platform-gpui-unofficial = { version = "0.231.2", features = [
   "wayland",
   "x11",
 ] }
-image = "0.25.9"
+image = { version = "0.25.10", default-features = false, features = [
+  "png",
+  "jpeg",
+] }
 lofty = "0.24.0"
 rodio = { version = "0.22.1", features = ["symphonia-all"] }
 rust-embed = "8.11.0"
@@ -32,7 +35,6 @@ twox-hash = "2.1.2"
 hex = "0.4.3"
 zstd = "0.13.3"
 lru = "0.17.0"
-fast_image_resize = { version = "6.0.0", features = ["image"] }
 rfd = "0.17.2"
 dashmap = "7.0.0-rc2"
 garb = "0.2.5"

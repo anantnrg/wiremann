@@ -346,8 +346,6 @@ impl Controller {
         match event {
             ImageProcessorEvent::InsertAlbumArt(image_id, image) => {
                 let image_cache = cx.global_mut::<ImageCache>();
-                image_cache.inflight.remove(image_id);
-
                 image_cache.current = Some(image.clone());
 
                 let image = image.clone();
@@ -360,8 +358,22 @@ impl Controller {
                         kind: ImageKind::AlbumArt,
                         width,
                         height,
-                        image,
+                        image: image.clone(),
                     });
+                    let state = self.state.read(cx);
+                    if let Some(track_id) = &state.playback.current
+                        && let Some(track) = state.library.tracks.get(track_id)
+                    {
+                        self.system_integration_tx
+                            .send(SystemIntegrationCommand::SetMetadata {
+                                title: track.title.clone(),
+                                artist: track.artist.clone(),
+                                album: track.album.clone(),
+                                image: Some((width, height, image)),
+                                duration: track.duration,
+                            })
+                            .ok();
+                    }
                 }
 
                 cx.notify(view.entity_id());

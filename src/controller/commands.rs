@@ -52,7 +52,7 @@ pub enum SystemIntegrationCommand {
         title: String,
         artist: String,
         album: String,
-        image: Option<Vec<u8>>,
+        image: Option<(u32, u32, Vec<u8>)>,
         duration: u64,
     },
     SetPosition(u64),
