@@ -10,7 +10,7 @@ use crate::{
         theme::Theme,
     },
 };
-use gpui::prelude::FluentBuilder;
+use gpui::{prelude::FluentBuilder, relative};
 use gpui::{
     App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit,
     ParentElement, Render, StatefulInteractiveElement, Styled, StyledImage,
@@ -283,7 +283,8 @@ impl Render for PlayerPage {
             .child(if *show_panel.read(cx) {
                 div()
                     .h_full()
-                    .w_1_4()
+                    .w(relative(0.28))
+                    .when(*self.current_panel.read(cx) == Panel::Lyrics, |this| this.w(relative(0.36)))
                     .flex_shrink_0()
                     .flex()
                     .flex_col()
