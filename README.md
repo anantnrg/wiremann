@@ -47,8 +47,6 @@ If it can be faster, it should be.
 
     * planned: `symphonia` + `cpal`
 * **Metadata decoding** – `lofty`
-
-    * planned: switch to `symphonia` (v0.2, big perf gains)
 * **Binary data storage** – no SQL, no queries, just fast I/O
 
 ---
