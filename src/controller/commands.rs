@@ -2,8 +2,10 @@ use crate::cacher::ImageKind;
 use crate::controller::state::{LibraryState, PlaybackState, PlaybackStatus, QueueState};
 use crate::library::playlists::PlaylistId;
 use crate::library::{ImageId, TrackId};
+use crate::lyrics_manager::Lyrics;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::time::Duration;
 
 pub enum AudioCommand {
     Load(TrackId, PathBuf),
@@ -34,9 +36,12 @@ pub enum ImageProcessorCommand {
 
 pub enum CacherCommand {
     GetAppState,
+
     WriteLibraryState(LibraryState),
     WritePlaybackState(PlaybackState),
     WriteQueueState(QueueState),
+
+    GetImage(HashSet<ImageId>, ImageKind),
     WriteImage {
         id: ImageId,
         kind: ImageKind,
@@ -44,7 +49,9 @@ pub enum CacherCommand {
         height: u32,
         image: Vec<u8>,
     },
-    GetImage(HashSet<ImageId>, ImageKind),
+
+    GetLyrics(TrackId),
+    WriteLyrics(TrackId, Lyrics),
 }
 
 pub enum SystemIntegrationCommand {
@@ -57,4 +64,14 @@ pub enum SystemIntegrationCommand {
     },
     SetPosition(u64),
     SetPlaybackStatus(PlaybackStatus, u64),
+}
+
+pub enum LyricsCommand {
+    GetLyrics {
+        id: TrackId,
+        title: String,
+        artist: String,
+        album: String,
+        duration: Duration,
+    },
 }

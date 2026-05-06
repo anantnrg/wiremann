@@ -1,5 +1,5 @@
 #![warn(clippy::pedantic)]
-// #![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 pub mod app;
 pub mod audio;
 mod cacher;
@@ -7,7 +7,7 @@ pub mod controller;
 pub mod errors;
 pub mod image_processor;
 pub mod library;
-mod queue;
+pub mod lyrics_manager;
 pub mod scanner;
 pub mod system_integration;
 pub mod ui;

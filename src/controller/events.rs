@@ -2,6 +2,7 @@ use crate::cacher::ImageKind;
 use crate::controller::state::{AppState, PlaybackStatus};
 use crate::library::playlists::{Playlist, PlaylistId};
 use crate::library::{ImageId, Track, TrackId, TrackSource};
+use crate::lyrics_manager::Lyrics;
 use gpui::RenderImage;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -42,12 +43,18 @@ pub enum ImageProcessorEvent {
 #[derive(Clone, PartialEq, Debug)]
 pub enum CacherEvent {
     AppState(AppState),
+
     AlbumArt(Arc<RenderImage>),
     Thumbnails(HashMap<ImageId, Arc<RenderImage>>),
     PlaylistThumbnail(ImageId, Arc<RenderImage>),
+
+    Lyrics(TrackId, Option<Lyrics>),
+
     MissingThumbnails(Vec<ImageId>),
     MissingAlbumArt(ImageId),
     MissingPlaylistThumbnail(ImageId),
+
+    MissingLyrics(TrackId),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -62,4 +69,9 @@ pub enum SystemIntegrationEvent {
     SeekBackward(u64),
     Position(u64),
     Volume(f64),
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum LyricsEvent {
+    Lyrics(TrackId, Option<Lyrics>),
 }

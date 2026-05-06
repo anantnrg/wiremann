@@ -1,11 +1,13 @@
+use std::time::Duration;
 
 use crate::controller::Controller;
 use crate::ui::animations::ease_in_out_expo;
 use crate::ui::components::controlbar::ControlBar;
+use crate::ui::components::lyrics::{LyricsState, LyricsStateInner};
 use crate::ui::components::pages::playlists::PlaylistsPage;
 use crate::ui::components::slider::{SliderEvent, SliderState};
-use crate::ui::components::toasts::scanning_status::ScanningStatus;
 use crate::ui::components::toasts::ToastManager;
+use crate::ui::components::toasts::scanning_status::ScanningStatus;
 use crate::ui::helpers::slider_to_secs;
 use crate::ui::theme::Theme;
 use crate::ui::{components, global_keybinds};
@@ -73,7 +75,7 @@ impl Wiremann {
                     };
 
                     let duration = if let Some(track) = current {
-                        track.duration
+                        track.duration.as_secs()
                     } else {
                         0
                     };
@@ -91,6 +93,8 @@ impl Wiremann {
         cx.set_global(ImageCache::default());
         let scanning_status = ScanningStatus::new(cx).clone();
         cx.set_global(scanning_status);
+        let lyrics_state = LyricsState(cx.new(|_| LyricsStateInner::new()));
+        cx.set_global(lyrics_state);
 
         global_keybinds::register_keybinds(cx);
 

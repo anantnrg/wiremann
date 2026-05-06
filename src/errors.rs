@@ -84,3 +84,13 @@ pub enum SystemIntegrationError {
     #[error("SystemTime Error occurred: `{0}`")]
     SystemTimeError(#[from] SystemTimeError),
 }
+
+#[derive(Error, Debug)]
+pub enum LyricsError {
+    #[error("Recv Error occurred: `{0}`")]
+    RecvError(#[from] RecvError),
+    #[error("Reqwest Error occurred: `{0}`")]
+    ReqwestError(#[from] reqwest::Error),
+    #[error("Serde JSON Error occurred: `{0}`")]
+    SerdeJsonError(#[from] serde_json::Error),
+}

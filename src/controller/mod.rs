@@ -2,11 +2,16 @@ pub mod commands;
 pub mod events;
 pub mod state;
 use crate::cacher::ImageKind;
-use crate::controller::commands::{CacherCommand, ImageProcessorCommand, SystemIntegrationCommand};
-use crate::controller::events::{CacherEvent, ImageProcessorEvent, SystemIntegrationEvent};
+use crate::controller::commands::{
+    CacherCommand, ImageProcessorCommand, LyricsCommand, SystemIntegrationCommand,
+};
+use crate::controller::events::{
+    CacherEvent, ImageProcessorEvent, LyricsEvent, SystemIntegrationEvent,
+};
 use crate::controller::state::PlaybackStatus;
 use crate::library::playlists::PlaylistId;
 use crate::library::{Track, TrackId};
+use crate::ui::components::lyrics::{LyricsState, LyricsStatus};
 use crate::ui::components::toasts::scanning_status::ScanningStatus;
 use crate::ui::components::toasts::{ToastKind, ToastPhase};
 use crate::ui::helpers::{drop_image_from_app, secs_to_slider};
@@ -21,7 +26,7 @@ use gpui::{App, Entity, Global};
 use rand::rng;
 use rand::seq::{IteratorRandom, SliceRandom};
 use std::collections::{HashMap, HashSet};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use std::{path::PathBuf, sync::Arc};
 
 #[derive(Clone)]
@@ -47,6 +52,10 @@ pub struct Controller {
     // System integration channel
     pub system_integration_tx: Sender<SystemIntegrationCommand>,
     pub system_integration_rx: Receiver<SystemIntegrationEvent>,
+
+    // Lyrics manager channel
+    pub lyrics_manager_tx: Sender<LyricsCommand>,
+    pub lyrics_manager_rx: Receiver<LyricsEvent>,
 }
 
 impl Controller {
@@ -64,6 +73,8 @@ impl Controller {
         image_processor_rx: Receiver<ImageProcessorEvent>,
         system_integration_tx: Sender<SystemIntegrationCommand>,
         system_integration_rx: Receiver<SystemIntegrationEvent>,
+        lyrics_manager_tx: Sender<LyricsCommand>,
+        lyrics_manager_rx: Receiver<LyricsEvent>,
     ) -> Self {
         Controller {
             state,
@@ -77,6 +88,8 @@ impl Controller {
             image_processor_rx,
             system_integration_tx,
             system_integration_rx,
+            lyrics_manager_tx,
+            lyrics_manager_rx,
         }
     }
 
@@ -104,7 +117,7 @@ impl Controller {
                                     };
 
                                     let duration = if let Some(track) = current {
-                                        track.duration
+                                        track.duration.as_secs()
                                     } else {
                                         0
                                     };
@@ -156,8 +169,11 @@ impl Controller {
                             artist: track.artist.clone(),
                             album: track.album.clone(),
                             image: None,
-                            duration: track.duration,
+                            duration: track.duration.as_secs(),
                         })
+                        .ok();
+                    self.cacher_tx
+                        .send(CacherCommand::GetLyrics(*track_id))
                         .ok();
                 }
                 self.state.update(cx, |this, cx| {
@@ -453,7 +469,7 @@ impl Controller {
                                 artist: track.artist.clone(),
                                 album: track.album.clone(),
                                 image: Some((width, height, image)),
-                                duration: track.duration,
+                                duration: track.duration.as_secs(),
                             })
                             .ok();
                     }
@@ -579,8 +595,9 @@ impl Controller {
                             });
                             this.playback_slider_state.update(cx, |this, cx| {
                                 if let Some(duration) = duration {
+                                    // TODO: maybe use millis for slider?
                                     this.set_value(
-                                        secs_to_slider(playback_state.position, duration),
+                                        secs_to_slider(playback_state.position, duration.as_secs()),
                                         cx,
                                     );
                                 }
@@ -623,7 +640,7 @@ impl Controller {
                                 artist: track.artist.clone(),
                                 album: track.album.clone(),
                                 image: Some((width, height, image)),
-                                duration: track.duration,
+                                duration: track.duration.as_secs() as u64,
                             })
                             .ok();
                     }
@@ -735,6 +752,40 @@ impl Controller {
                             });
                 }
             }
+            CacherEvent::Lyrics(id, lyrics) => {
+                let current = cx
+                    .global::<Controller>()
+                    .state
+                    .read(cx)
+                    .playback
+                    .current
+                    .clone();
+
+                if let Some(current) = current
+                    && current == *id
+                {
+                    let lyrics_state = cx.global::<LyricsState>().0.clone();
+
+                    lyrics_state.update(cx, |this, cx| {
+                        this.lyrics = lyrics.clone();
+                        if lyrics.is_some() {
+                            this.status = LyricsStatus::Available;
+                        }
+                        cx.notify();
+                    })
+                }
+            }
+            CacherEvent::MissingLyrics(id) => {
+                if let Some(track) = self.state.read(cx).library.tracks.get(id) {
+                    self.get_lyrics(
+                        *id,
+                        &track.title,
+                        &track.artist,
+                        &track.album,
+                        track.duration,
+                    );
+                }
+            }
         }
         Ok(())
     }
@@ -793,14 +844,55 @@ impl Controller {
         Ok(())
     }
 
+    #[allow(clippy::missing_errors_doc, clippy::too_many_lines)]
+    pub fn handle_lyrics_event(
+        &mut self,
+        cx: &mut App,
+        event: &LyricsEvent,
+        _view: &Entity<Wiremann>,
+    ) -> Result<(), ControllerError> {
+        match event {
+            LyricsEvent::Lyrics(id, lyrics) => {
+                let current = cx
+                    .global::<Controller>()
+                    .state
+                    .read(cx)
+                    .playback
+                    .current
+                    .clone();
+
+                if let Some(current) = current
+                    && current == *id
+                {
+                    let lyrics_state = cx.global::<LyricsState>().0.clone();
+
+                    lyrics_state.update(cx, |this, cx| {
+                        this.lyrics = lyrics.clone();
+                        if lyrics.is_some() {
+                            this.status = LyricsStatus::Available;
+                        }
+                        cx.notify();
+                    })
+                }
+                if let Some(lyrics) = lyrics {
+                    self.cacher_tx
+                        .send(CacherCommand::WriteLyrics(*id, lyrics.clone()))
+                        .ok();
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn load_audio(&self, id: &TrackId, cx: &App) {
         let state = self.state.read(cx);
         if let Some(track) = state.library.tracks.get(id)
             && let Some(source) = track.get_valid_source()
         {
-            let _ = self
-                .audio_tx
-                .send(AudioCommand::Load(*id, source.path.clone()));
+            self.audio_tx
+                .send(AudioCommand::Load(*id, source.path.clone()))
+                .ok();
             self.image_processor_tx
                 .send(ImageProcessorCommand::GetCurrentAlbumArt(
                     *id,
@@ -1093,6 +1185,25 @@ impl Controller {
 
         cx.global_mut::<ImageCache>()
             .request(cache_ids, &self.cacher_tx, ImageKind::Playlist);
+    }
+
+    pub fn get_lyrics(
+        &self,
+        id: TrackId,
+        title: &str,
+        artist: &str,
+        album: &str,
+        duration: Duration,
+    ) {
+        self.lyrics_manager_tx
+            .send(LyricsCommand::GetLyrics {
+                id,
+                title: title.to_string(),
+                artist: artist.to_string(),
+                album: album.to_string(),
+                duration: duration,
+            })
+            .ok();
     }
 }
 
