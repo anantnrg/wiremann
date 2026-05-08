@@ -62,8 +62,8 @@ pub fn run() -> Result<(), AppError> {
                     app_id: Some(String::from("wiremann")),
                     focus: true,
                     titlebar: Some(TitlebarOptions {
-                        title: None,
-                        appears_transparent: true,
+                        // title: None,
+                        // appears_transparent: true,
                         ..Default::default()
                     }),
                     window_min_size: Some(gpui::Size {

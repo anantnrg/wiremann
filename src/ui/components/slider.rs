@@ -157,7 +157,12 @@ impl RenderOnce for Slider {
             .and_then(|bg| bg.color())
             .unwrap_or(white().into());
 
-        let fill_color = self.style.text.color.unwrap_or_else(white);
+        let fill_color = self
+            .style
+            .text
+            .as_ref()
+            .and_then(|t| t.color)
+            .unwrap_or_else(white);
 
         let mut root = div()
             .id(("slider", self.state.entity_id()))
