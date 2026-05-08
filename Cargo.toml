@@ -8,14 +8,10 @@ authors = ["Anant Narayan"]
 [dependencies]
 anyhow = "1.0.102"
 crossbeam-channel = "0.5.15"
-gpui-unofficial = { version = "0.231.2", features = ["wayland", "x11"] }
-gpui-platform-gpui-unofficial = { version = "0.231.2", features = [
-  "wayland",
-  "x11",
-] }
+gpui-ce = { git = "https://github.com/Far-Beyond-Pulsar/WGPUI" }
 image = { version = "0.25.10", default-features = false, features = [
-  "png",
-  "jpeg",
+    "png",
+    "jpeg",
 ] }
 lofty = "0.24.0"
 rodio = { version = "0.22.1", features = ["symphonia-all"] }

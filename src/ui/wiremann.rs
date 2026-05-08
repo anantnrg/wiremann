@@ -164,7 +164,7 @@ impl Render for Wiremann {
                                 let page_state = page_state.clone();
                                 async move |_, cx| {
                                     cx.background_executor().timer(duration).await;
-                                    () = page_state.update(cx, |state, _| {
+                                    let _ = page_state.update(cx, |state, _| {
                                         *state = page;
                                     });
                                 }

@@ -63,7 +63,7 @@ impl Render for NavBar {
                                 let pill_state = pill_state.clone();
                                 async move |_, cx| {
                                     cx.background_executor().timer(duration).await;
-                                    () = pill_state.update(cx, |state, _| {
+                                    let _ = pill_state.update(cx, |state, _| {
                                         *state = (page, active_highlight_offset);
                                     });
                                 }
