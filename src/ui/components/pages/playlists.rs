@@ -364,7 +364,7 @@ impl PlaylistsPage {
                                 .items_center()
                                 .justify_start()
                                 .text_sm()
-                                .font_family("JetBrains Mono")
+                                .font_family("JetBrainsMono-Regular, JetBrainsMono, JetBrains Mono, monospace")
                                 .child(format!(
                                     "{:02}:{:02}",
                                     track.duration.as_secs() / 60,
