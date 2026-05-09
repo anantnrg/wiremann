@@ -139,7 +139,7 @@ impl Render for Wiremann {
         div()
             .id("main_container")
             .size_full()
-            .font_family(".SystemUIFont")
+            .font_family("Space Grotesk")
             .relative()
             .flex()
             .flex_col()

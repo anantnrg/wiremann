@@ -12,9 +12,9 @@ use crate::ui::components::virtual_list::vlist;
 use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    App, Context, Div, FontWeight, InteractiveElement, IntoElement, ObjectFit, ParentElement,
-    Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage, Window, div,
-    img, px,
+    App, Context, Div, FontWeight, ImageSource, InteractiveElement, IntoElement, ObjectFit,
+    ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage,
+    Window, div, img, px,
 };
 
 const THUMBNAIL_MARGIN: usize = 16;
@@ -195,7 +195,7 @@ impl LibraryPage {
                             )
                             .child(match thumbnail {
                                 Some(image) => div().size_full().mb_3().child(
-                                    img(image.clone())
+                                    img(ImageSource::Render(image.clone()))
                                         .object_fit(ObjectFit::Contain)
                                         .border_1()
                                         .border_color(theme.border)
@@ -357,7 +357,7 @@ impl LibraryPage {
                                 .justify_start()
                                 .child(match thumbnail {
                                     Some(image) => div().size_11().flex_shrink_0().child(
-                                        img(image.clone())
+                                        img(ImageSource::Render(image.clone()))
                                             .object_fit(ObjectFit::Contain)
                                             .size_full()
                                             .border_1()
@@ -420,7 +420,7 @@ impl LibraryPage {
                                 .items_center()
                                 .justify_start()
                                 .text_sm()
-                                .font_family(".SystemUIFont")
+                                .font_family("JetBrains Mono")
                                 .child(format!(
                                     "{:02}:{:02}",
                                     track.duration.as_secs() / 60,

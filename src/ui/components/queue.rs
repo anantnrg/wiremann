@@ -5,8 +5,8 @@ use crate::{controller::Controller, library::Track};
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    App, AppContext, Context, Entity, InteractiveElement, IntoElement, ObjectFit, ParentElement,
-    Render, ScrollStrategy, StatefulInteractiveElement, Styled, StyledImage,
+    App, AppContext, Context, Entity, ImageSource, InteractiveElement, IntoElement, ObjectFit,
+    ParentElement, Render, ScrollStrategy, StatefulInteractiveElement, Styled, StyledImage,
     UniformListScrollHandle, Window, div, img, px, uniform_list,
 };
 use std::sync::Arc;
@@ -78,7 +78,7 @@ impl Render for Item {
             .cursor_pointer()
             .child(match thumbnail {
                 Some(image) => div().size_12().flex_shrink_0().child(
-                    img(image.clone())
+                    img(ImageSource::Render(image.clone()))
                         .object_fit(ObjectFit::Contain)
                         .size_full()
                         .rounded_md()

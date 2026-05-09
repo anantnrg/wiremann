@@ -11,9 +11,10 @@ use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use crate::ui::theme::Theme;
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    App, AppContext, Context, Div, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit,
-    ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage,
-    UniformListScrollHandle, Window, div, img, px, rems, uniform_list,
+    App, AppContext, Context, Div, Entity, FontWeight, ImageSource, InteractiveElement,
+    IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle,
+    StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window, div, img, px,
+    rems, uniform_list,
 };
 use std::rc::Rc;
 
@@ -82,7 +83,7 @@ impl PlaylistsPage {
                 .child(
                     div().size(height).p_6().child(match thumbnail {
                         Some(image) => div().size_full().child(
-                            img(image.clone())
+                            img(ImageSource::Render(image.clone()))
                                 .object_fit(ObjectFit::Contain)
                                 .size_full()
                                 .rounded_lg(),
@@ -305,7 +306,7 @@ impl PlaylistsPage {
                                 .justify_start()
                                 .child(match thumbnail {
                                     Some(image) => div().size_11().flex_shrink_0().child(
-                                        img(image.clone())
+                                        img(ImageSource::Render(image.clone()))
                                             .object_fit(ObjectFit::Contain)
                                             .size_full()
                                             .rounded_sm(),
@@ -364,7 +365,7 @@ impl PlaylistsPage {
                                 .items_center()
                                 .justify_start()
                                 .text_sm()
-                                .font_family("JetBrainsMono-Regular, JetBrainsMono, JetBrains Mono, monospace")
+                                .font_family("JetBrains Mono")
                                 .child(format!(
                                     "{:02}:{:02}",
                                     track.duration.as_secs() / 60,
@@ -512,7 +513,7 @@ impl Render for PlaylistsPage {
                                                                 .size_12()
                                                                 .flex_shrink_0()
                                                                 .child(
-                                                                    img(image.clone())
+                                                                    img(ImageSource::Render(image.clone()))
                                                                         .object_fit(
                                                                             ObjectFit::Contain,
                                                                         )
