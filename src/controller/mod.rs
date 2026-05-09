@@ -25,6 +25,7 @@ use events::{AudioEvent, ScannerEvent};
 use gpui::{App, Entity, Global};
 use rand::rng;
 use rand::seq::{IteratorRandom, SliceRandom};
+use ron::de;
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 use std::{path::PathBuf, sync::Arc};
@@ -105,6 +106,7 @@ impl Controller {
                 let last_pos = self.state.read(cx).playback.position;
 
                 if *pos != last_pos {
+                    println!("Position update: {} -> {}", last_pos, pos);
                     view.update(cx, |this, cx| {
                         this.player_page.update(cx, |this, cx| {
                             this.controlbar.update(cx, |this, cx| {
@@ -130,6 +132,7 @@ impl Controller {
                     });
                     self.state.update(cx, |this, cx| {
                         this.playback.position = *pos;
+                        println!("State updated: {}", this.playback.position);
                         cx.notify();
                     });
 
@@ -196,6 +199,7 @@ impl Controller {
                     this.playback.status = *status;
                     cx.notify();
                 });
+                cx.notify(view.entity_id());
                 let state = self.state.read(cx).playback.clone();
                 self.system_integration_tx
                     .send(SystemIntegrationCommand::SetPlaybackStatus(

@@ -10,12 +10,12 @@ use crate::{
         theme::Theme,
     },
 };
-use gpui::{prelude::FluentBuilder, relative};
 use gpui::{
     App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit,
     ParentElement, Render, StatefulInteractiveElement, Styled, StyledImage,
     UniformListScrollHandle, Window, div, img, px,
 };
+use gpui::{prelude::FluentBuilder, relative};
 
 #[derive(Clone)]
 pub struct PlayerPage {
@@ -93,9 +93,10 @@ impl Render for PlayerPage {
                             .flex_shrink_0()
                             .flex_1()
                             .child(if let Some(thumbnail) = thumbnail {
+                                println!("thumbnail size: {:#?}", thumbnail.size(0));
                                 div().flex().flex_1().child(
                                     img(thumbnail)
-                                        .object_fit(ObjectFit::Contain)
+                                        .object_fit(ObjectFit::Cover)
                                         .size_full()
                                         .rounded_xl()
                                         .border_2()
@@ -284,7 +285,9 @@ impl Render for PlayerPage {
                 div()
                     .h_full()
                     .w(relative(0.28))
-                    .when(*self.current_panel.read(cx) == Panel::Lyrics, |this| this.w(relative(0.36)))
+                    .when(*self.current_panel.read(cx) == Panel::Lyrics, |this| {
+                        this.w(relative(0.36))
+                    })
                     .flex_shrink_0()
                     .flex()
                     .flex_col()

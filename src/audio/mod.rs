@@ -85,9 +85,10 @@ impl Audio {
     }
 
     fn emit_position(&self) {
-        let _ = self
+        let res = self
             .tx
             .send(AudioEvent::Position(self.player.get_pos().as_secs()));
+        println!("Emitted position: {:?}", res);
     }
 
     fn play(&self) {

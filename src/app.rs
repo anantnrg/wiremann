@@ -14,9 +14,7 @@ use crate::{
         wiremann::Wiremann,
     },
 };
-use gpui::{
-    AppContext, Application, Bounds, Result, WindowBounds, WindowOptions, px, size,
-};
+use gpui::{AppContext, Application, Bounds, Result, WindowBounds, WindowOptions, px, size};
 use raw_window_handle::HasWindowHandle;
 use std::{
     fs,
@@ -150,10 +148,12 @@ pub fn run() -> Result<(), AppError> {
                     let arc_res = Arc::new(res_handler.clone());
                     let mut controller_clone = controller.clone();
 
+                    dbg!("Spawning event loop thread...");
                     cx.spawn(async move |cx| {
                         let mut last_pos_request = Instant::now();
                         let mut last_track_ended_request = Instant::now();
 
+                        dbg!("Spawned");
                         loop {
                             while let Ok(e) = controller.audio_rx.try_recv() {
                                 arc_res.update(cx, |res_handler, cx| {
@@ -192,6 +192,7 @@ pub fn run() -> Result<(), AppError> {
                             }
 
                             if last_pos_request.elapsed() >= Duration::from_millis(256) {
+                                println!("Requesting position update...");
                                 controller.get_pos();
 
                                 last_pos_request = Instant::now();
@@ -202,7 +203,7 @@ pub fn run() -> Result<(), AppError> {
 
                                 last_track_ended_request = Instant::now();
                             }
-
+                            println!("tick");
                             cx.background_executor()
                                 .timer(Duration::from_millis(64))
                                 .await;
