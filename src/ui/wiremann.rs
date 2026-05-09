@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::controller::Controller;
 use crate::ui::animations::ease_in_out_expo;
 use crate::ui::components::controlbar::ControlBar;
@@ -141,7 +139,7 @@ impl Render for Wiremann {
         div()
             .id("main_container")
             .size_full()
-            .font_family("Space Grotesk")
+            .font_family(".SystemUIFont")
             .relative()
             .flex()
             .flex_col()

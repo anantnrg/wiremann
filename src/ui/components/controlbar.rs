@@ -79,7 +79,7 @@ impl Render for ControlBar {
                                 div()
                                     .flex()
                                     .flex_shrink_0()
-                                    .font_family("JetBrains Mono")
+                                    .font_family(".SystemUIFont")
                                     .text_sm()
                                     .text_color(theme.playback_position_text)
                                     .child(format!(
@@ -92,7 +92,7 @@ impl Render for ControlBar {
                                 div()
                                     .flex()
                                     .flex_shrink_0()
-                                    .font_family("JetBrains Mono")
+                                    .font_family(".SystemUIFont")
                                     .text_sm()
                                     .text_color(theme.playback_position_text)
                                     .child(format!("{:02}:{:02}", duration / 60, duration % 60)),

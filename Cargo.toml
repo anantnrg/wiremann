@@ -15,7 +15,7 @@ image = { version = "0.25.10", default-features = false, features = [
 ] }
 lofty = "0.24.0"
 rodio = { version = "0.22.1", features = ["symphonia-all"] }
-rust-embed = "8.11.0"
+rust-embed = { version = "8.11.0", features = ["interpolate-folder-path"] }
 serde = { version = "1.0.228", features = ["derive"] }
 smallvec = "1.15.1"
 walkdir = "2.5.0"

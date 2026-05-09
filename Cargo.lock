@@ -2101,7 +2101,7 @@ dependencies = [
 [[package]]
 name = "gpui-ce"
 version = "1.0.0"
-source = "git+https://github.com/Far-Beyond-Pulsar/WGPUI#2c87d4728e3675caa336f85be724af6e197c5c4a"
+source = "git+https://github.com/Far-Beyond-Pulsar/WGPUI?rev=2c87d4728e3675caa336f85be724af6e197c5c4a#2c87d4728e3675caa336f85be724af6e197c5c4a"
 dependencies = [
  "anyhow",
  "arboard",
@@ -4718,6 +4718,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rust-embed-utils",
+ "shellexpand",
  "syn",
  "walkdir",
 ]
@@ -5119,6 +5120,15 @@ dependencies = [
  "cfg-if",
  "cpufeatures 0.2.17",
  "digest",
+]
+
+[[package]]
+name = "shellexpand"
+version = "3.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32824fab5e16e6c4d86dc1ba84489390419a39f97699852b66480bb87d297ed8"
+dependencies = [
+ "dirs 4.0.0",
 ]
 
 [[package]]

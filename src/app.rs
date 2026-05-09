@@ -15,7 +15,7 @@ use crate::{
     },
 };
 use gpui::{
-    AppContext, Application, Bounds, Result, TitlebarOptions, WindowBounds, WindowOptions, px, size,
+    AppContext, Application, Bounds, Result, WindowBounds, WindowOptions, px, size,
 };
 use raw_window_handle::HasWindowHandle;
 use std::{
@@ -46,6 +46,8 @@ pub fn run() -> Result<(), AppError> {
         .run(move |cx| {
             let bounds = Bounds::centered(None, size(px(1280.0), px(760.0)), cx);
             assets.load_fonts(cx).expect("Could not load fonts");
+            static ICON_PNG: &[u8] = include_bytes!("../assets/logos/logo.png");
+            let app_icon = gpui::WindowIcon::from_png_bytes(ICON_PNG).ok();
 
             let WorkerConfig {
                 metadata: metadata_workers,
@@ -61,15 +63,17 @@ pub fn run() -> Result<(), AppError> {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     app_id: Some(String::from("wiremann")),
                     focus: true,
-                    titlebar: Some(TitlebarOptions {
-                        // title: None,
-                        // appears_transparent: true,
-                        ..Default::default()
-                    }),
+                    titlebar: None,
+                    kind: gpui::WindowKind::Normal,
+                    is_resizable: true,
+                    window_decorations: Some(gpui::WindowDecorations::Client),
                     window_min_size: Some(gpui::Size {
                         width: px(800.0),
                         height: px(740.0),
                     }),
+                    app_icon,
+                    window_background: gpui::WindowBackgroundAppearance::Blurred,
+                    always_transparent: true,
                     ..Default::default()
                 },
                 |window, cx| {
