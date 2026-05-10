@@ -93,7 +93,6 @@ impl Render for PlayerPage {
                             .flex_shrink_0()
                             .flex_1()
                             .child(if let Some(thumbnail) = thumbnail {
-                                println!("thumbnail size: {:#?}", thumbnail.size(0));
                                 div().flex().flex_1().child(
                                     img(thumbnail)
                                         .object_fit(ObjectFit::Cover)

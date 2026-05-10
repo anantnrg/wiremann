@@ -7381,6 +7381,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
+ "smol",
  "souvlaki",
  "thiserror 2.0.18",
  "twox-hash",

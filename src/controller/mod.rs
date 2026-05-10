@@ -106,7 +106,6 @@ impl Controller {
                 let last_pos = self.state.read(cx).playback.position;
 
                 if *pos != last_pos {
-                    println!("Position update: {} -> {}", last_pos, pos);
                     view.update(cx, |this, cx| {
                         this.player_page.update(cx, |this, cx| {
                             this.controlbar.update(cx, |this, cx| {
@@ -132,7 +131,6 @@ impl Controller {
                     });
                     self.state.update(cx, |this, cx| {
                         this.playback.position = *pos;
-                        println!("State updated: {}", this.playback.position);
                         cx.notify();
                     });
 
