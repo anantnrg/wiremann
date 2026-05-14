@@ -236,11 +236,7 @@ fn render_album_art(
     let raw_img = image::load_from_memory(bytes)?;
 
     let image = match kind {
-        ImageKind::AlbumArt => {
-            let mut rgba = raw_img.into_rgba8();
-            rgba_to_bgra_inplace(rgba.as_mut())?;
-            rgba
-        }
+        ImageKind::AlbumArt => raw_img.into_rgba8(),
         ImageKind::ThumbnailSmall | ImageKind::ThumbnailLarge => {
             let (new_w, new_h) = match kind {
                 ImageKind::ThumbnailSmall => (128, 128),
@@ -248,12 +244,7 @@ fn render_album_art(
                 _ => unreachable!(),
             };
 
-            let thumb = raw_img.thumbnail(new_w, new_h);
-
-            let mut rgba = thumb.into_rgba8();
-            rgba_to_bgra_inplace(rgba.as_mut())?;
-
-            rgba
+            raw_img.thumbnail(new_w, new_h).into_rgba8()
         }
         ImageKind::Playlist => unreachable!(),
     };
@@ -317,8 +308,6 @@ fn render_playlist_thumbnail(
     let mut image = canvas.to_rgba8();
 
     let hash = ImageId::generate(image.as_bytes()).ok();
-
-    rgba_to_bgra_inplace(image.as_mut()).ok();
 
     let frame = Frame::new(image);
 

@@ -212,7 +212,10 @@ pub fn run() -> Result<(), AppError> {
 
                                 last_track_ended_request = Instant::now();
                             }
-                            smol::Timer::after(Duration::from_millis(64)).await;
+
+                            cx.background_executor()
+                                .timer(Duration::from_millis(64))
+                                .await;
                         }
                     })
                     .detach();
