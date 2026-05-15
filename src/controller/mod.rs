@@ -23,6 +23,7 @@ use commands::{AudioCommand, ScannerCommand};
 use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
 use gpui::{App, Entity, Global};
+use okmain::{InputImage, colors};
 use rand::rng;
 use rand::seq::{IteratorRandom, SliceRandom};
 use ron::de;
@@ -641,13 +642,25 @@ impl Controller {
                                 title: track.title.clone(),
                                 artist: track.artist.clone(),
                                 album: track.album.clone(),
-                                image: Some((width, height, image)),
+                                image: Some((width, height, image.clone())),
                                 duration: track.duration.as_secs() as u64,
                             })
                             .ok();
                     }
 
-                    // let input_img =
+                    let mut rgb = Vec::with_capacity((width * height * 3) as usize);
+                    for chunk in image.as_slice().chunks_exact(4) {
+                        rgb.push(chunk[0]);
+                        rgb.push(chunk[1]);
+                        rgb.push(chunk[2]);
+                    }
+
+                    let input =
+                        okmain::InputImage::from_bytes(width as u16, height as u16, &rgb).unwrap();
+
+                    let colors = okmain::colors(input);
+
+                    dbg!(colors);
                 }
                 cx.notify(view.entity_id());
             }
