@@ -18,7 +18,7 @@ use components::{
 use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt as _, AppContext, BorrowAppContext, Context, ElementId, Entity,
-    InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div, px,
+    InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div, px, rgb,
 };
 
 pub struct Wiremann {
@@ -146,6 +146,21 @@ impl Render for Wiremann {
             .justify_center()
             .items_center()
             .bg(theme.app_bg)
+            .child(
+                div()
+                    .h_full()
+                    .w_full()
+                    .absolute()
+                    .child(div().h_full().w_full().bg(gpui::radial_gradient(
+                        0.5,
+                        0.5,
+                        0.8,
+                        0.8,
+                        gpui::gradient_color_stop(rgb(0xff5d73), 0.0),
+                        gpui::gradient_color_stop(rgb(0x6d77ff), 1.0),
+                    )))
+                    .child(div().w_full().h_full().opacity(0.32).backdrop_blur(64.0)),
+            )
             .child(self.titlebar.clone())
             .child(
                 div()

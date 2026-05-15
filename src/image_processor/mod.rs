@@ -321,10 +321,10 @@ fn get_cached_image_path(cache_path: &Path, id: ImageId, kind: ImageKind) -> Pat
     let folder = &hex[0..2];
 
     let name = match kind {
-        ImageKind::ThumbnailSmall => format!("{hex}_tmbhs.bgra.zstd"),
-        ImageKind::ThumbnailLarge => format!("{hex}_tmbhl.bgra.zstd"),
-        ImageKind::AlbumArt => format!("{hex}_art.bgra.zstd"),
-        ImageKind::Playlist => format!("{hex}_playlist.bgra.zstd"),
+        ImageKind::ThumbnailSmall => format!("{hex}_tmbhs.rgba.zstd"),
+        ImageKind::ThumbnailLarge => format!("{hex}_tmbhl.rgba.zstd"),
+        ImageKind::AlbumArt => format!("{hex}_art.rgba.zstd"),
+        ImageKind::Playlist => format!("{hex}_playlist.rgba.zstd"),
     };
 
     cache_path.join("images").join(folder).join(name)

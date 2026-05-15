@@ -646,6 +646,8 @@ impl Controller {
                             })
                             .ok();
                     }
+
+                    // let input_img =
                 }
                 cx.notify(view.entity_id());
             }
