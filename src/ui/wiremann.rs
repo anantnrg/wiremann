@@ -7,7 +7,7 @@ use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::components::toasts::ToastManager;
 use crate::ui::components::toasts::scanning_status::ScanningStatus;
 use crate::ui::helpers::slider_to_secs;
-use crate::ui::theme::Theme;
+use crate::ui::theme::{DominantColors, Theme};
 use crate::ui::{components, global_keybinds};
 use components::{
     Page,
@@ -87,6 +87,7 @@ impl Wiremann {
         .detach();
 
         cx.set_global(Theme::default());
+        cx.set_global(DominantColors::default());
         cx.set_global(Page::Player);
         cx.set_global(ImageCache::default());
         let scanning_status = ScanningStatus::new(cx).clone();
@@ -118,6 +119,7 @@ impl Wiremann {
 impl Render for Wiremann {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = *cx.global::<Theme>();
+        let dominant_colors = *cx.global::<DominantColors>();
 
         let page = *cx.global::<Page>();
 
@@ -154,12 +156,19 @@ impl Render for Wiremann {
                     .child(div().h_full().w_full().bg(gpui::radial_gradient(
                         0.5,
                         0.5,
-                        0.8,
-                        0.8,
-                        gpui::gradient_color_stop(rgb(0xff5d73), 0.0),
-                        gpui::gradient_color_stop(rgb(0x6d77ff), 1.0),
+                        1.0,
+                        1.0,
+                        gpui::gradient_color_stop(dominant_colors.color1, 0.0),
+                        gpui::gradient_color_stop(dominant_colors.color2, 1.0),
                     )))
-                    .child(div().w_full().h_full().opacity(0.32).backdrop_blur(64.0)),
+                    .child(
+                        div()
+                            .w_full()
+                            .h_full()
+                            .bg(theme.app_bg)
+                            .opacity(0.90)
+                            .backdrop_blur(64.0),
+                    ),
             )
             .child(self.titlebar.clone())
             .child(
