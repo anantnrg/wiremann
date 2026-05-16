@@ -293,7 +293,10 @@ impl Render for PlayerPage {
             .child(if *show_panel.read(cx) {
                 div()
                     .h_full()
-                    .w(relative(0.48))
+                    .w(relative(0.46))
+                    .when(*self.current_panel.read(cx) == Panel::Queue, |this| {
+                        this.max_w_128()
+                    })
                     .flex_shrink_0()
                     .flex()
                     .flex_col()
@@ -313,8 +316,8 @@ impl Render for PlayerPage {
                             .relative()
                             .flex()
                             .items_center()
-                            .justify_end()
-                            .pr_12()
+                            .justify_start()
+                            .px_4()
                             .child(
                                 div()
                                     .relative()
@@ -447,7 +450,7 @@ impl Render for PlayerPage {
                             .text_color(theme.player_panel_show_hide_text_hover)
                     })
                     .on_click(move |_, _, cx| show_panel.update(cx, |this, _| *this = !*this))
-                    .child(Icon::new(Icons::PanelRight).size_8()),
+                    .child(Icon::new(Icons::PanelRight).size_5()),
             )
     }
 }
