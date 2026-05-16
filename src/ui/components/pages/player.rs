@@ -293,16 +293,11 @@ impl Render for PlayerPage {
             .child(if *show_panel.read(cx) {
                 div()
                     .h_full()
-                    .w(relative(0.28))
-                    .when(*self.current_panel.read(cx) == Panel::Lyrics, |this| {
-                        this.w(relative(0.36))
-                    })
+                    .w(relative(0.40))
                     .flex_shrink_0()
                     .flex()
                     .flex_col()
                     .bg(theme.player_panel_bg)
-                    .border_l_1()
-                    .border_color(theme.border)
                     .child({
                         let current_panel = self.current_panel.clone();
 
