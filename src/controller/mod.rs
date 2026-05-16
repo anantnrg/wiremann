@@ -15,6 +15,7 @@ use crate::ui::components::lyrics::{LyricsState, LyricsStatus};
 use crate::ui::components::toasts::scanning_status::ScanningStatus;
 use crate::ui::components::toasts::{ToastKind, ToastPhase};
 use crate::ui::helpers::{drop_image_from_app, secs_to_slider};
+use crate::ui::theme::DominantColors;
 use crate::ui::wiremann::Wiremann;
 use crate::{
     controller::state::AppState, errors::ControllerError, ui::components::image_cache::ImageCache,
@@ -22,9 +23,12 @@ use crate::{
 use commands::{AudioCommand, ScannerCommand};
 use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
-use gpui::{App, Entity, Global};
+use gpui::{App, Entity, Global, Rgba, rgb};
+use okmain::rgb::Rgb;
+use okmain::{InputImage, colors};
 use rand::rng;
 use rand::seq::{IteratorRandom, SliceRandom};
+use ron::de;
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 use std::{path::PathBuf, sync::Arc};
@@ -196,6 +200,7 @@ impl Controller {
                     this.playback.status = *status;
                     cx.notify();
                 });
+                cx.notify(view.entity_id());
                 let state = self.state.read(cx).playback.clone();
                 self.system_integration_tx
                     .send(SystemIntegrationCommand::SetPlaybackStatus(
@@ -639,11 +644,54 @@ impl Controller {
                                 title: track.title.clone(),
                                 artist: track.artist.clone(),
                                 album: track.album.clone(),
-                                image: Some((width, height, image)),
+                                image: Some((width, height, image.clone())),
                                 duration: track.duration.as_secs() as u64,
                             })
                             .ok();
                     }
+
+                    let mut rgb_bytes = Vec::with_capacity((width * height * 3) as usize);
+                    for chunk in image.as_slice().chunks_exact(4) {
+                        rgb_bytes.push(chunk[0]);
+                        rgb_bytes.push(chunk[1]);
+                        rgb_bytes.push(chunk[2]);
+                    }
+
+                    let input =
+                        okmain::InputImage::from_bytes(width as u16, height as u16, &rgb_bytes)
+                            .unwrap();
+
+                    let colors = okmain::colors(input);
+
+                    fn rgb_to_rgba(color: Rgb<u8>) -> Rgba {
+                        rgb(((color.r as u32) << 16) | ((color.g as u32) << 8) | (color.b as u32))
+                    }
+                    let dominant = DominantColors {
+                        color1: colors
+                            .get(0)
+                            .copied()
+                            .map(rgb_to_rgba)
+                            .unwrap_or(rgb(0x000000)),
+
+                        color2: colors
+                            .get(1)
+                            .copied()
+                            .map(rgb_to_rgba)
+                            .unwrap_or(rgb(0x000000)),
+
+                        color3: colors
+                            .get(2)
+                            .copied()
+                            .map(rgb_to_rgba)
+                            .unwrap_or(rgb(0x000000)),
+
+                        color4: colors
+                            .get(3)
+                            .copied()
+                            .map(rgb_to_rgba)
+                            .unwrap_or(rgb(0x000000)),
+                    };
+                    *cx.global_mut::<DominantColors>() = dominant;
                 }
                 cx.notify(view.entity_id());
             }

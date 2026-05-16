@@ -236,11 +236,7 @@ fn render_album_art(
     let raw_img = image::load_from_memory(bytes)?;
 
     let image = match kind {
-        ImageKind::AlbumArt => {
-            let mut rgba = raw_img.into_rgba8();
-            rgba_to_bgra_inplace(rgba.as_mut())?;
-            rgba
-        }
+        ImageKind::AlbumArt => raw_img.into_rgba8(),
         ImageKind::ThumbnailSmall | ImageKind::ThumbnailLarge => {
             let (new_w, new_h) = match kind {
                 ImageKind::ThumbnailSmall => (128, 128),
@@ -248,12 +244,7 @@ fn render_album_art(
                 _ => unreachable!(),
             };
 
-            let thumb = raw_img.thumbnail(new_w, new_h);
-
-            let mut rgba = thumb.into_rgba8();
-            rgba_to_bgra_inplace(rgba.as_mut())?;
-
-            rgba
+            raw_img.thumbnail(new_w, new_h).into_rgba8()
         }
         ImageKind::Playlist => unreachable!(),
     };
@@ -318,8 +309,6 @@ fn render_playlist_thumbnail(
 
     let hash = ImageId::generate(image.as_bytes()).ok();
 
-    rgba_to_bgra_inplace(image.as_mut()).ok();
-
     let frame = Frame::new(image);
 
     let render_image = Arc::new(RenderImage::new(smallvec![frame]));
@@ -332,10 +321,10 @@ fn get_cached_image_path(cache_path: &Path, id: ImageId, kind: ImageKind) -> Pat
     let folder = &hex[0..2];
 
     let name = match kind {
-        ImageKind::ThumbnailSmall => format!("{hex}_tmbhs.bgra.zstd"),
-        ImageKind::ThumbnailLarge => format!("{hex}_tmbhl.bgra.zstd"),
-        ImageKind::AlbumArt => format!("{hex}_art.bgra.zstd"),
-        ImageKind::Playlist => format!("{hex}_playlist.bgra.zstd"),
+        ImageKind::ThumbnailSmall => format!("{hex}_tmbhs.rgba.zstd"),
+        ImageKind::ThumbnailLarge => format!("{hex}_tmbhl.rgba.zstd"),
+        ImageKind::AlbumArt => format!("{hex}_art.rgba.zstd"),
+        ImageKind::Playlist => format!("{hex}_playlist.rgba.zstd"),
     };
 
     cache_path.join("images").join(folder).join(name)

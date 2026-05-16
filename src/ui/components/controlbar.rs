@@ -56,7 +56,7 @@ impl Render for ControlBar {
             .gap_y_5()
             .child(
                 div()
-                    .w_2_3()
+                    .w_5_6()
                     .h_auto()
                     .p_4()
                     .flex()

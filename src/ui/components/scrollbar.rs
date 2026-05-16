@@ -67,11 +67,11 @@ impl ScrollableHandle {
     #[must_use]
     pub fn total_content_height(&self) -> f32 {
         match self {
-            ScrollableHandle::Regular(h) => (h.bounds().size.height + h.max_offset().y).into(),
+            ScrollableHandle::Regular(h) => (h.bounds().size.height + h.max_offset().height).into(),
             ScrollableHandle::UniformList { handle, .. } => {
                 let handle = &handle.0.borrow().base_handle;
 
-                (handle.bounds().size.height + handle.max_offset().y).into()
+                (handle.bounds().size.height + handle.max_offset().height).into()
             }
         }
     }
@@ -195,7 +195,12 @@ impl Element for Scrollbar {
             .unwrap_or(black().into())
             .color()
             .unwrap();
-        let foreground: Background = self.style.text.color.map_or(white().into(), Into::into);
+        let foreground: Background = self
+            .style
+            .text
+            .as_ref()
+            .and_then(|t| t.color)
+            .map_or(white().into(), Into::into);
 
         let mut corners = Corners::default();
         corners.refine(&self.style.corner_radii);

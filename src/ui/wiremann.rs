@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::controller::Controller;
 use crate::ui::animations::ease_in_out_expo;
 use crate::ui::components::controlbar::ControlBar;
@@ -9,7 +7,7 @@ use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::components::toasts::ToastManager;
 use crate::ui::components::toasts::scanning_status::ScanningStatus;
 use crate::ui::helpers::slider_to_secs;
-use crate::ui::theme::Theme;
+use crate::ui::theme::{DominantColors, Theme};
 use crate::ui::{components, global_keybinds};
 use components::{
     Page,
@@ -20,7 +18,7 @@ use components::{
 use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt as _, AppContext, BorrowAppContext, Context, ElementId, Entity,
-    InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div, px,
+    InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div, px, rgb, rgba,
 };
 
 pub struct Wiremann {
@@ -89,6 +87,7 @@ impl Wiremann {
         .detach();
 
         cx.set_global(Theme::default());
+        cx.set_global(DominantColors::default());
         cx.set_global(Page::Player);
         cx.set_global(ImageCache::default());
         let scanning_status = ScanningStatus::new(cx).clone();
@@ -164,7 +163,7 @@ impl Render for Wiremann {
                                 let page_state = page_state.clone();
                                 async move |_, cx| {
                                     cx.background_executor().timer(duration).await;
-                                    () = page_state.update(cx, |state, _| {
+                                    let _ = page_state.update(cx, |state, _| {
                                         *state = page;
                                     });
                                 }

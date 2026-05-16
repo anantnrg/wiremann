@@ -14,8 +14,7 @@ use crate::{
         wiremann::Wiremann,
     },
 };
-use gpui::{AppContext, Bounds, Result, TitlebarOptions, WindowBounds, WindowOptions, px, size};
-use gpui_platform_gpui_unofficial::application;
+use gpui::{AppContext, Application, Bounds, Result, WindowBounds, WindowOptions, px, size};
 use raw_window_handle::HasWindowHandle;
 use std::{
     fs,
@@ -40,174 +39,191 @@ pub struct AppPaths {
 pub fn run() -> Result<(), AppError> {
     let assets = Assets {};
 
-    application().with_assets(assets.clone()).run(move |cx| {
-        let bounds = Bounds::centered(None, size(px(1280.0), px(760.0)), cx);
-        assets.load_fonts(cx).expect("Could not load fonts");
+    Application::new()
+        .with_assets(assets.clone())
+        .run(move |cx| {
+            let bounds = Bounds::centered(None, size(px(1280.0), px(760.0)), cx);
+            assets.load_fonts(cx).expect("Could not load fonts");
+            static ICON_PNG: &[u8] = include_bytes!("../assets/logos/logo.png");
+            let app_icon = gpui::WindowIcon::from_png_bytes(ICON_PNG).ok();
 
-        let WorkerConfig {
-            metadata: metadata_workers,
-            thumbnail: thumbnail_workers,
-            cacher: cacher_workers,
-        } = calculate_worker_config();
+            let WorkerConfig {
+                metadata: metadata_workers,
+                thumbnail: thumbnail_workers,
+                cacher: cacher_workers,
+            } = calculate_worker_config();
 
-        let app_paths = get_app_paths();
-        ensure_app_paths(&app_paths);
+            let app_paths = get_app_paths();
+            ensure_app_paths(&app_paths);
 
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                app_id: Some(String::from("wiremann")),
-                focus: true,
-                titlebar: Some(TitlebarOptions {
-                    title: None,
-                    appears_transparent: true,
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(bounds)),
+                    app_id: Some(String::from("wiremann")),
+                    focus: true,
+                    titlebar: None,
+                    kind: gpui::WindowKind::Normal,
+                    is_resizable: true,
+                    window_decorations: Some(gpui::WindowDecorations::Client),
+                    window_min_size: Some(gpui::Size {
+                        width: px(800.0),
+                        height: px(740.0),
+                    }),
+                    app_icon,
+                    window_background: gpui::WindowBackgroundAppearance::Blurred,
+                    always_transparent: true,
                     ..Default::default()
-                }),
-                window_min_size: Some(gpui::Size {
-                    width: px(800.0),
-                    height: px(740.0),
-                }),
-                ..Default::default()
-            },
-            |window, cx| {
-                let (mut audio, audio_tx, audio_rx) = Audio::new();
-                let (mut scanner, scanner_tx, scanner_rx) = Scanner::new(app_paths.clone());
-                let (cacher, cacher_tx, cacher_rx) = Cacher::new(app_paths.clone());
-                let (mut image_processor, image_processor_tx, image_processor_rx) =
-                    ImageProcessor::new(app_paths.clone());
+                },
+                |window, cx| {
+                    let (mut audio, audio_tx, audio_rx) = Audio::new();
+                    let (mut scanner, scanner_tx, scanner_rx) = Scanner::new(app_paths.clone());
+                    let (cacher, cacher_tx, cacher_rx) = Cacher::new(app_paths.clone());
+                    let (mut image_processor, image_processor_tx, image_processor_rx) =
+                        ImageProcessor::new(app_paths.clone());
 
-                let raw_window_handle = window.window_handle().ok().map(|this| this.as_raw());
-                let (mut system_integraton, system_integration_tx, system_integration_rx) =
-                    SystemIntegration::new(raw_window_handle, app_paths);
+                    let raw_window_handle = window.window_handle().ok().map(|this| this.as_raw());
+                    let (mut system_integraton, system_integration_tx, system_integration_rx) =
+                        SystemIntegration::new(raw_window_handle, app_paths);
 
-                let (mut lyrics_manager, lyrics_manager_tx, lyrics_manager_rx) =
-                    LyricsManager::new();
+                    let (mut lyrics_manager, lyrics_manager_tx, lyrics_manager_rx) =
+                        LyricsManager::new();
 
-                let controller = Controller::new(
-                    cx.new(|_| AppState::default()),
-                    audio_tx,
-                    audio_rx,
-                    scanner_tx,
-                    scanner_rx,
-                    cacher_tx,
-                    cacher_rx,
-                    image_processor_tx,
-                    image_processor_rx,
-                    system_integration_tx,
-                    system_integration_rx,
-                    lyrics_manager_tx,
-                    lyrics_manager_rx,
-                );
+                    let controller = Controller::new(
+                        cx.new(|_| AppState::default()),
+                        audio_tx,
+                        audio_rx,
+                        scanner_tx,
+                        scanner_rx,
+                        cacher_tx,
+                        cacher_rx,
+                        image_processor_tx,
+                        image_processor_rx,
+                        system_integration_tx,
+                        system_integration_rx,
+                        lyrics_manager_tx,
+                        lyrics_manager_rx,
+                    );
 
-                thread::spawn(move || {
-                    if let Err(e) = audio.run() {
-                        eprintln!("Audio thread crashed with error: {e:?}");
-                    }
-                });
-
-                thread::spawn(move || {
-                    if let Err(e) = scanner.run(metadata_workers) {
-                        eprintln!("Scanner thread crashed with error: {e:?}");
-                    }
-                });
-
-                thread::spawn(move || {
-                    if let Err(e) = cacher.run(cacher_workers) {
-                        eprintln!("Cacher thread crashed with error: {e:?}");
-                    }
-                });
-
-                thread::spawn(move || {
-                    if let Err(e) = image_processor.run(thumbnail_workers) {
-                        eprintln!("Image processor thread crashed with error: {e:?}");
-                    }
-                });
-
-                thread::spawn(move || {
-                    if let Err(e) = system_integraton.run() {
-                        eprintln!("System integration thread crashed with error: {e:?}");
-                    }
-                });
-
-                thread::spawn(move || {
-                    if let Err(e) = lyrics_manager.run() {
-                        eprintln!("Lyrics manager thread crashed with error: {e:?}");
-                    }
-                });
-
-                cx.set_global(controller.clone());
-
-                let view = cx.new(Wiremann::new);
-
-                let res_handler = cx.new(|_| ResHandler {});
-                let arc_res = Arc::new(res_handler.clone());
-                let mut controller_clone = controller.clone();
-
-                cx.spawn(async move |cx| {
-                    let mut last_pos_request = Instant::now();
-                    let mut last_track_ended_request = Instant::now();
-
-                    loop {
-                        while let Ok(e) = controller.audio_rx.try_recv() {
-                            arc_res.update(cx, |res_handler, cx| {
-                                res_handler.handle(cx, Event::Audio(e));
-                            });
+                    thread::spawn(move || {
+                        if let Err(e) = audio.run() {
+                            eprintln!("Audio thread crashed with error: {e:?}");
                         }
+                    });
 
-                        while let Ok(e) = controller.scanner_rx.try_recv() {
-                            arc_res.update(cx, |res_handler, cx| {
-                                res_handler.handle(cx, Event::Scanner(e));
-                            });
+                    thread::spawn(move || {
+                        if let Err(e) = scanner.run(metadata_workers) {
+                            eprintln!("Scanner thread crashed with error: {e:?}");
                         }
+                    });
 
-                        while let Ok(e) = controller.cacher_rx.try_recv() {
-                            arc_res.update(cx, |res_handler, cx| {
-                                res_handler.handle(cx, Event::Cacher(e));
-                            });
+                    thread::spawn(move || {
+                        if let Err(e) = cacher.run(cacher_workers) {
+                            eprintln!("Cacher thread crashed with error: {e:?}");
                         }
+                    });
 
-                        while let Ok(e) = controller.image_processor_rx.try_recv() {
-                            arc_res.update(cx, |res_handler, cx| {
-                                res_handler.handle(cx, Event::ImageProcessor(e));
-                            });
+                    thread::spawn(move || {
+                        if let Err(e) = image_processor.run(thumbnail_workers) {
+                            eprintln!("Image processor thread crashed with error: {e:?}");
                         }
+                    });
 
-                        while let Ok(e) = controller.system_integration_rx.try_recv() {
-                            arc_res.update(cx, |res_handler, cx| {
-                                res_handler.handle(cx, Event::SystemIntegration(e));
-                            });
+                    thread::spawn(move || {
+                        if let Err(e) = system_integraton.run() {
+                            eprintln!("System integration thread crashed with error: {e:?}");
                         }
+                    });
 
-                        while let Ok(e) = controller.lyrics_manager_rx.try_recv() {
-                            arc_res.update(cx, |res_handler, cx| {
-                                res_handler.handle(cx, Event::LyricsEvent(e));
-                            });
+                    thread::spawn(move || {
+                        if let Err(e) = lyrics_manager.run() {
+                            eprintln!("Lyrics manager thread crashed with error: {e:?}");
                         }
+                    });
 
-                        if last_pos_request.elapsed() >= Duration::from_millis(256) {
-                            controller.get_pos();
+                    cx.set_global(controller.clone());
 
-                            last_pos_request = Instant::now();
+                    let view = cx.new(Wiremann::new);
+
+                    let res_handler = cx.new(|_| ResHandler {});
+                    let arc_res = Arc::new(res_handler.clone());
+                    let mut controller_clone = controller.clone();
+
+                    cx.spawn(async move |cx| {
+                        let mut last_pos_request = Instant::now();
+                        let mut last_track_ended_request = Instant::now();
+
+                        loop {
+                            while let Ok(e) = controller.audio_rx.try_recv() {
+                                arc_res
+                                    .update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, Event::Audio(e));
+                                    })
+                                    .ok();
+                            }
+
+                            while let Ok(e) = controller.scanner_rx.try_recv() {
+                                arc_res
+                                    .update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, Event::Scanner(e));
+                                    })
+                                    .ok();
+                            }
+
+                            while let Ok(e) = controller.cacher_rx.try_recv() {
+                                arc_res
+                                    .update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, Event::Cacher(e));
+                                    })
+                                    .ok();
+                            }
+
+                            while let Ok(e) = controller.image_processor_rx.try_recv() {
+                                arc_res
+                                    .update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, Event::ImageProcessor(e));
+                                    })
+                                    .ok();
+                            }
+
+                            while let Ok(e) = controller.system_integration_rx.try_recv() {
+                                arc_res
+                                    .update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, Event::SystemIntegration(e));
+                                    })
+                                    .ok();
+                            }
+
+                            while let Ok(e) = controller.lyrics_manager_rx.try_recv() {
+                                arc_res
+                                    .update(cx, |res_handler, cx| {
+                                        res_handler.handle(cx, Event::LyricsEvent(e));
+                                    })
+                                    .ok();
+                            }
+
+                            if last_pos_request.elapsed() >= Duration::from_millis(256) {
+                                controller.get_pos();
+
+                                last_pos_request = Instant::now();
+                            }
+
+                            if last_track_ended_request.elapsed() >= Duration::from_millis(512) {
+                                controller.check_track_ended();
+
+                                last_track_ended_request = Instant::now();
+                            }
+
+                            cx.background_executor()
+                                .timer(Duration::from_millis(64))
+                                .await;
                         }
+                    })
+                    .detach();
 
-                        if last_track_ended_request.elapsed() >= Duration::from_millis(512) {
-                            controller.check_track_ended();
+                    let view_clone = view.clone();
 
-                            last_track_ended_request = Instant::now();
-                        }
-
-                        cx.background_executor()
-                            .timer(Duration::from_millis(64))
-                            .await;
-                    }
-                })
-                .detach();
-
-                let view_clone = view.clone();
-
-                cx.subscribe(&res_handler, move |_, event, cx| {
-                    if let Err(e) =
-                        match event {
+                    cx.subscribe(&res_handler, move |_, event, cx| {
+                        if let Err(e) = match event {
                             Event::Audio(event) => {
                                 controller_clone.handle_audio_event(cx, event, &view_clone)
                             }
@@ -224,20 +240,19 @@ pub fn run() -> Result<(), AppError> {
                             Event::LyricsEvent(event) => {
                                 controller_clone.handle_lyrics_event(cx, event, &view_clone)
                             }
+                        } {
+                            eprintln!("controller error: {e:?}");
                         }
-                    {
-                        eprintln!("controller error: {e:?}");
-                    }
-                })
-                .detach();
+                    })
+                    .detach();
 
-                view
-            },
-        )
-        .expect("Application panicked.");
+                    view
+                },
+            )
+            .expect("Application panicked.");
 
-        cx.activate(true);
-    });
+            cx.activate(true);
+        });
 
     Ok(())
 }

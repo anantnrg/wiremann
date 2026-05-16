@@ -1,6 +1,6 @@
 use gpui::{Entity, Global};
 
-use crate::lyrics_manager::{Lyrics, SyncType};
+use crate::lyrics_manager::Lyrics;
 
 #[derive(Debug, PartialEq)]
 pub struct LyricsStateInner {

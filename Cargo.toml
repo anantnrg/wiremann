@@ -8,18 +8,14 @@ authors = ["Anant Narayan"]
 [dependencies]
 anyhow = "1.0.102"
 crossbeam-channel = "0.5.15"
-gpui-unofficial = { version = "0.231.2", features = ["wayland", "x11"] }
-gpui-platform-gpui-unofficial = { version = "0.231.2", features = [
-  "wayland",
-  "x11",
-] }
+gpui-ce = { git = "https://github.com/Far-Beyond-Pulsar/WGPUI" }
 image = { version = "0.25.10", default-features = false, features = [
-  "png",
-  "jpeg",
+    "png",
+    "jpeg",
 ] }
 lofty = "0.24.0"
 rodio = { version = "0.22.1", features = ["symphonia-all"] }
-rust-embed = "8.11.0"
+rust-embed = { version = "8.11.0", features = ["interpolate-folder-path"] }
 serde = { version = "1.0.228", features = ["derive"] }
 smallvec = "1.15.1"
 walkdir = "2.5.0"
@@ -42,6 +38,8 @@ souvlaki = "0.8.3"
 raw-window-handle = "0.6.2"
 reqwest = { version = "0.13.2", features = ["blocking", "query"] }
 serde_json = "1.0.149"
+smol = "2.0.2"
+okmain = "0.2.0"
 
 [build-dependencies]
 winres = "0.1.12"
