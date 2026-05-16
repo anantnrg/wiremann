@@ -119,7 +119,6 @@ impl Wiremann {
 impl Render for Wiremann {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = *cx.global::<Theme>();
-        let dominant_colors = *cx.global::<DominantColors>();
 
         let page = *cx.global::<Page>();
 
@@ -148,32 +147,6 @@ impl Render for Wiremann {
             .justify_center()
             .items_center()
             .bg(theme.app_bg)
-            .child(
-                div()
-                    .h_full()
-                    .w_full()
-                    .absolute()
-                    .child(div().h_full().w_full().bg(gpui::radial_gradient(
-                        0.4,
-                        0.4,
-                        1.0,
-                        1.0,
-                        gpui::gradient_color_stop(dominant_colors.color1, 0.0),
-                        gpui::gradient_color_stop(rgb(0x000000), 1.0),
-                    )))
-                    .child(
-                        div()
-                            .absolute()
-                            .top_0()
-                            .left_0()
-                            .right_0()
-                            .bottom_0()
-                            .w_full()
-                            .h_full()
-                            .bg(theme.app_bg)
-                            .opacity(0.72),
-                    ),
-            )
             .child(self.titlebar.clone())
             .child(
                 div()

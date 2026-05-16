@@ -1,19 +1,20 @@
 use crate::{
-    controller::Controller,
-    controller::state::PlaybackStatus,
+    controller::{Controller, state::PlaybackStatus},
     ui::{
-        components::controlbar::ControlBar,
-        components::icons::{Icon, Icons},
-        components::image_cache::ImageCache,
-        components::queue::Queue,
-        components::scrollbar::{RightPad, floating_scrollbar},
-        theme::Theme,
+        components::{
+            controlbar::ControlBar,
+            icons::{Icon, Icons},
+            image_cache::ImageCache,
+            queue::Queue,
+            scrollbar::{RightPad, floating_scrollbar},
+        },
+        theme::{DominantColors, Theme},
     },
 };
 use gpui::{
     App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit,
     ParentElement, Render, StatefulInteractiveElement, Styled, StyledImage,
-    UniformListScrollHandle, Window, div, img, px,
+    UniformListScrollHandle, Window, div, img, px, rgb,
 };
 use gpui::{prelude::FluentBuilder, relative};
 
@@ -52,6 +53,7 @@ impl Render for PlayerPage {
     #[allow(clippy::too_many_lines)]
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = *cx.global::<Theme>();
+        let dominant_colors = *cx.global::<DominantColors>();
 
         let controller = cx.global::<Controller>().clone();
         let state = controller.state.read(cx);
@@ -70,6 +72,14 @@ impl Render for PlayerPage {
             .flex()
             .items_center()
             .justify_center()
+            .child(div().h_full().w_full().absolute().bg(gpui::radial_gradient(
+                0.4,
+                0.4,
+                1.0,
+                1.0,
+                gpui::gradient_color_stop(dominant_colors.color1, 0.0),
+                gpui::gradient_color_stop(rgb(0x000000), 1.0),
+            )))
             .child(
                 div()
                     .h_full()
