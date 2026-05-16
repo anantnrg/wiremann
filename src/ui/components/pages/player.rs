@@ -293,7 +293,7 @@ impl Render for PlayerPage {
             .child(if *show_panel.read(cx) {
                 div()
                     .h_full()
-                    .w(relative(0.40))
+                    .w(relative(0.48))
                     .flex_shrink_0()
                     .flex()
                     .flex_col()
@@ -434,8 +434,8 @@ impl Render for PlayerPage {
                     .px_3()
                     .py_1()
                     .absolute()
-                    .top_4()
-                    .right_3()
+                    .top_1()
+                    .right_1()
                     .text_center()
                     .rounded_md()
                     .text_sm()
@@ -447,11 +447,7 @@ impl Render for PlayerPage {
                             .text_color(theme.player_panel_show_hide_text_hover)
                     })
                     .on_click(move |_, _, cx| show_panel.update(cx, |this, _| *this = !*this))
-                    .child(if *self.show_panel.read(cx) {
-                        "Hide"
-                    } else {
-                        "Show Queue"
-                    }),
+                    .child(Icon::new(Icons::PanelRight).size_8()),
             )
     }
 }
