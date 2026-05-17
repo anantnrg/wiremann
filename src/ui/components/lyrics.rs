@@ -1,11 +1,10 @@
 use crate::controller::Controller;
-use crate::lyrics_manager::Lyrics;
-use crate::lyrics_manager::{LyricLine, LyricWord, SyncType};
-use crate::ui::theme::Theme;
+use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
+use ahash::AHashMap;
 use gpui::{
-    Animation, AnimationExt as _, App, AppContext, Context, ElementId, Entity, FontWeight, Global,
-    InteractiveElement, IntoElement, ParentElement, Render, ScrollStrategy, Styled,
-    UniformListScrollHandle, Window, div, px, rgb, uniform_list,
+    App, AppContext, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
+    ParentElement, Render, ScrollStrategy, Styled, UniformListScrollHandle, Window, div, px, rgb,
+    uniform_list,
 };
 use std::time::Duration;
 
@@ -30,34 +29,26 @@ impl Global for LyricsState {}
 
 impl LyricsStateInner {
     pub fn new() -> Self {
-        LyricsStateInner {
+        Self {
             status: LyricsStatus::Unavailable,
             lyrics: None,
         }
     }
 }
 
-#[derive(Clone)]
-pub struct LyricsView {
-    pub scroll_handle: UniformListScrollHandle,
-    pub last_active_line: usize,
+pub struct LyricLineView {
+    pub line: LyricLine,
+    pub idx: usize,
+    pub sync_type: SyncType,
 }
 
-impl LyricsView {
-    pub fn new(cx: &mut App, scroll_handle: UniformListScrollHandle) -> Entity<Self> {
+impl LyricLineView {
+    pub fn new(cx: &mut App, line: LyricLine, idx: usize, sync_type: SyncType) -> Entity<Self> {
         cx.new(|_| Self {
-            scroll_handle,
-            last_active_line: 0,
+            line,
+            idx,
+            sync_type,
         })
-    }
-
-    fn active_line(lines: &[LyricLine], playback: Duration) -> usize {
-        lines
-            .iter()
-            .enumerate()
-            .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
-            .map(|(idx, _)| idx)
-            .unwrap_or(0)
     }
 
     fn active_word(words: &[LyricWord], playback: Duration) -> Option<usize> {
@@ -69,13 +60,168 @@ impl LyricsView {
     }
 }
 
+impl Render for LyricLineView {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let state = cx.global::<Controller>().state.read(cx);
+
+        let playback = Duration::from_millis(state.playback.position);
+
+        let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
+
+        let Some(lyrics) = lyrics else {
+            return div().into_any_element();
+        };
+
+        let active_line = lyrics
+            .lines
+            .iter()
+            .enumerate()
+            .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
+            .map(|(idx, _)| idx)
+            .unwrap_or(0);
+
+        let is_active_line = self.idx == active_line;
+
+        match self.sync_type {
+            SyncType::Line => {
+                let opacity = if is_active_line { 1.0 } else { 0.4 };
+
+                div()
+                    .id(("line", self.idx))
+                    .w_full()
+                    .min_h(px(LINE_HEIGHT))
+                    .px_6()
+                    .py_1()
+                    .flex()
+                    .items_center()
+                    .justify_start()
+                    .child(
+                        div()
+                            .text_3xl()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(rgb(0xffffff))
+                            .opacity(opacity)
+                            .child(self.line.text.clone()),
+                    )
+                    .into_any_element()
+            }
+
+            SyncType::Word => {
+                let active_word = self
+                    .line
+                    .words
+                    .as_ref()
+                    .and_then(|words| Self::active_word(words, playback));
+
+                div()
+                    .id(("line", self.idx))
+                    .w_full()
+                    .min_h(px(LINE_HEIGHT))
+                    .px_6()
+                    .py_1()
+                    .flex()
+                    .justify_start()
+                    .child(
+                        div()
+                            .w_full()
+                            .flex()
+                            .flex_row()
+                            .flex_wrap()
+                            .justify_start()
+                            .children(
+                                self.line
+                                    .words
+                                    .clone()
+                                    .unwrap_or_default()
+                                    .into_iter()
+                                    .enumerate()
+                                    .map(|(word_idx, word)| {
+                                        let opacity = if is_active_line {
+                                            match active_word {
+                                                Some(active) if word_idx < active => 0.85,
+                                                Some(active) if word_idx == active => 1.0,
+                                                _ => 0.55,
+                                            }
+                                        } else {
+                                            0.4
+                                        };
+
+                                        div()
+                                            .id(format!("word_{}_{}", self.idx, word_idx))
+                                            .text_3xl()
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .text_color(rgb(0xffffff))
+                                            .opacity(opacity)
+                                            .child(word.text)
+                                    }),
+                            ),
+                    )
+                    .into_any_element()
+            }
+
+            SyncType::Unsynced => div()
+                .id(("unsynced", self.idx))
+                .w_full()
+                .px_6()
+                .py_1()
+                .child(
+                    div()
+                        .text_3xl()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(rgb(0xffffff))
+                        .opacity(0.4)
+                        .child(self.line.text.clone()),
+                )
+                .into_any_element(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct LyricsView {
+    pub views: Entity<AHashMap<usize, Entity<LyricLineView>>>,
+    pub scroll_handle: UniformListScrollHandle,
+    pub last_active_line: usize,
+}
+
+impl LyricsView {
+    pub fn new(cx: &mut App, scroll_handle: UniformListScrollHandle) -> Entity<Self> {
+        cx.new(|cx| Self {
+            views: cx.new(|_| AHashMap::new()),
+            scroll_handle,
+            last_active_line: 0,
+        })
+    }
+
+    fn get_or_create_line(
+        views: &Entity<AHashMap<usize, Entity<LyricLineView>>>,
+        line: LyricLine,
+        idx: usize,
+        sync_type: SyncType,
+        cx: &mut App,
+    ) -> Entity<LyricLineView> {
+        views.update(cx, |this, cx| {
+            this.entry(idx)
+                .or_insert_with(|| LyricLineView::new(cx, line, idx, sync_type))
+                .clone()
+        })
+    }
+
+    fn active_line(lines: &[LyricLine], playback: Duration) -> usize {
+        lines
+            .iter()
+            .enumerate()
+            .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
+            .map(|(idx, _)| idx)
+            .unwrap_or(0)
+    }
+}
+
 impl Render for LyricsView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = *cx.global::<Theme>();
+        let state = cx.global::<Controller>().state.read(cx);
 
-        let state = cx.global::<Controller>().state.read(cx).clone();
-
-        let playback = state.playback.position;
+        let playback = Duration::from_millis(state.playback.position);
 
         let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
 
@@ -94,9 +240,7 @@ impl Render for LyricsView {
                 );
         };
 
-        let lines = lyrics.lines.clone();
-
-        let active_line = Self::active_line(&lines, Duration::from_millis(playback));
+        let active_line = Self::active_line(&lyrics.lines, playback);
 
         if active_line != self.last_active_line {
             self.last_active_line = active_line;
@@ -108,112 +252,34 @@ impl Render for LyricsView {
             });
         }
 
-        let line_count = lines.len();
+        let views = self.views.clone();
+
+        let lines = lyrics.lines.clone();
+        let sync_type = lyrics.sync_type.clone();
 
         div().size_full().child(
-            uniform_list("lyrics", line_count, move |range, _, cx| {
+            uniform_list("lyrics", lines.len(), move |range, _, cx| {
                 range
                     .map(|idx| {
                         let line = lines[idx].clone();
 
-                        let is_active_line = idx == active_line;
-
-                        let line_opacity = if is_active_line { 0.7 } else { 0.4 };
-
-                        match lyrics.sync_type {
-                            SyncType::Line => div()
-                                .id(("line", idx))
-                                .w_full()
-                                .h(px(LINE_HEIGHT))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    div()
-                                        .text_3xl()
-                                        .font_weight(FontWeight::SEMIBOLD)
-                                        .text_color(rgb(0xffffff))
-                                        .opacity(line_opacity)
-                                        .child(line.text),
-                                ),
-
-                            SyncType::Word => {
-                                let active_word = line.words.as_ref().and_then(|words| {
-                                    Self::active_word(words, Duration::from_millis(playback))
-                                });
-
-                                div()
-                                    .id(("line", idx))
-                                    .w_full()
-                                    .h(px(LINE_HEIGHT))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .flex_row()
-                                            .flex_wrap()
-                                            .justify_center()
-                                            .children(
-                                                line.words
-                                                    .unwrap_or_default()
-                                                    .into_iter()
-                                                    .enumerate()
-                                                    .map(|(word_idx, word)| {
-                                                        let target_opacity = if is_active_line {
-                                                            if active_word
-                                                                .map(|a| word_idx <= a)
-                                                                .unwrap_or(false)
-                                                            {
-                                                                1.0
-                                                            } else {
-                                                                0.7
-                                                            }
-                                                        } else {
-                                                            0.4
-                                                        };
-
-                                                        div()
-                                                        .id(format!("word_{}_{}", idx, word_idx))
-                                                        .text_3xl()
-                                                        .font_weight(FontWeight::SEMIBOLD)
-                                                        .child(word.text)
-                                                        .with_animation(
-                                                            ElementId::NamedInteger(
-                                                                "lyric_word".into(),
-                                                                ((idx as u64) << 32)
-                                                                    | word_idx as u64,
-                                                            ),
-                                                            Animation::new(Duration::from_millis(
-                                                                180,
-                                                            ))
-                                                            .with_easing(gpui::ease_out_quint()),
-                                                            move |this, delta| {
-                                                                let opacity = 0.4
-                                                                    + ((target_opacity - 0.4)
-                                                                        * delta);
-
-                                                                this.text_color(
-                                                                    rgb(0xffffff))
-                                                                    .opacity(opacity)
-
-                                                            },
-                                                        )
-                                                    }),
-                                            ),
-                                    )
-                            }
-                            SyncType::Unsynced => div().id("unsynced"),
-                        }
+                        div().id(("lyrics_line", idx)).w_full().child(
+                            LyricsView::get_or_create_line(
+                                &views,
+                                line,
+                                idx,
+                                sync_type.clone(),
+                                cx,
+                            ),
+                        )
                     })
                     .collect()
             })
-            .track_scroll(&self.scroll_handle)
+            .w_full()
+            .h_full()
             .flex()
             .flex_col()
-            .w_full()
-            .h_full(),
+            .track_scroll(&self.scroll_handle),
         )
     }
 }
