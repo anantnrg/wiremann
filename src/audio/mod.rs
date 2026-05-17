@@ -51,7 +51,7 @@ impl Audio {
                 AudioCommand::Pause => self.pause(),
                 AudioCommand::Stop => self.stop(),
                 AudioCommand::SetVolume(v) => self.set_volume(v),
-                AudioCommand::Seek(u64) => self.seek(u64)?,
+                AudioCommand::Seek(pos) => self.seek(pos)?,
             }
         }
     }
@@ -85,9 +85,9 @@ impl Audio {
     }
 
     fn emit_position(&self) {
-        let res = self
-            .tx
-            .send(AudioEvent::Position(self.player.get_pos().as_secs()));
+        self.tx
+            .send(AudioEvent::Position(self.player.get_pos()))
+            .ok();
     }
 
     fn play(&self) {
@@ -116,8 +116,8 @@ impl Audio {
         self.player.set_volume(volume);
     }
 
-    fn seek(&self, pos: u64) -> Result<(), AudioError> {
-        self.player.try_seek(Duration::from_secs(pos))?;
+    fn seek(&self, pos: Duration) -> Result<(), AudioError> {
+        self.player.try_seek(pos)?;
 
         Ok(())
     }

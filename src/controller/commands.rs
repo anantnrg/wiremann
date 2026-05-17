@@ -15,7 +15,7 @@ pub enum AudioCommand {
     Pause,
     Stop,
     SetVolume(f32),
-    Seek(u64),
+    Seek(Duration),
 }
 
 pub enum ScannerCommand {
@@ -62,8 +62,8 @@ pub enum SystemIntegrationCommand {
         image: Option<(u32, u32, Vec<u8>)>,
         duration: u64,
     },
-    SetPosition(u64),
-    SetPlaybackStatus(PlaybackStatus, u64),
+    SetPosition(Duration),
+    SetPlaybackStatus(PlaybackStatus, Duration),
 }
 
 pub enum LyricsCommand {

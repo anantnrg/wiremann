@@ -14,7 +14,7 @@ use crate::library::{Track, TrackId};
 use crate::ui::components::lyrics::{LyricsState, LyricsStatus};
 use crate::ui::components::toasts::scanning_status::ScanningStatus;
 use crate::ui::components::toasts::{ToastKind, ToastPhase};
-use crate::ui::helpers::{drop_image_from_app, secs_to_slider};
+use crate::ui::helpers::{drop_image_from_app, duration_to_slider};
 use crate::ui::theme::DominantColors;
 use crate::ui::wiremann::Wiremann;
 use crate::{
@@ -121,11 +121,11 @@ impl Controller {
                                     };
 
                                     let duration = if let Some(track) = current {
-                                        track.duration.as_secs()
+                                        track.duration
                                     } else {
-                                        0
+                                        Duration::default()
                                     };
-                                    this.set_value(secs_to_slider(*pos, duration), cx);
+                                    this.set_value(duration_to_slider(*pos, duration), cx);
                                     cx.notify();
                                 });
                             });
@@ -600,9 +600,8 @@ impl Controller {
                             });
                             this.playback_slider_state.update(cx, |this, cx| {
                                 if let Some(duration) = duration {
-                                    // TODO: maybe use millis for slider?
                                     this.set_value(
-                                        secs_to_slider(playback_state.position, duration.as_secs()),
+                                        duration_to_slider(playback_state.position, duration),
                                         cx,
                                     );
                                 }
@@ -1158,7 +1157,7 @@ impl Controller {
             .send(CacherCommand::WritePlaybackState(state.playback));
     }
 
-    pub fn seek(&self, pos: u64) {
+    pub fn seek(&self, pos: Duration) {
         let _ = self.audio_tx.send(AudioCommand::Seek(pos));
     }
 

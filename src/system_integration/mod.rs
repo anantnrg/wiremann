@@ -150,17 +150,17 @@ impl SystemIntegration {
                 }
                 SystemIntegrationCommand::SetPosition(pos) => {
                     controls.set_playback(MediaPlayback::Playing {
-                        progress: Some(MediaPosition(Duration::from_secs(pos))),
+                        progress: Some(MediaPosition(pos)),
                     })?;
                 }
                 SystemIntegrationCommand::SetPlaybackStatus(status, pos) => {
                     let status = match status {
                         PlaybackStatus::Stopped => MediaPlayback::Stopped,
                         PlaybackStatus::Paused => MediaPlayback::Paused {
-                            progress: Some(MediaPosition(Duration::from_secs(pos))),
+                            progress: Some(MediaPosition(pos)),
                         },
                         PlaybackStatus::Playing => MediaPlayback::Playing {
-                            progress: Some(MediaPosition(Duration::from_secs(pos))),
+                            progress: Some(MediaPosition(pos)),
                         },
                     };
                     controls.set_playback(status)?;
@@ -194,19 +194,17 @@ impl SystemIntegration {
             MediaControlEvent::SeekBy(direction, secs) => match direction {
                 SeekDirection::Forward => {
                     self.tx
-                        .send(SystemIntegrationEvent::SeekForward(secs.as_secs()))
+                        .send(SystemIntegrationEvent::SeekForward(*secs))
                         .ok();
                 }
                 SeekDirection::Backward => {
                     self.tx
-                        .send(SystemIntegrationEvent::SeekBackward(secs.as_secs()))
+                        .send(SystemIntegrationEvent::SeekBackward(*secs))
                         .ok();
                 }
             },
             MediaControlEvent::SetPosition(pos) => {
-                self.tx
-                    .send(SystemIntegrationEvent::Position(pos.0.as_secs()))
-                    .ok();
+                self.tx.send(SystemIntegrationEvent::Position(pos.0)).ok();
             }
             MediaControlEvent::SetVolume(vol) => {
                 self.tx.send(SystemIntegrationEvent::Volume(*vol)).ok();

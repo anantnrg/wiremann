@@ -3,7 +3,7 @@ use crate::{
     library::{Track, TrackId},
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct AppState {
@@ -33,7 +33,7 @@ pub struct PlaybackState {
     pub current_index: usize,
 
     pub status: PlaybackStatus,
-    pub position: u64,
+    pub position: Duration,
 
     pub volume: f32,
     pub mute: bool,
@@ -54,7 +54,7 @@ impl Default for PlaybackState {
             current_playlist: None,
             current_index: 0,
             status: PlaybackStatus::Stopped,
-            position: 0,
+            position: Duration::from_secs(0),
             volume: 1.0,
             mute: false,
             shuffling: false,

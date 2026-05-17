@@ -64,8 +64,8 @@ impl Render for LyricLineView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = cx.global::<Controller>().state.read(cx);
 
-        let playback = Duration::from_millis(state.playback.position);
-
+        let playback = Duration::from_secs(state.playback.position);
+        println!("{:?}", playback);
         let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
 
         let Some(lyrics) = lyrics else {
@@ -259,6 +259,14 @@ impl Render for LyricsView {
 
         div().size_full().child(
             uniform_list("lyrics", lines.len(), move |range, _, cx| {
+                views.update(cx, |views, cx| {
+                    for idx in range.clone() {
+                        if let Some(view) = views.get(&idx) {
+                            cx.notify();
+                        }
+                    }
+                });
+
                 range
                     .map(|idx| {
                         let line = lines[idx].clone();
