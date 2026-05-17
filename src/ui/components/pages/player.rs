@@ -15,8 +15,9 @@ use crate::{
 };
 use gpui::{
     Animation, AnimationExt, App, AppContext, Context, ElementId, Entity, FontWeight,
-    InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, StatefulInteractiveElement,
-    Styled, StyledImage, UniformListScrollHandle, Window, div, img, px, rgb,
+    InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, ScrollHandle,
+    StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window, div, img, px,
+    rgb,
 };
 use gpui::{prelude::FluentBuilder, relative};
 
@@ -46,7 +47,7 @@ impl PlayerPage {
         PlayerPage {
             queue: Queue::new(cx, queue_scroll_handle.clone()),
             queue_scroll_handle,
-            lyrics: LyricsView::new(cx, UniformListScrollHandle::new()),
+            lyrics: LyricsView::new(cx, ScrollHandle::new()),
             lyrics_scroll_handle: UniformListScrollHandle::new(),
             controlbar,
             show_panel,

@@ -3,12 +3,9 @@ use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use ahash::AHashMap;
 use gpui::{
     App, AppContext, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Render, ScrollStrategy, Styled, UniformListScrollHandle, Window, div, px, rgb,
-    uniform_list,
+    ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window, div, rgb,
 };
 use std::time::Duration;
-
-const LINE_HEIGHT: f32 = 72.0;
 
 #[derive(Debug, PartialEq)]
 pub struct LyricsStateInner {
@@ -88,9 +85,8 @@ impl Render for LyricLineView {
                 div()
                     .id(("line", self.idx))
                     .w_full()
-                    .min_h(px(LINE_HEIGHT))
                     .px_6()
-                    .py_1()
+                    .py_2()
                     .flex()
                     .items_center()
                     .justify_start()
@@ -115,9 +111,8 @@ impl Render for LyricLineView {
                 div()
                     .id(("line", self.idx))
                     .w_full()
-                    .min_h(px(LINE_HEIGHT))
                     .px_6()
-                    .py_1()
+                    .py_2()
                     .flex()
                     .justify_start()
                     .child(
@@ -179,12 +174,12 @@ impl Render for LyricLineView {
 #[derive(Clone)]
 pub struct LyricsView {
     pub views: Entity<AHashMap<usize, Entity<LyricLineView>>>,
-    pub scroll_handle: UniformListScrollHandle,
+    pub scroll_handle: ScrollHandle,
     pub last_active_line: usize,
 }
 
 impl LyricsView {
-    pub fn new(cx: &mut App, scroll_handle: UniformListScrollHandle) -> Entity<Self> {
+    pub fn new(cx: &mut App, scroll_handle: ScrollHandle) -> Entity<Self> {
         cx.new(|cx| Self {
             views: cx.new(|_| AHashMap::new()),
             scroll_handle,
@@ -247,7 +242,7 @@ impl Render for LyricsView {
             let handle = self.scroll_handle.clone();
 
             cx.defer(move |_| {
-                handle.scroll_to_item(active_line, ScrollStrategy::Center);
+                handle.scroll_to_item(active_line);
             });
         }
 
@@ -257,11 +252,16 @@ impl Render for LyricsView {
         let sync_type = lyrics.sync_type.clone();
 
         div().size_full().child(
-            uniform_list("lyrics", lines.len(), move |range, _, cx| {
-                range
-                    .map(|idx| {
-                        let line = lines[idx].clone();
-
+            div()
+                .id("lyrics_scroll")
+                .flex_1()
+                .min_h_0()
+                .w_full()
+                .h_full()
+                .overflow_y_scroll()
+                .track_scroll(&self.scroll_handle)
+                .child(div().w_full().flex().flex_col().children(
+                    lines.into_iter().enumerate().map(|(idx, line)| {
                         div().id(("lyrics_line", idx)).w_full().child(
                             LyricsView::get_or_create_line(
                                 &views,
@@ -271,14 +271,8 @@ impl Render for LyricsView {
                                 cx,
                             ),
                         )
-                    })
-                    .collect()
-            })
-            .w_full()
-            .h_full()
-            .flex()
-            .flex_col()
-            .track_scroll(&self.scroll_handle),
+                    }),
+                )),
         )
     }
 }
