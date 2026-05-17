@@ -64,7 +64,7 @@ impl Render for LyricLineView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = cx.global::<Controller>().state.read(cx);
 
-        let playback = Duration::from_secs(state.playback.position);
+        let playback = state.playback.position;
         println!("{:?}", playback);
         let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
 
@@ -221,7 +221,7 @@ impl Render for LyricsView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = cx.global::<Controller>().state.read(cx);
 
-        let playback = Duration::from_millis(state.playback.position);
+        let playback = state.playback.position;
 
         let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
 

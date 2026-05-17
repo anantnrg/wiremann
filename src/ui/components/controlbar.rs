@@ -84,8 +84,8 @@ impl Render for ControlBar {
                                     .text_color(theme.playback_position_text)
                                     .child(format!(
                                         "{:02}:{:02}",
-                                        state.playback.position / 60,
-                                        state.playback.position % 60
+                                        state.playback.position.as_secs() / 60,
+                                        state.playback.position.as_secs() % 60
                                     )),
                             )
                             .child(

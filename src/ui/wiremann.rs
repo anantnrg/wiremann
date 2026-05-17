@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::controller::Controller;
 use crate::ui::animations::ease_in_out_expo;
 use crate::ui::components::controlbar::ControlBar;
@@ -6,7 +8,7 @@ use crate::ui::components::pages::playlists::PlaylistsPage;
 use crate::ui::components::slider::{SliderEvent, SliderState};
 use crate::ui::components::toasts::ToastManager;
 use crate::ui::components::toasts::scanning_status::ScanningStatus;
-use crate::ui::helpers::slider_to_secs;
+use crate::ui::helpers::slider_to_duration;
 use crate::ui::theme::{DominantColors, Theme};
 use crate::ui::{components, global_keybinds};
 use components::{
@@ -73,12 +75,12 @@ impl Wiremann {
                     };
 
                     let duration = if let Some(track) = current {
-                        track.duration.as_secs()
+                        track.duration
                     } else {
-                        0
+                        Duration::from_secs(0)
                     };
 
-                    controller.seek(slider_to_secs(*value, duration));
+                    controller.seek(slider_to_duration(*value, duration));
 
                     cx.notify();
                 }
