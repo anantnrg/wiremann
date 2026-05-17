@@ -6,6 +6,7 @@ use crate::{
             controlbar::ControlBar,
             icons::{Icon, Icons},
             image_cache::ImageCache,
+            lyrics::LyricsView,
             queue::Queue,
             scrollbar::{RightPad, floating_scrollbar},
         },
@@ -23,6 +24,8 @@ use gpui::{prelude::FluentBuilder, relative};
 pub struct PlayerPage {
     pub queue: Entity<Queue>,
     queue_scroll_handle: UniformListScrollHandle,
+    pub lyrics: Entity<LyricsView>,
+    lyrics_scroll_handle: UniformListScrollHandle,
     pub controlbar: Entity<ControlBar>,
     show_panel: Entity<bool>,
     current_panel: Entity<Panel>,
@@ -43,6 +46,8 @@ impl PlayerPage {
         PlayerPage {
             queue: Queue::new(cx, queue_scroll_handle.clone()),
             queue_scroll_handle,
+            lyrics: LyricsView::new(cx, UniformListScrollHandle::new()),
+            lyrics_scroll_handle: UniformListScrollHandle::new(),
             controlbar,
             show_panel,
             current_panel,
@@ -424,7 +429,7 @@ impl Render for PlayerPage {
                                     .items_center()
                                     .justify_center()
                                     .text_color(theme.player_panel_show_hide_text)
-                                    .child("No lyrics loaded")
+                                    .child(self.lyrics.clone())
                             }
                         })
                     })
