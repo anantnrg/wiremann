@@ -2,8 +2,8 @@ use crate::controller::Controller;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use ahash::AHashMap;
 use gpui::{
-    App, AppContext, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window, div, rgb,
+    div, rgb, App, AppContext, Context, Entity, FontWeight, Global, InteractiveElement,
+    IntoElement, ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window,
 };
 use std::time::Duration;
 
@@ -251,13 +251,12 @@ impl Render for LyricsView {
         let lines = lyrics.lines.clone();
         let sync_type = lyrics.sync_type.clone();
 
-        div().size_full().child(
+        div().w_full().h_full().min_h_0().flex().flex_col().child(
             div()
                 .id("lyrics_scroll")
+                .w_full()
                 .flex_1()
                 .min_h_0()
-                .w_full()
-                .h_full()
                 .overflow_y_scroll()
                 .track_scroll(&self.scroll_handle)
                 .child(div().w_full().flex().flex_col().children(
