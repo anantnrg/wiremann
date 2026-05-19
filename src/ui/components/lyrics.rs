@@ -1,9 +1,11 @@
 use crate::controller::Controller;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
+use crate::ui::components::bounds_observer::observe_bounds;
 use ahash::AHashMap;
 use gpui::{
-    div, rgb, App, AppContext, Context, Entity, FontWeight, Global, InteractiveElement,
-    IntoElement, ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window,
+    App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
+    ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window, div,
+    rgb,
 };
 use std::time::Duration;
 
@@ -176,6 +178,7 @@ pub struct LyricsView {
     pub views: Entity<AHashMap<usize, Entity<LyricLineView>>>,
     pub scroll_handle: ScrollHandle,
     pub last_active_line: usize,
+    pub panel_bounds: Option<Bounds<Pixels>>,
 }
 
 impl LyricsView {
@@ -184,6 +187,7 @@ impl LyricsView {
             views: cx.new(|_| AHashMap::new()),
             scroll_handle,
             last_active_line: 0,
+            panel_bounds: None,
         })
     }
 
@@ -213,6 +217,8 @@ impl LyricsView {
 
 impl Render for LyricsView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let entity = cx.entity();
+
         let state = cx.global::<Controller>().state.read(cx);
 
         let playback = state.playback.position;
@@ -231,7 +237,8 @@ impl Render for LyricsView {
                         .opacity(0.5)
                         .text_xl()
                         .child("No lyrics"),
-                );
+                )
+                .into_any_element();
         };
 
         let active_line = Self::active_line(&lyrics.lines, playback);
@@ -249,9 +256,10 @@ impl Render for LyricsView {
         let views = self.views.clone();
 
         let lines = lyrics.lines.clone();
+
         let sync_type = lyrics.sync_type.clone();
 
-        div().w_full().h_full().min_h_0().flex().flex_col().child(
+        let root = div().w_full().h_full().min_h_0().flex().flex_col().child(
             div()
                 .id("lyrics_scroll")
                 .w_full()
@@ -259,6 +267,13 @@ impl Render for LyricsView {
                 .min_h_0()
                 .overflow_y_scroll()
                 .track_scroll(&self.scroll_handle)
+                .child(
+                    div()
+                        .absolute()
+                        .text_xl()
+                        .text_color(rgb(0xffffff))
+                        .child(self.panel_bounds.unwrap_or_default().size.to_string()),
+                )
                 .child(div().w_full().flex().flex_col().children(
                     lines.into_iter().enumerate().map(|(idx, line)| {
                         div().id(("lyrics_line", idx)).w_full().child(
@@ -272,6 +287,17 @@ impl Render for LyricsView {
                         )
                     }),
                 )),
-        )
+        );
+
+        observe_bounds("lyrics_panel_bounds", root, move |bounds, _, cx| {
+            entity.update(cx, |this, cx| {
+                if this.panel_bounds != Some(bounds) {
+                    this.panel_bounds = Some(bounds);
+
+                    cx.notify();
+                }
+            });
+        })
+        .into_any_element()
     }
 }
