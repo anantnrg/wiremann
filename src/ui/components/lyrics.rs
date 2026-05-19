@@ -6,8 +6,7 @@ use crate::ui::components::virtual_list::vlist;
 use ahash::AHashMap;
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Point, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window,
-    div, px, rgb,
+    ParentElement, Pixels, Point, Render, ScrollHandle, Styled, Window, div, px, rgb,
 };
 
 use std::cell::RefCell;
@@ -298,19 +297,19 @@ impl Render for LyricsView {
 
         let active_line = Self::active_line(&lyrics.lines, playback);
 
-        if active_line != self.last_active_line {
-            self.last_active_line = active_line;
+        // if active_line != self.last_active_line {
+        //     self.last_active_line = active_line;
 
-            if let Some(offset) = self.cumulative_offsets.get(active_line) {
-                let handle = self.scroll_handle.clone();
+        //     if let Some(offset) = self.cumulative_offsets.get(active_line) {
+        //         let handle = self.scroll_handle.clone();
 
-                let y = *offset;
+        //         let y = *offset;
 
-                cx.defer(move |_| {
-                    handle.set_offset(Point { x: px(0.0), y });
-                });
-            }
-        }
+        //         cx.defer(move |_| {
+        //             handle.set_offset(Point { x: px(0.0), y });
+        //         });
+        //     }
+        // }
 
         let views = self.views.clone();
 
