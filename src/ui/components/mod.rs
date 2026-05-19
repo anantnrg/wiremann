@@ -4,6 +4,7 @@ mod element_ext;
 pub mod icons;
 pub mod image_cache;
 pub mod lyrics;
+pub mod lyrics_metrics;
 pub mod navbar;
 pub mod pages;
 pub mod queue;

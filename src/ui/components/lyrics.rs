@@ -1,12 +1,18 @@
 use crate::controller::Controller;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
+use crate::ui::components::lyrics_metrics::LyricsMetrics;
+
 use ahash::AHashMap;
+
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window, div,
-    rgb,
+    ParentElement, Pixels, Point, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window,
+    div, px, rgb,
 };
+
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::Duration;
 
 #[derive(Debug, PartialEq)]
@@ -64,6 +70,7 @@ impl Render for LyricLineView {
         let state = cx.global::<Controller>().state.read(cx);
 
         let playback = state.playback.position;
+
         let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
 
         let Some(lyrics) = lyrics else {
@@ -135,7 +142,9 @@ impl Render for LyricLineView {
                                         let opacity = if is_active_line {
                                             match active_word {
                                                 Some(active) if word_idx < active => 0.85,
+
                                                 Some(active) if word_idx == active => 1.0,
+
                                                 _ => 0.55,
                                             }
                                         } else {
@@ -179,15 +188,27 @@ pub struct LyricsView {
     pub scroll_handle: ScrollHandle,
     pub last_active_line: usize,
     pub panel_bounds: Option<Bounds<Pixels>>,
+    pub measured_heights: Vec<Pixels>,
+    pub cumulative_offsets: Vec<Pixels>,
+    pub metrics: Rc<RefCell<LyricsMetrics>>,
 }
 
 impl LyricsView {
     pub fn new(cx: &mut App, scroll_handle: ScrollHandle) -> Entity<Self> {
         cx.new(|cx| Self {
             views: cx.new(|_| AHashMap::new()),
+
             scroll_handle,
+
             last_active_line: 0,
+
             panel_bounds: None,
+
+            measured_heights: Vec::new(),
+
+            cumulative_offsets: Vec::new(),
+
+            metrics: Rc::new(RefCell::new(LyricsMetrics::new())),
         })
     }
 
@@ -212,6 +233,34 @@ impl LyricsView {
             .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
             .map(|(idx, _)| idx)
             .unwrap_or(0)
+    }
+
+    fn recompute_heights(&mut self, lyrics: &Lyrics) {
+        let Some(bounds) = self.panel_bounds else {
+            return;
+        };
+
+        let width = bounds.size.width.to_f64() as f32;
+
+        self.measured_heights = lyrics
+            .lines
+            .iter()
+            .map(|line| {
+                self.metrics
+                    .borrow_mut()
+                    .measure_height(&line.text, width - 48.0, 30.0)
+            })
+            .collect();
+
+        self.cumulative_offsets.clear();
+
+        let mut y = px(0.0);
+
+        for height in &self.measured_heights {
+            self.cumulative_offsets.push(y);
+
+            y += *height;
+        }
     }
 }
 
@@ -246,11 +295,15 @@ impl Render for LyricsView {
         if active_line != self.last_active_line {
             self.last_active_line = active_line;
 
-            let handle = self.scroll_handle.clone();
+            if let Some(offset) = self.cumulative_offsets.get(active_line) {
+                let handle = self.scroll_handle.clone();
 
-            cx.defer(move |_| {
-                handle.scroll_to_item(active_line);
-            });
+                let y = *offset;
+
+                cx.defer(move |_| {
+                    handle.set_offset(Point { x: px(0.0), y });
+                });
+            }
         }
 
         let views = self.views.clone();
@@ -259,43 +312,79 @@ impl Render for LyricsView {
 
         let sync_type = lyrics.sync_type.clone();
 
-        let root = div().w_full().h_full().min_h_0().flex().flex_col().child(
-            div()
-                .id("lyrics_scroll")
-                .w_full()
-                .flex_1()
-                .min_h_0()
-                .overflow_y_scroll()
-                .track_scroll(&self.scroll_handle)
-                .child(
-                    div()
-                        .absolute()
-                        .text_xl()
-                        .text_color(rgb(0xffffff))
-                        .child(self.panel_bounds.unwrap_or_default().size.to_string()),
-                )
-                .child(div().w_full().flex().flex_col().children(
-                    lines.into_iter().enumerate().map(|(idx, line)| {
-                        div().id(("lyrics_line", idx)).w_full().child(
-                            LyricsView::get_or_create_line(
-                                &views,
-                                line,
-                                idx,
-                                sync_type.clone(),
-                                cx,
+        let root =
+            div().w_full().h_full().min_h_0().flex().flex_col().child(
+                div()
+                    .id("lyrics_scroll")
+                    .w_full()
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .track_scroll(&self.scroll_handle)
+                    .child(
+                        div()
+                            .absolute()
+                            .top_2()
+                            .right_2()
+                            .px_3()
+                            .py_2()
+                            .bg(rgb(0x111111))
+                            .rounded_md()
+                            .child(
+                                div().text_sm().text_color(rgb(0xffffff)).child(format!(
+                                    "panel: {:?}",
+                                    self.panel_bounds.map(|b| b.size)
+                                )),
+                            )
+                            .child(
+                                div().text_sm().text_color(rgb(0xffffff)).child(format!(
+                                    "lines measured: {}",
+                                    self.measured_heights.len()
+                                )),
                             ),
-                        )
-                    }),
-                )),
-        );
+                    )
+                    .child(div().w_full().flex().flex_col().children(
+                        lines.into_iter().enumerate().map(|(idx, line)| {
+                            let measured_height =
+                                self.measured_heights.get(idx).copied().unwrap_or(px(0.0));
+
+                            div()
+                                .id(("lyrics_line", idx))
+                                .w_full()
+                                .child(
+                                    div().text_xs().text_color(rgb(0x888888)).px_6().child(
+                                        format!("measured: {:.1}", measured_height.to_f64()),
+                                    ),
+                                )
+                                .child(LyricsView::get_or_create_line(
+                                    &views,
+                                    line,
+                                    idx,
+                                    sync_type.clone(),
+                                    cx,
+                                ))
+                        }),
+                    )),
+            );
 
         observe_bounds("lyrics_panel_bounds", root, move |bounds, _, cx| {
             entity.update(cx, |this, cx| {
-                if this.panel_bounds != Some(bounds) {
-                    this.panel_bounds = Some(bounds);
+                let changed = this
+                    .panel_bounds
+                    .map(|b| b.size.width != bounds.size.width)
+                    .unwrap_or(true);
 
-                    cx.notify();
+                this.panel_bounds = Some(bounds);
+
+                if changed {
+                    let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
+
+                    if let Some(lyrics) = lyrics {
+                        this.recompute_heights(&lyrics);
+                    }
                 }
+
+                cx.notify();
             });
         })
         .into_any_element()

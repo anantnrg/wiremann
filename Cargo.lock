@@ -1054,6 +1054,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "cosmic-text"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be17b688510d934ce13f48a2beba700e11583e281e0fda99c22bb256a14eda73"
+dependencies = [
+ "bitflags 2.11.1",
+ "fontdb",
+ "harfrust",
+ "linebender_resource_handle",
+ "log",
+ "rangemap",
+ "rustc-hash 2.1.2",
+ "self_cell",
+ "skrifa",
+ "smol_str 0.3.6",
+ "swash",
+ "sys-locale",
+ "unicode-bidi",
+ "unicode-linebreak",
+ "unicode-script",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "cpal"
 version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2114,7 +2138,7 @@ dependencies = [
  "bytemuck",
  "circular-buffer",
  "core-video",
- "cosmic-text",
+ "cosmic-text 0.18.2",
  "ctor",
  "derive_more 2.1.1",
  "device_query",
@@ -7430,6 +7454,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "bitcode",
+ "cosmic-text 0.19.0",
  "crossbeam-channel",
  "dashmap",
  "directories",
