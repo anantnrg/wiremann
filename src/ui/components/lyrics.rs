@@ -2,9 +2,8 @@ use crate::controller::Controller;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use crate::ui::components::lyrics_metrics::LyricsMetrics;
-
+use crate::ui::components::virtual_list::vlist;
 use ahash::AHashMap;
-
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
     ParentElement, Pixels, Point, Render, ScrollHandle, StatefulInteractiveElement, Styled, Window,
@@ -312,60 +311,46 @@ impl Render for LyricsView {
 
         let sync_type = lyrics.sync_type.clone();
 
-        let root =
-            div().w_full().h_full().min_h_0().flex().flex_col().child(
-                div()
-                    .id("lyrics_scroll")
-                    .w_full()
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .track_scroll(&self.scroll_handle)
-                    .child(
-                        div()
-                            .absolute()
-                            .top_2()
-                            .right_2()
-                            .px_3()
-                            .py_2()
-                            .bg(rgb(0x111111))
-                            .rounded_md()
-                            .child(
-                                div().text_sm().text_color(rgb(0xffffff)).child(format!(
-                                    "panel: {:?}",
-                                    self.panel_bounds.map(|b| b.size)
-                                )),
-                            )
-                            .child(
-                                div().text_sm().text_color(rgb(0xffffff)).child(format!(
-                                    "lines measured: {}",
-                                    self.measured_heights.len()
-                                )),
-                            ),
-                    )
-                    .child(div().w_full().flex().flex_col().children(
-                        lines.into_iter().enumerate().map(|(idx, line)| {
-                            let measured_height =
-                                self.measured_heights.get(idx).copied().unwrap_or(px(0.0));
+        let measured_heights = Rc::new(self.measured_heights.clone());
 
-                            div()
-                                .id(("lyrics_line", idx))
-                                .w_full()
-                                .child(
-                                    div().text_xs().text_color(rgb(0x888888)).px_6().child(
+        let root =
+            div()
+                .w_full()
+                .h_full()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .child(vlist(
+                    cx.entity(),
+                    "lyrics",
+                    measured_heights.clone(),
+                    self.scroll_handle.clone(),
+                    move |_this, range, _, cx| {
+                        range
+                            .map(|idx| {
+                                let line = lines[idx].clone();
+
+                                let measured_height =
+                                    measured_heights.get(idx).copied().unwrap_or(px(40.0));
+
+                                div()
+                                    .id(("lyrics_line", idx))
+                                    .w_full()
+                                    .h(measured_height)
+                                    .child(div().text_xs().text_color(rgb(0x888888)).px_6().child(
                                         format!("measured: {:.1}", measured_height.to_f64()),
-                                    ),
-                                )
-                                .child(LyricsView::get_or_create_line(
-                                    &views,
-                                    line,
-                                    idx,
-                                    sync_type.clone(),
-                                    cx,
-                                ))
-                        }),
-                    )),
-            );
+                                    ))
+                                    .child(LyricsView::get_or_create_line(
+                                        &views,
+                                        line,
+                                        idx,
+                                        sync_type.clone(),
+                                        cx,
+                                    ))
+                            })
+                            .collect::<Vec<_>>()
+                    },
+                ));
 
         observe_bounds("lyrics_panel_bounds", root, move |bounds, _, cx| {
             entity.update(cx, |this, cx| {
