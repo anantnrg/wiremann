@@ -93,6 +93,7 @@ impl Render for LyricLineView {
                 div()
                     .id(("line", self.idx))
                     .w_full()
+                    .min_w_0()
                     .px_6()
                     .py_2()
                     .flex()
@@ -119,6 +120,7 @@ impl Render for LyricLineView {
                 div()
                     .id(("line", self.idx))
                     .w_full()
+                    .min_w_0()
                     .px_6()
                     .py_2()
                     .flex()
@@ -126,6 +128,7 @@ impl Render for LyricLineView {
                     .child(
                         div()
                             .w_full()
+                            .min_w_0()
                             .flex()
                             .flex_row()
                             .flex_wrap()
@@ -166,6 +169,7 @@ impl Render for LyricLineView {
             SyncType::Unsynced => div()
                 .id(("unsynced", self.idx))
                 .w_full()
+                .min_w_0()
                 .px_6()
                 .py_1()
                 .child(
@@ -316,6 +320,7 @@ impl Render for LyricsView {
         let root =
             div()
                 .w_full()
+                .min_w_0()
                 .h_full()
                 .min_h_0()
                 .flex()
@@ -336,6 +341,7 @@ impl Render for LyricsView {
                                 div()
                                     .id(("lyrics_line", idx))
                                     .w_full()
+                                    .min_w_0()
                                     .h(measured_height)
                                     .child(div().text_xs().text_color(rgb(0x888888)).px_6().child(
                                         format!("measured: {:.1}", measured_height.to_f64()),
