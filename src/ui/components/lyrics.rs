@@ -98,7 +98,7 @@ impl Render for LyricLineView {
                     .py_2()
                     .flex()
                     .items_center()
-                    .justify_start()
+                    .justify_center()
                     .child(
                         div()
                             .text_3xl()
@@ -124,7 +124,7 @@ impl Render for LyricLineView {
                     .px_6()
                     .py_2()
                     .flex()
-                    .justify_start()
+                    .justify_center()
                     .child(
                         div()
                             .w_full()
@@ -132,7 +132,7 @@ impl Render for LyricLineView {
                             .flex()
                             .flex_row()
                             .flex_wrap()
-                            .justify_start()
+                            .justify_center()
                             .children(
                                 self.line
                                     .words
@@ -249,9 +249,12 @@ impl LyricsView {
             .lines
             .iter()
             .map(|line| {
-                self.metrics
-                    .borrow_mut()
-                    .measure_height(&line.text, width - 48.0, 30.0)
+                let text_height =
+                    self.metrics
+                        .borrow_mut()
+                        .measure_height(&line.text, width - 48.0, 30.0);
+
+                text_height + px(32.0)
             })
             .collect();
 
