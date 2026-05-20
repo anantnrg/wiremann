@@ -47,7 +47,7 @@ impl LyricsMetrics {
 
         buffer.set_text(
             text,
-            &Attrs::new().family(Family::SansSerif),
+            &Attrs::new().family(Family::Name("Space Grotesk")),
             Shaping::Advanced,
             None,
         );
