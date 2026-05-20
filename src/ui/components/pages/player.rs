@@ -430,6 +430,7 @@ impl Render for PlayerPage {
                                     .flex()
                                     .flex_col()
                                     .overflow_hidden()
+                                    .px_8()
                                     .child(self.lyrics.clone())
                             }
                         })
