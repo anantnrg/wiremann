@@ -341,9 +341,6 @@ impl Render for LyricsView {
                                 .w_full()
                                 .min_w_0()
                                 .h(measured_height)
-                                // .child(div().text_xs().text_color(rgb(0x888888)).px_6().child(
-                                //     format!("measured: {:.1}", measured_height.to_f64()),
-                                // ))
                                 .child(LyricsView::get_or_create_line(
                                     &views,
                                     line,
