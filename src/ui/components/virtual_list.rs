@@ -161,35 +161,19 @@ impl Element for VirtualList {
 
         let mut scroll = self.scroll_handle.offset().y;
 
-        // SMART AUTOSCROLL
         if let Some(deferred) = self.deferred_scroll.borrow_mut().take() {
             let target = deferred.item_index;
 
             if target < self.offsets.len() {
                 let item_top = self.offsets[target];
 
-                let item_bottom = item_top + self.heights[target];
+                let centered = item_top - (viewport_height / 2.0) + (self.heights[target] / 2.0);
 
-                let viewport_top = -scroll;
+                let new_scroll = -centered.max(px(0.0));
 
-                let viewport_bottom = viewport_top + viewport_height;
+                self.scroll_handle.set_offset(point(px(0.0), new_scroll));
 
-                let padding = px(120.0);
-
-                let above = item_top < viewport_top + padding;
-
-                let below = item_bottom > viewport_bottom - padding;
-
-                if above || below {
-                    let centered =
-                        item_top - (viewport_height / 2.0) + (self.heights[target] / 2.0);
-
-                    let new_scroll = -centered.max(px(0.0));
-
-                    self.scroll_handle.set_offset(point(px(0.0), new_scroll));
-
-                    scroll = new_scroll;
-                }
+                scroll = new_scroll;
             }
         }
 
