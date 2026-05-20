@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::{controller::Controller, ui::theme::Theme};
@@ -8,7 +9,7 @@ use crate::library::playlists::PlaylistId;
 use crate::ui::components::Page;
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
-use crate::ui::components::virtual_list::vlist;
+use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use gpui::prelude::FluentBuilder;
 use gpui::{
@@ -27,6 +28,7 @@ pub struct LibraryPage {
     pub sorted_tracks: Vec<&'static TrackId>,
     grid_cols: usize,
     last_fp: u128,
+    pub list_controller: VirtualListScrollController,
 }
 
 #[allow(dead_code)]
@@ -63,6 +65,9 @@ impl LibraryPage {
             grid_cols: cols,
             sorted_tracks: Vec::new(),
             last_fp: 0,
+            list_controller: VirtualListScrollController {
+                deferred: Rc::new(RefCell::new(None)),
+            },
         }
     }
     fn render_header(kind: &HeaderKind, height: Pixels, cx: &App) -> Div {
@@ -482,6 +487,7 @@ impl Render for LibraryPage {
                 "library",
                 heights.clone(),
                 scroll_handle,
+                self.list_controller.clone(),
                 move |_this, range, _, cx| {
                     let len = rows.len();
 

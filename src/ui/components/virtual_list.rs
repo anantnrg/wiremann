@@ -1,23 +1,45 @@
-use std::{cmp, ops::Range, rc::Rc};
+use std::{cell::RefCell, cmp, ops::Range, rc::Rc};
 
 use gpui::{
     AnyElement, App, Bounds, ContentMask, Context, Div, Element, ElementId, Entity,
     GlobalElementId, Hitbox, InteractiveElement, IntoElement, Pixels, Render, ScrollHandle, Size,
     Stateful, StatefulInteractiveElement, Styled, Window, div, point, px, size,
 };
+
 use smallvec::SmallVec;
+
+#[derive(Clone, Copy, Debug)]
+pub struct DeferredScroll {
+    pub item_index: usize,
+}
+
+#[derive(Clone)]
+pub struct VirtualListScrollController {
+    pub deferred: Rc<RefCell<Option<DeferredScroll>>>,
+}
+
+impl VirtualListScrollController {
+    pub fn scroll_to_item(&self, item_index: usize) {
+        *self.deferred.borrow_mut() = Some(DeferredScroll { item_index });
+    }
+}
 
 #[allow(clippy::type_complexity)]
 pub struct VirtualList {
     id: ElementId,
     base: Stateful<Div>,
     scroll_handle: ScrollHandle,
+
     heights: Rc<Vec<Pixels>>,
     offsets: Vec<Pixels>,
     content_height: Pixels,
+
+    deferred_scroll: Rc<RefCell<Option<DeferredScroll>>>,
+
     render: Box<
         dyn for<'a> Fn(Range<usize>, &'a mut Window, &'a mut App) -> SmallVec<[AnyElement; 32]>,
     >,
+
     overscan: usize,
 }
 
@@ -26,6 +48,7 @@ pub fn vlist<R, V>(
     id: impl Into<ElementId>,
     heights: Rc<Vec<Pixels>>,
     scroll_handle: ScrollHandle,
+    controller: VirtualListScrollController,
     f: impl 'static + Fn(&mut V, Range<usize>, &mut Window, &mut Context<V>) -> Vec<R>,
 ) -> VirtualList
 where
@@ -44,6 +67,7 @@ where
     };
 
     let mut offsets = Vec::with_capacity(heights.len());
+
     let mut sum = px(0.0);
 
     for h in heights.iter() {
@@ -64,6 +88,7 @@ where
         heights,
         offsets,
         content_height: sum,
+        deferred_scroll: controller.deferred.clone(),
         render: Box::new(render),
         overscan: 16,
     }
@@ -81,6 +106,7 @@ pub struct FrameState {
 
 impl IntoElement for VirtualList {
     type Element = Self;
+
     fn into_element(self) -> Self::Element {
         self
     }
@@ -88,6 +114,7 @@ impl IntoElement for VirtualList {
 
 impl Element for VirtualList {
     type RequestLayoutState = FrameState;
+
     type PrepaintState = Option<Hitbox>;
 
     fn id(&self) -> Option<ElementId> {
@@ -131,22 +158,52 @@ impl Element for VirtualList {
         cx: &mut App,
     ) -> Self::PrepaintState {
         let viewport_height = bounds.size.height;
-        let scroll = self.scroll_handle.offset().y;
+
+        let mut scroll = self.scroll_handle.offset().y;
+
+        // SMART AUTOSCROLL
+        if let Some(deferred) = self.deferred_scroll.borrow_mut().take() {
+            let target = deferred.item_index;
+
+            if target < self.offsets.len() {
+                let item_top = self.offsets[target];
+
+                let item_bottom = item_top + self.heights[target];
+
+                let viewport_top = -scroll;
+
+                let viewport_bottom = viewport_top + viewport_height;
+
+                let padding = px(120.0);
+
+                let above = item_top < viewport_top + padding;
+
+                let below = item_bottom > viewport_bottom - padding;
+
+                if above || below {
+                    let centered =
+                        item_top - (viewport_height / 2.0) + (self.heights[target] / 2.0);
+
+                    let new_scroll = -centered.max(px(0.0));
+
+                    self.scroll_handle.set_offset(point(px(0.0), new_scroll));
+
+                    scroll = new_scroll;
+                }
+            }
+        }
 
         let mut start = self.find_index(-scroll);
+
         let mut end = self.find_index(-scroll + viewport_height);
 
         start = start.saturating_sub(self.overscan);
+
         end = cmp::min(end + self.overscan + 1, self.heights.len());
 
         let visible = start..end;
 
         let items = (self.render)(visible.clone(), window, cx);
-
-        let _content_bounds = Bounds {
-            origin: bounds.origin,
-            size: size(bounds.size.width, self.content_height),
-        };
 
         let content_mask = ContentMask { bounds };
 
@@ -154,7 +211,7 @@ impl Element for VirtualList {
             for (mut item, ix) in items.into_iter().zip(visible.clone()) {
                 let y = self.offsets[ix] + scroll;
 
-                let origin = bounds.origin + point(px(0.), y);
+                let origin = bounds.origin + point(px(0.0), y);
 
                 let available = size(
                     gpui::AvailableSpace::Definite(bounds.size.width),
@@ -162,6 +219,7 @@ impl Element for VirtualList {
                 );
 
                 item.layout_as_root(available, window, cx);
+
                 item.prepaint_at(origin, window, cx);
 
                 layout.items.push(item);
@@ -204,6 +262,6 @@ impl Element for VirtualList {
                     item.paint(window, cx);
                 }
             },
-        );
+        )
     }
 }
