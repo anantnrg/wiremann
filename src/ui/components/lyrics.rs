@@ -2,8 +2,8 @@ use crate::controller::Controller;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
-
 use ahash::AHashMap;
+use std::cell::RefCell;
 
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
@@ -43,14 +43,22 @@ pub struct LyricLineView {
     pub line: LyricLine,
     pub idx: usize,
     pub sync_type: SyncType,
+    pub word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
 }
 
 impl LyricLineView {
-    pub fn new(cx: &mut App, line: LyricLine, idx: usize, sync_type: SyncType) -> Entity<Self> {
+    pub fn new(
+        cx: &mut App,
+        line: LyricLine,
+        idx: usize,
+        sync_type: SyncType,
+        word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
+    ) -> Entity<Self> {
         cx.new(|_| Self {
             line,
             idx,
             sync_type,
+            word_bounds,
         })
     }
 
@@ -150,13 +158,26 @@ impl Render for LyricLineView {
                                             0.4
                                         };
 
-                                        div()
-                                            .id(format!("word_{}_{}", self.idx, word_idx))
-                                            .text_3xl()
-                                            .font_weight(FontWeight::SEMIBOLD)
-                                            .text_color(rgb(0xffffff))
-                                            .opacity(opacity)
-                                            .child(word.text)
+                                        observe_bounds(
+                                            format!("word_measure_{}_{}", self.idx, word_idx),
+                                            div()
+                                                .id(format!("word_{}_{}", self.idx, word_idx))
+                                                .text_3xl()
+                                                .font_weight(FontWeight::SEMIBOLD)
+                                                .text_color(rgb(0xffffff))
+                                                .opacity(opacity)
+                                                .child(word.text),
+                                            {
+                                                let bounds_cache = self.word_bounds.clone();
+                                                let line_idx = self.idx;
+
+                                                move |bounds, _, _cx| {
+                                                    let mut cache = bounds_cache.borrow_mut();
+
+                                                    cache.insert((line_idx, word_idx), bounds);
+                                                }
+                                            },
+                                        )
                                     }),
                             ),
                     )
@@ -189,6 +210,7 @@ pub struct LyricsView {
     pub panel_bounds: Option<Bounds<Pixels>>,
     pub measured_heights: Vec<Pixels>,
     pub list_controller: VirtualListScrollController,
+    pub word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
 }
 
 impl LyricsView {
@@ -202,6 +224,7 @@ impl LyricsView {
             list_controller: VirtualListScrollController {
                 deferred: Rc::new(std::cell::RefCell::new(None)),
             },
+            word_bounds: Rc::new(RefCell::new(AHashMap::new())),
         })
     }
 
@@ -210,11 +233,12 @@ impl LyricsView {
         line: LyricLine,
         idx: usize,
         sync_type: SyncType,
+        word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
         cx: &mut App,
     ) -> Entity<LyricLineView> {
         views.update(cx, |this, cx| {
             this.entry(idx)
-                .or_insert_with(|| LyricLineView::new(cx, line, idx, sync_type))
+                .or_insert_with(|| LyricLineView::new(cx, line, idx, sync_type, word_bounds))
                 .clone()
         })
     }
@@ -274,6 +298,7 @@ impl Render for LyricsView {
         let sync_type = lyrics.sync_type.clone();
 
         let measured_heights = Rc::new(self.measured_heights.clone());
+        let word_bounds = self.word_bounds.clone();
         let list_entity = entity.clone();
         let list = vlist(
             cx.entity(),
@@ -294,6 +319,7 @@ impl Render for LyricsView {
                                     line,
                                     idx,
                                     sync_type.clone(),
+                                    word_bounds.clone(),
                                     cx,
                                 ),
                             ),
