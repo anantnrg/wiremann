@@ -1,15 +1,15 @@
 use crate::controller::Controller;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
-use crate::ui::components::lyrics_metrics::LyricsMetrics;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
+
 use ahash::AHashMap;
+
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Point, Render, ScrollHandle, Styled, Window, div, px, rgb,
+    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, px, rgb,
 };
 
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -188,8 +188,6 @@ pub struct LyricsView {
     pub last_active_line: usize,
     pub panel_bounds: Option<Bounds<Pixels>>,
     pub measured_heights: Vec<Pixels>,
-    pub cumulative_offsets: Vec<Pixels>,
-    pub metrics: Rc<RefCell<LyricsMetrics>>,
     pub list_controller: VirtualListScrollController,
 }
 
@@ -201,10 +199,8 @@ impl LyricsView {
             last_active_line: 0,
             panel_bounds: None,
             measured_heights: Vec::new(),
-            cumulative_offsets: Vec::new(),
-            metrics: Rc::new(RefCell::new(LyricsMetrics::new())),
             list_controller: VirtualListScrollController {
-                deferred: Rc::new(RefCell::new(None)),
+                deferred: Rc::new(std::cell::RefCell::new(None)),
             },
         })
     }
@@ -230,37 +226,6 @@ impl LyricsView {
             .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
             .map(|(idx, _)| idx)
             .unwrap_or(0)
-    }
-
-    fn recompute_heights(&mut self, lyrics: &Lyrics) {
-        let Some(bounds) = self.panel_bounds else {
-            return;
-        };
-
-        let width = bounds.size.width.to_f64() as f32;
-
-        self.measured_heights = lyrics
-            .lines
-            .iter()
-            .map(|line| {
-                let text_height = self
-                    .metrics
-                    .borrow_mut()
-                    .measure_height(&line.text, width, 30.0);
-
-                text_height + px(64.0)
-            })
-            .collect();
-
-        self.cumulative_offsets.clear();
-
-        let mut y = px(0.0);
-
-        for height in &self.measured_heights {
-            self.cumulative_offsets.push(y);
-
-            y += *height;
-        }
     }
 }
 
@@ -290,6 +255,10 @@ impl Render for LyricsView {
                 .into_any_element();
         };
 
+        if self.measured_heights.len() != lyrics.lines.len() {
+            self.measured_heights = vec![px(64.0); lyrics.lines.len()];
+        }
+
         let active_line = Self::active_line(&lyrics.lines, playback);
 
         if active_line != self.last_active_line {
@@ -305,7 +274,7 @@ impl Render for LyricsView {
         let sync_type = lyrics.sync_type.clone();
 
         let measured_heights = Rc::new(self.measured_heights.clone());
-
+        let list_entity = entity.clone();
         let list = vlist(
             cx.entity(),
             "lyrics",
@@ -317,21 +286,35 @@ impl Render for LyricsView {
                     .map(|idx| {
                         let line = lines[idx].clone();
 
-                        let measured_height =
-                            measured_heights.get(idx).copied().unwrap_or(px(40.0));
+                        observe_bounds(
+                            ("lyrics_line_measure", idx),
+                            div().id(("lyrics_line", idx)).w_full().min_w_0().child(
+                                LyricsView::get_or_create_line(
+                                    &views,
+                                    line,
+                                    idx,
+                                    sync_type.clone(),
+                                    cx,
+                                ),
+                            ),
+                            {
+                                let entity = list_entity.clone();
 
-                        div()
-                            .id(("lyrics_line", idx))
-                            .w_full()
-                            .min_w_0()
-                            .h(measured_height)
-                            .child(LyricsView::get_or_create_line(
-                                &views,
-                                line,
-                                idx,
-                                sync_type.clone(),
-                                cx,
-                            ))
+                                move |bounds, _, cx| {
+                                    entity.update(cx, |this, cx| {
+                                        let height = bounds.size.height;
+
+                                        if let Some(existing) = this.measured_heights.get_mut(idx) {
+                                            if *existing != height {
+                                                *existing = height;
+
+                                                cx.notify();
+                                            }
+                                        }
+                                    });
+                                }
+                            },
+                        )
                     })
                     .collect::<Vec<_>>()
             },
@@ -348,20 +331,7 @@ impl Render for LyricsView {
 
         observe_bounds("lyrics_panel_bounds", root, move |bounds, _, cx| {
             entity.update(cx, |this, cx| {
-                let changed = this
-                    .panel_bounds
-                    .map(|b| b.size.width != bounds.size.width)
-                    .unwrap_or(true);
-
                 this.panel_bounds = Some(bounds);
-
-                if changed {
-                    let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
-
-                    if let Some(lyrics) = lyrics {
-                        this.recompute_heights(&lyrics);
-                    }
-                }
 
                 cx.notify();
             });
