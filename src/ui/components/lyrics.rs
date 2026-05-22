@@ -1,13 +1,13 @@
 use crate::controller::Controller;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
-use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use ahash::AHashMap;
 use std::cell::RefCell;
 
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, px, rgb,
+    ParentElement, Pixels, Render, ScrollHandle, Styled, VirtualListScrollController, Window, div,
+    px, rgb, vlist,
 };
 
 use std::rc::Rc;

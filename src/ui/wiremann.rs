@@ -20,7 +20,7 @@ use components::{
 use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt as _, AppContext, BorrowAppContext, Context, ElementId, Entity,
-    InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div, px, rgb, rgba,
+    InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div, px,
 };
 
 pub struct Wiremann {

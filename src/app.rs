@@ -71,7 +71,6 @@ pub fn run() -> Result<(), AppError> {
                     }),
                     app_icon,
                     window_background: gpui::WindowBackgroundAppearance::Blurred,
-                    always_transparent: true,
                     ..Default::default()
                 },
                 |window, cx| {

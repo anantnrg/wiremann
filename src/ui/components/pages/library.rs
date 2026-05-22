@@ -1,22 +1,18 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
-use crate::{controller::Controller, ui::theme::Theme};
-
 use crate::controller::state::LibraryState;
 use crate::library::TrackId;
 use crate::library::playlists::PlaylistId;
 use crate::ui::components::Page;
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
-use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
+use crate::{controller::Controller, ui::theme::Theme};
 use gpui::prelude::FluentBuilder;
 use gpui::{
     App, Context, Div, FontWeight, ImageSource, InteractiveElement, IntoElement, ObjectFit,
     ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage,
-    Window, div, img, px,
+    VirtualListScrollController, Window, div, img, px, vlist,
 };
+use std::rc::Rc;
 
 const THUMBNAIL_MARGIN: usize = 16;
 
@@ -65,9 +61,7 @@ impl LibraryPage {
             grid_cols: cols,
             sorted_tracks: Vec::new(),
             last_fp: 0,
-            list_controller: VirtualListScrollController {
-                deferred: Rc::new(RefCell::new(None)),
-            },
+            list_controller: VirtualListScrollController::new(),
         }
     }
     fn render_header(kind: &HeaderKind, height: Pixels, cx: &App) -> Div {

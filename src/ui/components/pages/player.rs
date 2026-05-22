@@ -1,7 +1,6 @@
 use crate::{
     controller::{Controller, state::PlaybackStatus},
     ui::{
-        animations::ease_in_out_expo,
         components::{
             controlbar::ControlBar,
             icons::{Icon, Icons},
@@ -14,10 +13,9 @@ use crate::{
     },
 };
 use gpui::{
-    Animation, AnimationExt, App, AppContext, Context, ElementId, Entity, FontWeight,
-    InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, ScrollHandle,
-    StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window, div, img, px,
-    rgb,
+    App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit,
+    ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage,
+    UniformListScrollHandle, Window, div, img, px, rgb,
 };
 use gpui::{prelude::FluentBuilder, relative};
 
