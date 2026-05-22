@@ -149,16 +149,14 @@ impl Render for LyricLineView {
                                         let opacity = if is_active_line {
                                             match active_word {
                                                 Some(active) if word_idx < active => 0.85,
-
                                                 Some(active) if word_idx == active => 1.0,
-
                                                 _ => 0.55,
                                             }
                                         } else {
                                             0.4
                                         };
 
-                                        observe_bounds(
+                                        div().child(observe_bounds(
                                             format!("word_measure_{}_{}", self.idx, word_idx),
                                             div()
                                                 .id(format!("word_{}_{}", self.idx, word_idx))
@@ -177,7 +175,7 @@ impl Render for LyricLineView {
                                                     cache.insert((line_idx, word_idx), bounds);
                                                 }
                                             },
-                                        )
+                                        ))
                                     }),
                             ),
                     )
