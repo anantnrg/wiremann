@@ -63,7 +63,8 @@ impl Render for PlayerPage {
         let controller = cx.global::<Controller>().clone();
         let state = controller.state.read(cx);
         let thumbnail = cx.global::<ImageCache>().current.clone();
-        let scroll_handle = self.queue_scroll_handle.clone();
+        let queue_scroll_handle = self.queue_scroll_handle.clone();
+        let lyrics_scroll_handle = self.lyrics_scroll_handle.clone();
         let show_panel = self.show_panel.clone();
 
         let current = if let Some(id) = state.playback.current {
@@ -416,20 +417,21 @@ impl Render for PlayerPage {
                                     .child(self.queue.clone())
                                     .child(floating_scrollbar(
                                         "queue_scrollbar",
-                                        scroll_handle,
+                                        queue_scroll_handle,
                                         RightPad::Pad,
                                     ))
                             } else {
                                 div()
                                     .id("lyrics_container")
                                     .w_full()
-                                    .max_h_full()
-                                    .min_h_0()
-                                    .flex()
-                                    .flex_col()
-                                    .overflow_hidden()
+                                    .h_full()
                                     .px_8()
                                     .child(self.lyrics.clone())
+                                    .child(floating_scrollbar(
+                                        "lyrics_scrollbar",
+                                        lyrics_scroll_handle,
+                                        RightPad::Pad,
+                                    ))
                             }
                         })
                     })
