@@ -219,9 +219,7 @@ impl LyricsView {
             last_active_line: 0,
             panel_bounds: None,
             measured_heights: Vec::new(),
-            list_controller: VirtualListScrollController {
-                deferred: Rc::new(std::cell::RefCell::new(None)),
-            },
+            list_controller: VirtualListScrollController::new(),
             word_bounds: Rc::new(RefCell::new(AHashMap::new())),
         })
     }
