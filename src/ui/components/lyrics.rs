@@ -200,10 +200,7 @@ impl Render for LyricLineView {
                                     format!("word_measure_{}_{}", self.idx, word_idx),
                                     div()
                                         .relative()
-                                        // VERY IMPORTANT
-                                        // prevents overlay from affecting wrapping
                                         .flex_none()
-                                        // BASE WORD
                                         .child(
                                             div()
                                                 .id(format!("base_word_{}_{}", self.idx, word_idx))
@@ -213,14 +210,13 @@ impl Render for LyricLineView {
                                                 .opacity(if is_active_line { 0.35 } else { 0.2 })
                                                 .child(word.text.clone()),
                                         )
-                                        // ACTIVE REVEAL LAYER
                                         .child(
                                             div()
                                                 .absolute()
+                                                .h_full()
                                                 .top_0()
                                                 .left_0()
                                                 .overflow_hidden()
-                                                // dynamic reveal width
                                                 .when_some(
                                                     {
                                                         let bounds_cache =
@@ -234,6 +230,9 @@ impl Render for LyricLineView {
                                                 )
                                                 .child(
                                                     div()
+                                                        .h_full()
+                                                        .flex()
+                                                        .items_center()
                                                         .text_3xl()
                                                         .font_weight(FontWeight::SEMIBOLD)
                                                         .text_color(rgb(0xffffff))
