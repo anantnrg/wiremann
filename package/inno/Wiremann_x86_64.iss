@@ -2,7 +2,7 @@
 AppName=Wiremann
 AppPublisher=Wiremann
 AppPublisherURL=https://github.com/wiremann/wiremann
-AppVersion=0.1.0
+AppVersion=0.3.0
 WizardStyle=modern
 DefaultDirName={autopf}\Wiremann
 DisableProgramGroupPage=yes

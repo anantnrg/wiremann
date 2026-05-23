@@ -200,7 +200,7 @@ pub fn run() -> Result<(), AppError> {
                                     .ok();
                             }
 
-                            if last_pos_request.elapsed() >= Duration::from_millis(256) {
+                            if last_pos_request.elapsed() >= Duration::from_millis(64) {
                                 controller.get_pos();
 
                                 last_pos_request = Instant::now();
