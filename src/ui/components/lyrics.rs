@@ -2,6 +2,7 @@ use crate::controller::Controller;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use ahash::AHashMap;
+use gpui::prelude::FluentBuilder;
 use std::cell::RefCell;
 
 use gpui::{
@@ -69,6 +70,39 @@ impl LyricLineView {
             .rfind(|(_, word)| playback >= word.start)
             .map(|(idx, _)| idx)
     }
+    fn reveal_width(&self, playback: Duration) -> Option<Pixels> {
+        let words = self.line.words.as_ref()?;
+
+        let active_idx = Self::active_word(words, playback)?;
+
+        let active_word = &words[active_idx];
+
+        let bounds_cache = self.word_bounds.borrow();
+
+        let first_bounds = bounds_cache.get(&(self.idx, 0))?;
+
+        let active_bounds = bounds_cache.get(&(self.idx, active_idx))?;
+
+        let relative_x = active_bounds.origin.x - first_bounds.origin.x;
+
+        let next_time = words
+            .get(active_idx + 1)
+            .map(|w| w.start)
+            .unwrap_or(active_word.end);
+
+        let duration = next_time.saturating_sub(active_word.start);
+
+        let elapsed = playback.saturating_sub(active_word.start);
+
+        let progress = if duration.is_zero() {
+            1.0
+        } else {
+            elapsed.as_secs_f32() / duration.as_secs_f32()
+        }
+        .clamp(0.0, 1.0);
+
+        Some(relative_x + active_bounds.size.width * progress)
+    }
 }
 
 impl Render for LyricLineView {
@@ -117,11 +151,7 @@ impl Render for LyricLineView {
             }
 
             SyncType::Word => {
-                let active_word = self
-                    .line
-                    .words
-                    .as_ref()
-                    .and_then(|words| Self::active_word(words, playback));
+                let words = self.line.words.clone().unwrap_or_default();
 
                 div()
                     .id(("line", self.idx))
@@ -138,50 +168,94 @@ impl Render for LyricLineView {
                             .flex_row()
                             .flex_wrap()
                             .justify_center()
-                            .children(
-                                self.line
-                                    .words
-                                    .clone()
-                                    .unwrap_or_default()
-                                    .into_iter()
-                                    .enumerate()
-                                    .map(|(word_idx, word)| {
-                                        let opacity = if is_active_line {
-                                            match active_word {
-                                                Some(active) if word_idx < active => 0.85,
-                                                Some(active) if word_idx == active => 1.0,
-                                                _ => 0.55,
-                                            }
-                                        } else {
-                                            0.4
-                                        };
+                            .children(words.into_iter().enumerate().map(|(word_idx, word)| {
+                                let progress = {
+                                    let next_start = self
+                                        .line
+                                        .words
+                                        .as_ref()
+                                        .and_then(|w| w.get(word_idx + 1))
+                                        .map(|w| w.start)
+                                        .unwrap_or(word.end);
 
-                                        div().child(observe_bounds(
-                                            format!("word_measure_{}_{}", self.idx, word_idx),
+                                    if playback < word.start {
+                                        0.0
+                                    } else if playback >= next_start {
+                                        1.0
+                                    } else {
+                                        let duration = next_start.saturating_sub(word.start);
+
+                                        let elapsed = playback.saturating_sub(word.start);
+
+                                        if duration.is_zero() {
+                                            1.0
+                                        } else {
+                                            elapsed.as_secs_f32() / duration.as_secs_f32()
+                                        }
+                                    }
+                                }
+                                .clamp(0.0, 1.0);
+
+                                observe_bounds(
+                                    format!("word_measure_{}_{}", self.idx, word_idx),
+                                    div()
+                                        .relative()
+                                        // VERY IMPORTANT
+                                        // prevents overlay from affecting wrapping
+                                        .flex_none()
+                                        // BASE WORD
+                                        .child(
                                             div()
-                                                .id(format!("word_{}_{}", self.idx, word_idx))
+                                                .id(format!("base_word_{}_{}", self.idx, word_idx))
                                                 .text_3xl()
                                                 .font_weight(FontWeight::SEMIBOLD)
                                                 .text_color(rgb(0xffffff))
-                                                .opacity(opacity)
-                                                .child(word.text),
-                                            {
-                                                let bounds_cache = self.word_bounds.clone();
-                                                let line_idx = self.idx;
+                                                .opacity(if is_active_line { 0.35 } else { 0.2 })
+                                                .child(word.text.clone()),
+                                        )
+                                        // ACTIVE REVEAL LAYER
+                                        .child(
+                                            div()
+                                                .absolute()
+                                                .top_0()
+                                                .left_0()
+                                                .overflow_hidden()
+                                                // dynamic reveal width
+                                                .when_some(
+                                                    {
+                                                        let bounds_cache =
+                                                            self.word_bounds.borrow();
 
-                                                move |bounds, _, _cx| {
-                                                    let mut cache = bounds_cache.borrow_mut();
+                                                        bounds_cache
+                                                            .get(&(self.idx, word_idx))
+                                                            .map(|b| b.size.width * progress)
+                                                    },
+                                                    |this, width| this.w(width),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .text_3xl()
+                                                        .font_weight(FontWeight::SEMIBOLD)
+                                                        .text_color(rgb(0xffffff))
+                                                        .child(word.text),
+                                                ),
+                                        ),
+                                    {
+                                        let bounds_cache = self.word_bounds.clone();
 
-                                                    cache.insert((line_idx, word_idx), bounds);
-                                                }
-                                            },
-                                        ))
-                                    }),
-                            ),
+                                        let line_idx = self.idx;
+
+                                        move |bounds, _, _cx| {
+                                            bounds_cache
+                                                .borrow_mut()
+                                                .insert((line_idx, word_idx), bounds);
+                                        }
+                                    },
+                                )
+                            })),
                     )
                     .into_any_element()
             }
-
             SyncType::Unsynced => div()
                 .id(("unsynced", self.idx))
                 .w_full()
