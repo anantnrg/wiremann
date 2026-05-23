@@ -354,10 +354,26 @@ impl Render for LyricsView {
 
         let active_line = Self::active_line(&lyrics.lines, playback);
 
-        if active_line != self.last_active_line {
-            self.last_active_line = active_line;
+        let display_line = {
+            if let Some(current) = lyrics.lines.get(active_line) {
+                if let Some(end) = current.end {
+                    if playback >= end {
+                        (active_line + 1).min(lyrics.lines.len().saturating_sub(1))
+                    } else {
+                        active_line
+                    }
+                } else {
+                    active_line
+                }
+            } else {
+                active_line
+            }
+        };
 
-            self.list_controller.scroll_to_item(active_line);
+        if display_line != self.last_active_line {
+            self.last_active_line = display_line;
+
+            self.list_controller.scroll_to_item(display_line);
         }
 
         let views = self.views.clone();
