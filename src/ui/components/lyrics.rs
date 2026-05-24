@@ -8,7 +8,8 @@ use std::cell::RefCell;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, px, rgb,
+    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, gradient_color_stop,
+    linear_gradient, px, rgb,
 };
 
 use std::rc::Rc;
@@ -452,15 +453,35 @@ impl Render for LyricsView {
             },
         );
 
-        let root = div()
-            .font_family("Space Grotesk")
-            .w_full()
-            .min_w_0()
-            .h_full()
-            .min_h_0()
-            .flex()
-            .flex_col()
-            .child(list);
+        let root =
+            div()
+                .font_family("Space Grotesk")
+                .relative()
+                .w_full()
+                .min_w_0()
+                .h_full()
+                .min_h_0()
+                .child(list)
+                .child(div().absolute().top_0().left_0().right_0().h(px(180.0)).bg(
+                    linear_gradient(
+                        180.,
+                        gradient_color_stop(rgb(0x000000), 0.0),
+                        gradient_color_stop(rgb(0x000000).opacity(0.0), 1.0),
+                    ),
+                ))
+                .child(
+                    div()
+                        .absolute()
+                        .bottom_0()
+                        .left_0()
+                        .right_0()
+                        .h(px(180.0))
+                        .bg(linear_gradient(
+                            0.,
+                            gradient_color_stop(rgb(0x000000), 0.0),
+                            gradient_color_stop(rgb(0x000000).opacity(0.0), 1.0),
+                        )),
+                );
 
         observe_bounds("lyrics_panel_bounds", root, move |bounds, _, cx| {
             entity.update(cx, |this, cx| {
