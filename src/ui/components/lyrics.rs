@@ -14,6 +14,8 @@ use gpui::{
 use std::rc::Rc;
 use std::time::Duration;
 
+const LYRICS_TEXT_SIZE: Pixels = px(38.0);
+
 #[derive(Debug, PartialEq)]
 pub struct LyricsStateInner {
     pub status: LyricsStatus,
@@ -141,7 +143,9 @@ impl Render for LyricLineView {
                     .justify_center()
                     .child(
                         div()
-                            .text_3xl()
+                            .max_w_full()
+                            .text_center()
+                            .text_size(LYRICS_TEXT_SIZE)
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(rgb(0xffffff))
                             .opacity(opacity)
@@ -204,7 +208,7 @@ impl Render for LyricLineView {
                                         .child(
                                             div()
                                                 .id(format!("base_word_{}_{}", self.idx, word_idx))
-                                                .text_3xl()
+                                                .text_size(LYRICS_TEXT_SIZE)
                                                 .font_weight(FontWeight::SEMIBOLD)
                                                 .text_color(rgb(0xffffff))
                                                 .opacity(if is_active_line { 0.35 } else { 0.2 })
@@ -233,7 +237,7 @@ impl Render for LyricLineView {
                                                         .h_full()
                                                         .flex()
                                                         .items_center()
-                                                        .text_3xl()
+                                                        .text_size(LYRICS_TEXT_SIZE)
                                                         .font_weight(FontWeight::SEMIBOLD)
                                                         .text_color(rgb(0xffffff))
                                                         .child(word.text),
@@ -262,10 +266,9 @@ impl Render for LyricLineView {
                 .py_1()
                 .child(
                     div()
-                        .text_3xl()
+                        .text_size(LYRICS_TEXT_SIZE)
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(rgb(0xffffff))
-                        .opacity(0.4)
                         .child(self.line.text.clone()),
                 )
                 .into_any_element(),
