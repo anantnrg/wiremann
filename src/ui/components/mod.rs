@@ -11,6 +11,7 @@ pub mod scrollbar;
 pub mod slider;
 pub mod titlebar;
 pub mod toasts;
+pub mod virtual_list;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Page {

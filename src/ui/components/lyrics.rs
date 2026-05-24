@@ -5,10 +5,10 @@ use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use std::cell::RefCell;
 
+use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, ScrollHandle, Styled, VirtualListScrollController, Window, div,
-    px, rgb, vlist,
+    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, px, rgb,
 };
 
 use std::rc::Rc;
