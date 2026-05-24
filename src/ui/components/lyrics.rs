@@ -9,7 +9,7 @@ use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
     ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, gradient_color_stop,
-    linear_gradient, px, rgb,
+    linear_gradient, px, rgb, rgba,
 };
 
 use std::rc::Rc;
@@ -466,7 +466,7 @@ impl Render for LyricsView {
                     linear_gradient(
                         180.,
                         gradient_color_stop(rgb(0x000000), 0.0),
-                        gradient_color_stop(rgb(0x000000).opacity(0.0), 1.0),
+                        gradient_color_stop(rgba(0x00000000), 1.0),
                     ),
                 ))
                 .child(
@@ -479,7 +479,7 @@ impl Render for LyricsView {
                         .bg(linear_gradient(
                             0.,
                             gradient_color_stop(rgb(0x000000), 0.0),
-                            gradient_color_stop(rgb(0x000000).opacity(0.0), 1.0),
+                            gradient_color_stop(rgba(0x00000000), 1.0),
                         )),
                 );
 
