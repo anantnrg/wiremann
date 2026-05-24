@@ -146,7 +146,7 @@ impl Render for LyricLineView {
                             .max_w_full()
                             .text_center()
                             .text_size(LYRICS_TEXT_SIZE)
-                            .font_weight(FontWeight::SEMIBOLD)
+                            .font_weight(FontWeight::BOLD)
                             .text_color(rgb(0xffffff))
                             .opacity(opacity)
                             .child(self.line.text.clone()),
@@ -209,7 +209,7 @@ impl Render for LyricLineView {
                                             div()
                                                 .id(format!("base_word_{}_{}", self.idx, word_idx))
                                                 .text_size(LYRICS_TEXT_SIZE)
-                                                .font_weight(FontWeight::SEMIBOLD)
+                                                .font_weight(FontWeight::BOLD)
                                                 .text_color(rgb(0xffffff))
                                                 .opacity(if is_active_line { 0.35 } else { 0.2 })
                                                 .child(word.text.clone()),
@@ -238,7 +238,7 @@ impl Render for LyricLineView {
                                                         .flex()
                                                         .items_center()
                                                         .text_size(LYRICS_TEXT_SIZE)
-                                                        .font_weight(FontWeight::SEMIBOLD)
+                                                        .font_weight(FontWeight::BOLD)
                                                         .text_color(rgb(0xffffff))
                                                         .child(word.text),
                                                 ),
@@ -267,7 +267,7 @@ impl Render for LyricLineView {
                 .child(
                     div()
                         .text_size(LYRICS_TEXT_SIZE)
-                        .font_weight(FontWeight::SEMIBOLD)
+                        .font_weight(FontWeight::BOLD)
                         .text_color(rgb(0xffffff))
                         .child(self.line.text.clone()),
                 )
@@ -402,16 +402,19 @@ impl Render for LyricsView {
 
                         observe_bounds(
                             ("lyrics_line_measure", idx),
-                            div().id(("lyrics_line", idx)).w_full().min_w_0().child(
-                                LyricsView::get_or_create_line(
+                            div()
+                                .font_family("Space Grotesk")
+                                .id(("lyrics_line", idx))
+                                .w_full()
+                                .min_w_0()
+                                .child(LyricsView::get_or_create_line(
                                     &views,
                                     line,
                                     idx,
                                     sync_type.clone(),
                                     word_bounds.clone(),
                                     cx,
-                                ),
-                            ),
+                                )),
                             {
                                 let entity = list_entity.clone();
 
@@ -436,6 +439,7 @@ impl Render for LyricsView {
         );
 
         let root = div()
+            .font_family("Space Grotesk")
             .w_full()
             .min_w_0()
             .h_full()
