@@ -128,7 +128,20 @@ impl Render for LyricLineView {
             .unwrap_or(0);
 
         let is_active_line = self.idx == active_line;
-
+        let distance = self.idx.abs_diff(active_line) as f32;
+        let inactive_opacity = match distance as i32 {
+            0 => 0.35,
+            1 => 0.32,
+            2 => 0.26,
+            3 => 0.18,
+            _ => 0.10,
+        };
+        let active_opacity = match distance as i32 {
+            0 => 1.0,
+            1 => 0.75,
+            2 => 0.45,
+            _ => 0.2,
+        };
         match self.sync_type {
             SyncType::Line => {
                 let opacity = if is_active_line { 1.0 } else { 0.4 };
@@ -211,7 +224,7 @@ impl Render for LyricLineView {
                                                 .text_size(LYRICS_TEXT_SIZE)
                                                 .font_weight(FontWeight::BOLD)
                                                 .text_color(rgb(0xffffff))
-                                                .opacity(if is_active_line { 0.35 } else { 0.2 })
+                                                .opacity(inactive_opacity)
                                                 .child(word.text.clone()),
                                         )
                                         .child(
@@ -240,6 +253,7 @@ impl Render for LyricLineView {
                                                         .text_size(LYRICS_TEXT_SIZE)
                                                         .font_weight(FontWeight::BOLD)
                                                         .text_color(rgb(0xffffff))
+                                                        .opacity(active_opacity)
                                                         .child(word.text),
                                                 ),
                                         ),
