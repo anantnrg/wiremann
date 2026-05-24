@@ -352,7 +352,8 @@ impl Render for LyricsView {
         };
 
         if self.measured_heights.len() != lyrics.lines.len() {
-            self.measured_heights = vec![px(64.0); lyrics.lines.len()];
+            self.measured_heights =
+                vec![px(LYRICS_TEXT_SIZE.to_f64() as f32 * 2.5); lyrics.lines.len()];
         }
 
         let active_line = Self::active_line(&lyrics.lines, playback);
