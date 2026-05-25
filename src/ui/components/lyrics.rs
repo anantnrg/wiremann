@@ -165,7 +165,7 @@ impl Render for LyricLineView {
                             .font_weight(FontWeight::BOLD)
                             .text_color(rgb(0xffffff))
                             .opacity(opacity)
-                            .child(self.line.text.clone()),
+                            .child(self.line.text.clone().to_string()),
                     )
                     .into_any_element()
             }
@@ -226,7 +226,7 @@ impl Render for LyricLineView {
                                             .font_weight(FontWeight::BOLD)
                                             .text_color(rgb(0xffffff))
                                             .opacity(inactive_opacity)
-                                            .child(word.text.clone()),
+                                            .child(word.text.to_string()),
                                     )
                                     .child(
                                         div()
@@ -254,7 +254,7 @@ impl Render for LyricLineView {
                                                     .font_weight(FontWeight::BOLD)
                                                     .text_color(rgb(0xffffff))
                                                     .opacity(active_opacity)
-                                                    .child(word.text),
+                                                    .child(word.text.to_string()),
                                             ),
                                     );
 
@@ -290,7 +290,7 @@ impl Render for LyricLineView {
                         .text_size(LYRICS_TEXT_SIZE)
                         .font_weight(FontWeight::BOLD)
                         .text_color(rgb(0xffffff))
-                        .child(self.line.text.clone()),
+                        .child(self.line.text.to_string()),
                 )
                 .into_any_element(),
         }
@@ -303,7 +303,7 @@ pub struct LyricsView {
     pub scroll_handle: ScrollHandle,
     pub last_active_line: usize,
     pub panel_bounds: Option<Bounds<Pixels>>,
-    pub measured_heights: Rc<RefCell<Vec<Pixels>>>,
+    pub measured_heights: Vec<Pixels>,
     pub list_controller: VirtualListScrollController,
     pub word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
 
@@ -318,7 +318,7 @@ impl LyricsView {
             scroll_handle,
             last_active_line: 0,
             panel_bounds: None,
-            measured_heights: Rc::new(RefCell::new(Vec::new())),
+            measured_heights: Vec::new(),
             list_controller: VirtualListScrollController::new(),
             word_bounds: Rc::new(RefCell::new(AHashMap::new())),
             last_playback: Duration::from_millis(0),
@@ -385,11 +385,9 @@ impl Render for LyricsView {
                 .into_any_element();
         };
 
-        if self.measured_heights.borrow().len() != lyrics.lines.len() {
-            self.measured_heights.borrow_mut().resize(
-                lyrics.lines.len(),
-                px(LYRICS_TEXT_SIZE.to_f64() as f32 * 2.5),
-            );
+        if self.measured_heights.len() != lyrics.lines.len() {
+            self.measured_heights =
+                vec![px(LYRICS_TEXT_SIZE.to_f64() as f32 * 2.5); lyrics.lines.len()];
         }
 
         let active_line = Self::active_line(&lyrics.lines, playback);
@@ -422,12 +420,13 @@ impl Render for LyricsView {
 
         let sync_type = lyrics.sync_type.clone();
 
+        let measured_heights = Rc::new(self.measured_heights.clone());
         let word_bounds = self.word_bounds.clone();
         let list_entity = entity.clone();
         let list = vlist(
             cx.entity(),
             "lyrics",
-            self.measured_heights.borrow().clone(),
+            measured_heights.clone(),
             self.scroll_handle.clone(),
             self.list_controller.clone(),
             move |_this, range, _, cx| {
@@ -457,9 +456,7 @@ impl Render for LyricsView {
                                     entity.update(cx, |this, cx| {
                                         let height = bounds.size.height;
 
-                                        if let Some(existing) =
-                                            this.measured_heights.borrow_mut().get_mut(idx)
-                                        {
+                                        if let Some(existing) = this.measured_heights.get_mut(idx) {
                                             if *existing != height {
                                                 *existing = height;
 
