@@ -129,6 +129,11 @@ impl Controller {
                                     cx.notify();
                                 });
                             });
+                            this.lyrics.update(cx, |this, cx| {
+                                this.last_playback = *pos;
+                                this.elapsed_since_last_update = Instant::now();
+                                cx.notify();
+                            });
                         });
                         cx.notify();
                     });

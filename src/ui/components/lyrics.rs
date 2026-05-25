@@ -1,4 +1,5 @@
 use crate::controller::Controller;
+use crate::controller::state::PlaybackStatus;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use ahash::AHashMap;
@@ -13,7 +14,7 @@ use gpui::{
 };
 
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const LYRICS_TEXT_SIZE: Pixels = px(38.0);
 
@@ -143,6 +144,7 @@ impl Render for LyricLineView {
             2 => 0.45,
             _ => 0.2,
         };
+
         match self.sync_type {
             SyncType::Line => {
                 let opacity = if is_active_line { 1.0 } else { 0.4 };
@@ -300,6 +302,9 @@ pub struct LyricsView {
     pub measured_heights: Vec<Pixels>,
     pub list_controller: VirtualListScrollController,
     pub word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
+
+    pub last_playback: Duration,
+    pub elapsed_since_last_update: Instant,
 }
 
 impl LyricsView {
@@ -312,6 +317,8 @@ impl LyricsView {
             measured_heights: Vec::new(),
             list_controller: VirtualListScrollController::new(),
             word_bounds: Rc::new(RefCell::new(AHashMap::new())),
+            last_playback: Duration::from_millis(0),
+            elapsed_since_last_update: Instant::now(),
         })
     }
 
@@ -338,15 +345,23 @@ impl LyricsView {
             .map(|(idx, _)| idx)
             .unwrap_or(0)
     }
+
+    fn interpolated_playback(&self, playing: bool) -> Duration {
+        if playing {
+            self.last_playback + self.elapsed_since_last_update.elapsed()
+        } else {
+            self.last_playback
+        }
+    }
 }
 
 impl Render for LyricsView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let entity = cx.entity();
 
         let state = cx.global::<Controller>().state.read(cx);
 
-        let playback = state.playback.position;
+        let playback = self.interpolated_playback(state.playback.status == PlaybackStatus::Playing);
 
         let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
 
