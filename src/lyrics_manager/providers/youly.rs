@@ -143,14 +143,14 @@ impl From<YouLYLine> for LyricLine {
                         LyricWord {
                             start: w_start,
                             end: w_end,
-                            text: w.text,
+                            text: w.text.into(),
                         }
                     })
                     .collect(),
             )
         };
         LyricLine {
-            text: value.text,
+            text: value.text.into(),
             start: Some(start),
             end: Some(end),
             words,

@@ -8,9 +8,9 @@ use std::cell::RefCell;
 
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use gpui::{
-    App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, gradient_color_stop,
-    linear_gradient, px, rgb, rgba,
+    App, AppContext, Bounds, Context, ElementId, Entity, EntityId, FontWeight, Global,
+    InteractiveElement, IntoElement, ParentElement, Pixels, Render, ScrollHandle, Styled, Window,
+    div, gradient_color_stop, linear_gradient, px, rgb, rgba,
 };
 
 use std::rc::Rc;
@@ -216,62 +216,66 @@ impl Render for LyricLineView {
                                 }
                                 .clamp(0.0, 1.0);
 
-                                observe_bounds(
-                                    format!("word_measure_{}_{}", self.idx, word_idx),
-                                    div()
-                                        .relative()
-                                        .flex_none()
-                                        .child(
-                                            div()
-                                                .id(format!("base_word_{}_{}", self.idx, word_idx))
-                                                .text_size(LYRICS_TEXT_SIZE)
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_color(rgb(0xffffff))
-                                                .opacity(inactive_opacity)
-                                                .child(word.text.clone()),
-                                        )
-                                        .child(
-                                            div()
-                                                .absolute()
-                                                .h_full()
-                                                .top_0()
-                                                .left_0()
-                                                .overflow_hidden()
-                                                .when_some(
-                                                    {
-                                                        let bounds_cache =
-                                                            self.word_bounds.borrow();
+                                let element = div()
+                                    .relative()
+                                    .flex_none()
+                                    .child(
+                                        div()
+                                            .id(format!("base_word_{}_{}", self.idx, word_idx))
+                                            .text_size(LYRICS_TEXT_SIZE)
+                                            .font_weight(FontWeight::BOLD)
+                                            .text_color(rgb(0xffffff))
+                                            .opacity(inactive_opacity)
+                                            .child(word.text.clone()),
+                                    )
+                                    .child(
+                                        div()
+                                            .absolute()
+                                            .h_full()
+                                            .top_0()
+                                            .left_0()
+                                            .overflow_hidden()
+                                            .when_some(
+                                                {
+                                                    let bounds_cache = self.word_bounds.borrow();
 
-                                                        bounds_cache
-                                                            .get(&(self.idx, word_idx))
-                                                            .map(|b| b.size.width * progress)
-                                                    },
-                                                    |this, width| this.w(width),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .h_full()
-                                                        .flex()
-                                                        .items_center()
-                                                        .text_size(LYRICS_TEXT_SIZE)
-                                                        .font_weight(FontWeight::BOLD)
-                                                        .text_color(rgb(0xffffff))
-                                                        .opacity(active_opacity)
-                                                        .child(word.text),
-                                                ),
-                                        ),
-                                    {
-                                        let bounds_cache = self.word_bounds.clone();
+                                                    bounds_cache
+                                                        .get(&(self.idx, word_idx))
+                                                        .map(|b| b.size.width * progress)
+                                                },
+                                                |this, width| this.w(width),
+                                            )
+                                            .child(
+                                                div()
+                                                    .h_full()
+                                                    .flex()
+                                                    .items_center()
+                                                    .text_size(LYRICS_TEXT_SIZE)
+                                                    .font_weight(FontWeight::BOLD)
+                                                    .text_color(rgb(0xffffff))
+                                                    .opacity(active_opacity)
+                                                    .child(word.text),
+                                            ),
+                                    );
 
-                                        let line_idx = self.idx;
+                                let bounds_cache = self.word_bounds.clone();
+                                let line_idx = self.idx;
 
-                                        move |bounds, _, _cx| {
-                                            bounds_cache
-                                                .borrow_mut()
-                                                .insert((line_idx, word_idx), bounds);
-                                        }
-                                    },
-                                )
+                                if bounds_cache.borrow().get(&(line_idx, word_idx)).is_none() {
+                                    div().child(observe_bounds(
+                                        format!("word_measure_{}_{}", self.idx, word_idx),
+                                        element,
+                                        {
+                                            move |bounds, _, _cx| {
+                                                bounds_cache
+                                                    .borrow_mut()
+                                                    .insert((line_idx, word_idx), bounds);
+                                            }
+                                        },
+                                    ))
+                                } else {
+                                    element
+                                }
                             })),
                     )
                     .into_any_element()
@@ -299,7 +303,7 @@ pub struct LyricsView {
     pub scroll_handle: ScrollHandle,
     pub last_active_line: usize,
     pub panel_bounds: Option<Bounds<Pixels>>,
-    pub measured_heights: Vec<Pixels>,
+    pub measured_heights: Rc<RefCell<Vec<Pixels>>>,
     pub list_controller: VirtualListScrollController,
     pub word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
 
@@ -314,7 +318,7 @@ impl LyricsView {
             scroll_handle,
             last_active_line: 0,
             panel_bounds: None,
-            measured_heights: Vec::new(),
+            measured_heights: Rc::new(RefCell::new(Vec::new())),
             list_controller: VirtualListScrollController::new(),
             word_bounds: Rc::new(RefCell::new(AHashMap::new())),
             last_playback: Duration::from_millis(0),
@@ -381,9 +385,11 @@ impl Render for LyricsView {
                 .into_any_element();
         };
 
-        if self.measured_heights.len() != lyrics.lines.len() {
-            self.measured_heights =
-                vec![px(LYRICS_TEXT_SIZE.to_f64() as f32 * 2.5); lyrics.lines.len()];
+        if self.measured_heights.borrow().len() != lyrics.lines.len() {
+            self.measured_heights.borrow_mut().resize(
+                lyrics.lines.len(),
+                px(LYRICS_TEXT_SIZE.to_f64() as f32 * 2.5),
+            );
         }
 
         let active_line = Self::active_line(&lyrics.lines, playback);
@@ -416,13 +422,12 @@ impl Render for LyricsView {
 
         let sync_type = lyrics.sync_type.clone();
 
-        let measured_heights = Rc::new(self.measured_heights.clone());
         let word_bounds = self.word_bounds.clone();
         let list_entity = entity.clone();
         let list = vlist(
             cx.entity(),
             "lyrics",
-            measured_heights.clone(),
+            self.measured_heights.borrow().clone(),
             self.scroll_handle.clone(),
             self.list_controller.clone(),
             move |_this, range, _, cx| {
@@ -452,7 +457,9 @@ impl Render for LyricsView {
                                     entity.update(cx, |this, cx| {
                                         let height = bounds.size.height;
 
-                                        if let Some(existing) = this.measured_heights.get_mut(idx) {
+                                        if let Some(existing) =
+                                            this.measured_heights.borrow_mut().get_mut(idx)
+                                        {
                                             if *existing != height {
                                                 *existing = height;
 

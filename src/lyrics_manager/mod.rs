@@ -34,23 +34,23 @@ pub trait LyricsProvider: Send + Sync {
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct Lyrics {
-    pub lines: Vec<LyricLine>,
+    pub lines: Arc<[LyricLine]>,
     pub sync_type: SyncType,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct LyricLine {
-    pub text: String,
+    pub text: Arc<str>,
     pub start: Option<Duration>,
     pub end: Option<Duration>,
-    pub words: Option<Vec<LyricWord>>,
+    pub words: Option<Arc<[LyricWord]>>,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct LyricWord {
     pub start: Duration,
     pub end: Duration,
-    pub text: String,
+    pub text: Arc<str>,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
