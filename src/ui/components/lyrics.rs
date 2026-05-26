@@ -234,29 +234,26 @@ impl LyricsView {
 
     fn update_playback(&mut self, raw_playback: Duration, playing: bool) -> Duration {
         let now = Instant::now();
+        let frame_delta = now.duration_since(self.elapsed_since_last_update);
 
-        let playback = if playing {
-            if !self.was_playing {
-                raw_playback
-            } else {
-                let delta = now.duration_since(self.elapsed_since_last_update);
-
-                raw_playback + delta
-            }
+        let drift = if raw_playback > self.interpolated_playback {
+            raw_playback - self.interpolated_playback
         } else {
-            raw_playback
+            self.interpolated_playback - raw_playback
         };
 
-        let seeked = if playback > self.interpolated_playback {
-            playback - self.interpolated_playback > Duration::from_millis(400)
-        } else {
-            self.interpolated_playback - playback > Duration::from_millis(400)
-        };
-
-        if seeked {
+        if drift > Duration::from_millis(400) {
             self.interpolated_playback = raw_playback;
         } else {
-            self.interpolated_playback = playback.max(self.interpolated_playback);
+            if playing {
+                self.interpolated_playback += frame_delta;
+
+                if raw_playback > self.interpolated_playback {
+                    self.interpolated_playback = raw_playback;
+                }
+            } else {
+                self.interpolated_playback = raw_playback;
+            }
         }
 
         self.last_raw_playback = raw_playback;
