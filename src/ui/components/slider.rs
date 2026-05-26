@@ -161,7 +161,7 @@ impl RenderOnce for Slider {
             .style
             .text
             .as_ref()
-            .and_then(|t| t.color)
+            .and_then(|t| t.color.map(|this| this.to_hsla()))
             .unwrap_or_else(white);
 
         let mut root = div()

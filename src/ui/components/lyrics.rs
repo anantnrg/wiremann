@@ -6,7 +6,7 @@ use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use ahash::{AHashMap, AHashSet};
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, px, rgb,
+    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, linear_color_stop, px, rgb,
 };
 
 use std::cell::RefCell;
@@ -47,6 +47,7 @@ pub struct LyricLineView {
     pub sync_type: SyncType,
     pub primary_line: usize,
     pub active_words: Rc<AHashSet<(usize, usize)>>,
+    pub playback: Duration,
 }
 
 impl LyricLineView {
@@ -57,6 +58,7 @@ impl LyricLineView {
         sync_type: SyncType,
         primary_line: usize,
         active_words: Rc<AHashSet<(usize, usize)>>,
+        playback: Duration,
     ) -> Entity<Self> {
         cx.new(|_| Self {
             line,
@@ -64,7 +66,21 @@ impl LyricLineView {
             sync_type,
             primary_line,
             active_words,
+            playback,
         })
+    }
+
+    fn word_progress(playback: Duration, start: Duration, end: Duration) -> f32 {
+        if playback <= start {
+            0.0
+        } else if playback >= end {
+            1.0
+        } else {
+            let elapsed = playback - start;
+            let total = end - start;
+
+            elapsed.as_secs_f32() / total.as_secs_f32()
+        }
     }
 }
 
@@ -118,14 +134,29 @@ impl Render for LyricLineView {
                                 .enumerate()
                                 .map(|(word_idx, word)| {
                                     let active = self.active_words.contains(&(self.idx, word_idx));
+                                    let words = self.line.words.as_ref().unwrap();
+
+                                    let next_start = words
+                                        .get(word_idx + 1)
+                                        .map(|w| w.start)
+                                        .or(self.line.end)
+                                        .unwrap_or(word.start + Duration::from_millis(300));
+
+                                    let progress =
+                                        Self::word_progress(self.playback, word.start, next_start);
 
                                     div()
                                         .id(format!("word_{}_{}", self.idx, word_idx))
-                                        .text_color(if active {
-                                            rgb(0xffffff)
-                                        } else {
-                                            rgb(0x666666)
-                                        })
+                                        .text_gradient_horizontal(
+                                            linear_color_stop(
+                                                rgb(0xffffff),
+                                                (progress - 0.02).max(0.0),
+                                            ),
+                                            linear_color_stop(
+                                                rgb(0x666666),
+                                                (progress + 0.02).min(1.0),
+                                            ),
+                                        )
                                         .child(word.text.to_string())
                                 }),
                         ),
@@ -302,7 +333,6 @@ impl Render for LyricsView {
             self.list_controller.scroll_to_item(primary_line);
         }
 
-        let views = self.views.clone();
         let lines = lyrics.lines.clone();
         let sync_type = lyrics.sync_type.clone();
 
@@ -330,6 +360,7 @@ impl Render for LyricsView {
                             sync_type.clone(),
                             primary_line,
                             active_words.clone(),
+                            playback,
                         ));
 
                         observe_bounds(("lyrics_line_measure", idx), content, {

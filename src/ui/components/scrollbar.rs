@@ -199,7 +199,7 @@ impl Element for Scrollbar {
             .style
             .text
             .as_ref()
-            .and_then(|t| t.color)
+            .and_then(|t| t.color.map(|this| this.to_hsla()))
             .map_or(white().into(), Into::into);
 
         let mut corners = Corners::default();
