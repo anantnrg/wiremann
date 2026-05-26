@@ -3,7 +3,9 @@ use crate::controller::state::PlaybackStatus;
 use crate::lyrics_manager::{LyricLine, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
+
 use ahash::{AHashMap, AHashSet};
+
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
     ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, linear_color_stop, px, rgb,
@@ -48,6 +50,8 @@ pub struct LyricLineView {
     pub primary_line: usize,
     pub active_words: Rc<AHashSet<(usize, usize)>>,
     pub playback: Duration,
+    pub word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
+    pub line_bounds: Rc<RefCell<AHashMap<usize, Bounds<Pixels>>>>,
 }
 
 impl LyricLineView {
@@ -59,6 +63,8 @@ impl LyricLineView {
         primary_line: usize,
         active_words: Rc<AHashSet<(usize, usize)>>,
         playback: Duration,
+        word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
+        line_bounds: Rc<RefCell<AHashMap<usize, Bounds<Pixels>>>>,
     ) -> Entity<Self> {
         cx.new(|_| Self {
             line,
@@ -67,20 +73,80 @@ impl LyricLineView {
             primary_line,
             active_words,
             playback,
+            word_bounds,
+            line_bounds,
         })
     }
 
-    fn word_progress(playback: Duration, start: Duration, end: Duration) -> f32 {
-        if playback <= start {
-            0.0
-        } else if playback >= end {
-            1.0
-        } else {
-            let elapsed = playback - start;
-            let total = end - start;
+    fn line_progress(&self) -> f32 {
+        let Some(words) = &self.line.words else {
+            return 0.0;
+        };
 
-            elapsed.as_secs_f32() / total.as_secs_f32()
+        if words.is_empty() {
+            return 0.0;
         }
+
+        let word_bounds = self.word_bounds.borrow();
+        let line_bounds = self.line_bounds.borrow();
+
+        let Some(line_bounds) = line_bounds.get(&self.idx) else {
+            return 0.0;
+        };
+
+        let line_width = line_bounds.size.width.to_f64() as f32;
+
+        if line_width <= 0.0 {
+            return 0.0;
+        }
+
+        for (word_idx, word) in words.iter().enumerate() {
+            let next_start = words
+                .get(word_idx + 1)
+                .map(|w| w.start)
+                .or(self.line.end)
+                .unwrap_or(word.end);
+
+            if self.playback < word.start {
+                break;
+            }
+
+            let Some(current_bounds) = word_bounds.get(&(self.idx, word_idx)) else {
+                continue;
+            };
+
+            let progress = if self.playback >= next_start {
+                1.0
+            } else {
+                let elapsed = self.playback.saturating_sub(word.start);
+
+                let duration = next_start.saturating_sub(word.start);
+
+                if duration.is_zero() {
+                    1.0
+                } else {
+                    elapsed.as_secs_f32() / duration.as_secs_f32()
+                }
+            }
+            .clamp(0.0, 1.0);
+
+            let prev_width = if word_idx == 0 {
+                0.0
+            } else {
+                word_bounds
+                    .get(&(self.idx, word_idx - 1))
+                    .map(|b| b.size.width.to_f64() as f32)
+                    .unwrap_or(0.0)
+            };
+
+            let current_width = current_bounds.size.width.to_f64() as f32;
+
+            let reveal = prev_width + (current_width - prev_width) * progress;
+
+            return (reveal / line_width).clamp(0.0, 1.0);
+        }
+
+        0.0
     }
 }
 
@@ -107,60 +173,107 @@ impl Render for LyricLineView {
                         .child(self.line.text.to_string()),
                 ),
 
-            SyncType::Word => div()
-                .id(("line", self.idx))
-                .w_full()
-                .py_2()
-                .flex()
-                .justify_center()
-                .child(
-                    div()
-                        .max_w(px(900.0))
-                        .w_full()
-                        .flex()
-                        .flex_row()
-                        .flex_wrap()
-                        .justify_center()
-                        .gap_x_1()
-                        .text_size(LYRICS_TEXT_SIZE)
-                        .font_weight(FontWeight::BOLD)
-                        .children(
-                            self.line
-                                .words
-                                .as_ref()
-                                .map(|words| words.iter())
-                                .into_iter()
-                                .flatten()
-                                .enumerate()
-                                .map(|(word_idx, word)| {
-                                    let active = self.active_words.contains(&(self.idx, word_idx));
-                                    let words = self.line.words.as_ref().unwrap();
+            SyncType::Word => {
+                let progress = self.line_progress();
 
-                                    let next_start = words
-                                        .get(word_idx + 1)
-                                        .map(|w| w.start)
-                                        .or(self.line.end)
-                                        .unwrap_or(word.start + Duration::from_millis(300));
+                div()
+                    .id(("line", self.idx))
+                    .w_full()
+                    .py_2()
+                    .px_4()
+                    .flex()
+                    .justify_center()
+                    .child(
+                        div()
+                            .relative()
+                            .max_w_full()
+                            .child(observe_bounds(
+                                ("line_bounds", self.idx),
+                                div()
+                                    .text_center()
+                                    .text_size(LYRICS_TEXT_SIZE)
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_gradient_horizontal(
+                                        linear_color_stop(
+                                            rgb(0xffffff),
+                                            (progress - 0.01).max(0.0),
+                                        ),
+                                        linear_color_stop(
+                                            rgb(0x666666),
+                                            (progress + 0.01).min(1.0),
+                                        ),
+                                    )
+                                    .child(self.line.text.to_string()),
+                                {
+                                    let line_bounds = self.line_bounds.clone();
 
-                                    let progress =
-                                        Self::word_progress(self.playback, word.start, next_start);
+                                    let idx = self.idx;
 
-                                    div()
-                                        .id(format!("word_{}_{}", self.idx, word_idx))
-                                        .text_gradient_horizontal(
-                                            linear_color_stop(
-                                                rgb(0xffffff),
-                                                (progress - 0.02).max(0.0),
-                                            ),
-                                            linear_color_stop(
-                                                rgb(0x666666),
-                                                (progress + 0.02).min(1.0),
-                                            ),
-                                        )
-                                        .child(word.text.to_string())
-                                }),
-                        ),
-                ),
+                                    move |bounds, _, _| {
+                                        line_bounds.borrow_mut().insert(idx, bounds);
+                                    }
+                                },
+                            ))
+                            .child(
+                                div()
+                                    .absolute()
+                                    .top_0()
+                                    .left_0()
+                                    .opacity(0.0)
+                                    .text_size(LYRICS_TEXT_SIZE)
+                                    .font_weight(FontWeight::BOLD)
+                                    .children(
+                                        self.line
+                                            .words
+                                            .clone()
+                                            .as_ref()
+                                            .map(|words| {
+                                                let mut accum = String::new();
+
+                                                words.iter().enumerate().map(
+                                                    move |(word_idx, word)| {
+                                                        if !accum.is_empty() {
+                                                            accum.push(' ');
+                                                        }
+
+                                                        accum.push_str(&word.text);
+
+                                                        let measure_text = accum.clone();
+
+                                                        observe_bounds(
+                                                            format!(
+                                                                "word_measure_{}_{}",
+                                                                self.idx, word_idx
+                                                            ),
+                                                            div()
+                                                                .text_size(LYRICS_TEXT_SIZE)
+                                                                .font_weight(FontWeight::BOLD)
+                                                                .child(measure_text),
+                                                            {
+                                                                let word_bounds =
+                                                                    self.word_bounds.clone();
+
+                                                                let line_idx = self.idx;
+
+                                                                move |bounds, _, _| {
+                                                                    word_bounds
+                                                                        .borrow_mut()
+                                                                        .insert(
+                                                                            (line_idx, word_idx),
+                                                                            bounds,
+                                                                        );
+                                                                }
+                                                            },
+                                                        )
+                                                    },
+                                                )
+                                            })
+                                            .into_iter()
+                                            .flatten(),
+                                    ),
+                            ),
+                    )
+            }
         }
     }
 }
@@ -183,6 +296,10 @@ pub struct LyricsView {
     pub last_raw_playback: Duration,
     pub was_playing: bool,
     pub elapsed_since_last_update: Instant,
+
+    pub word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
+
+    pub line_bounds: Rc<RefCell<AHashMap<usize, Bounds<Pixels>>>>,
 }
 
 impl LyricsView {
@@ -204,6 +321,10 @@ impl LyricsView {
             last_raw_playback: Duration::ZERO,
             was_playing: false,
             elapsed_since_last_update: Instant::now(),
+
+            word_bounds: Rc::new(RefCell::new(AHashMap::new())),
+
+            line_bounds: Rc::new(RefCell::new(AHashMap::new())),
         })
     }
 
@@ -240,6 +361,7 @@ impl LyricsView {
         let mut active_words = AHashSet::new();
 
         let start = self.primary_line.saturating_sub(1);
+
         let end = (self.primary_line + 2).min(lyrics.lines.len());
 
         for line_idx in start..end {
@@ -263,8 +385,14 @@ impl LyricsView {
         self.active_words = Rc::new(active_words);
     }
 
-    fn update_playback(&mut self, raw_playback: Duration, playing: bool) -> Duration {
+    fn update_playback(
+        &mut self,
+        window: &Window,
+        raw_playback: Duration,
+        playing: bool,
+    ) -> Duration {
         let now = Instant::now();
+
         let frame_delta = now.duration_since(self.elapsed_since_last_update);
 
         let drift = if raw_playback > self.interpolated_playback {
@@ -291,17 +419,22 @@ impl LyricsView {
         self.was_playing = playing;
         self.elapsed_since_last_update = now;
 
+        if playing {
+            window.request_animation_frame();
+        }
+
         self.interpolated_playback
     }
 }
 
 impl Render for LyricsView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let entity = cx.entity();
 
         let state = cx.global::<Controller>().state.read(cx);
 
         let playback = self.update_playback(
+            window,
             state.playback.position,
             state.playback.status == PlaybackStatus::Playing,
         );
@@ -325,7 +458,6 @@ impl Render for LyricsView {
         self.update_active_indices(lyrics, playback);
 
         let primary_line = self.primary_line;
-        let active_words = self.active_words.clone();
 
         if primary_line != self.last_scrolled_line {
             self.last_scrolled_line = primary_line;
@@ -341,6 +473,10 @@ impl Render for LyricsView {
         let measured_lines = self.measured_lines.clone();
 
         let list_entity = entity.clone();
+
+        let word_bounds = self.word_bounds.clone();
+
+        let line_bounds = self.line_bounds.clone();
 
         vlist(
             cx.entity(),
@@ -359,8 +495,10 @@ impl Render for LyricsView {
                             idx,
                             sync_type.clone(),
                             primary_line,
-                            active_words.clone(),
+                            Rc::new(AHashSet::new()),
                             playback,
+                            word_bounds.clone(),
+                            line_bounds.clone(),
                         ));
 
                         observe_bounds(("lyrics_line_measure", idx), content, {
