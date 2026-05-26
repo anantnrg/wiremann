@@ -148,7 +148,9 @@ pub struct LyricsView {
     pub active_words: Rc<AHashSet<(usize, usize)>>,
     pub last_scrolled_line: usize,
 
-    pub last_playback: Duration,
+    pub interpolated_playback: Duration,
+    pub last_raw_playback: Duration,
+    pub was_playing: bool,
     pub elapsed_since_last_update: Instant,
 }
 
@@ -167,7 +169,9 @@ impl LyricsView {
             active_words: Rc::new(AHashSet::new()),
             last_scrolled_line: 0,
 
-            last_playback: Duration::ZERO,
+            interpolated_playback: Duration::ZERO,
+            last_raw_playback: Duration::ZERO,
+            was_playing: false,
             elapsed_since_last_update: Instant::now(),
         })
     }
@@ -228,12 +232,38 @@ impl LyricsView {
         self.active_words = Rc::new(active_words);
     }
 
-    fn interpolated_playback(&self, playing: bool) -> Duration {
-        if playing {
-            self.last_playback + self.elapsed_since_last_update.elapsed()
+    fn update_playback(&mut self, raw_playback: Duration, playing: bool) -> Duration {
+        let now = Instant::now();
+
+        let playback = if playing {
+            if !self.was_playing {
+                raw_playback
+            } else {
+                let delta = now.duration_since(self.elapsed_since_last_update);
+
+                raw_playback + delta
+            }
         } else {
-            self.last_playback
+            raw_playback
+        };
+
+        let seeked = if playback > self.interpolated_playback {
+            playback - self.interpolated_playback > Duration::from_millis(400)
+        } else {
+            self.interpolated_playback - playback > Duration::from_millis(400)
+        };
+
+        if seeked {
+            self.interpolated_playback = raw_playback;
+        } else {
+            self.interpolated_playback = playback.max(self.interpolated_playback);
         }
+
+        self.last_raw_playback = raw_playback;
+        self.was_playing = playing;
+        self.elapsed_since_last_update = now;
+
+        self.interpolated_playback
     }
 }
 
@@ -243,7 +273,10 @@ impl Render for LyricsView {
 
         let state = cx.global::<Controller>().state.read(cx);
 
-        let playback = self.interpolated_playback(state.playback.status == PlaybackStatus::Playing);
+        let playback = self.update_playback(
+            state.playback.position,
+            state.playback.status == PlaybackStatus::Playing,
+        );
 
         let lyrics_state = cx.global::<LyricsState>().0.read(cx);
 
