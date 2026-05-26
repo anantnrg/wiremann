@@ -1,15 +1,18 @@
 use crate::controller::Controller;
 use crate::controller::state::PlaybackStatus;
 use crate::lyrics_manager::{LyricLine, Lyrics, SyncType};
+use crate::ui::components::bounds_observer::observe_bounds;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 
-use ahash::AHashMap;
+use ahash::{AHashMap, AHashSet};
 
 use gpui::{
-    App, AppContext, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
+    App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
     ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, px, rgb,
 };
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 const LYRICS_TEXT_SIZE: Pixels = px(38.0);
@@ -39,41 +42,88 @@ impl LyricsStateInner {
         }
     }
 }
+
 pub struct LyricLineView {
     pub line: LyricLine,
     pub idx: usize,
+    pub sync_type: SyncType,
 }
 
 impl LyricLineView {
-    pub fn new(cx: &mut App, line: LyricLine, idx: usize) -> Entity<Self> {
-        cx.new(|_| Self { line, idx })
+    pub fn new(cx: &mut App, line: LyricLine, idx: usize, sync_type: SyncType) -> Entity<Self> {
+        cx.new(|_| Self {
+            line,
+            idx,
+            sync_type,
+        })
     }
 }
 
 impl Render for LyricLineView {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .id(("line", self.idx))
-            .w_full()
-            .py_2()
-            .flex()
-            .justify_center()
-            .child(
-                div()
-                    .text_center()
-                    .text_size(LYRICS_TEXT_SIZE)
-                    .font_weight(FontWeight::BOLD)
-                    .text_color(rgb(0xffffff))
-                    .child(self.line.text.clone().to_string()),
-            )
+        match self.sync_type {
+            SyncType::Line | SyncType::Unsynced => div()
+                .id(("line", self.idx))
+                .w_full()
+                .py_2()
+                .flex()
+                .justify_center()
+                .child(
+                    div()
+                        .max_w_full()
+                        .text_center()
+                        .text_size(LYRICS_TEXT_SIZE)
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(rgb(0xffffff))
+                        .child(self.line.text.to_string()),
+                ),
+
+            SyncType::Word => div()
+                .id(("line", self.idx))
+                .w_full()
+                .py_2()
+                .flex()
+                .justify_center()
+                .child(
+                    div()
+                        .max_w(px(900.0))
+                        .w_full()
+                        .flex()
+                        .flex_row()
+                        .flex_wrap()
+                        .justify_center()
+                        .gap_x_1()
+                        .text_size(LYRICS_TEXT_SIZE)
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(rgb(0xffffff))
+                        .children(
+                            self.line
+                                .words
+                                .as_ref()
+                                .map(|words| words.iter())
+                                .into_iter()
+                                .flatten()
+                                .enumerate()
+                                .map(|(word_idx, word)| {
+                                    div()
+                                        .id(format!("word_{}_{}", self.idx, word_idx))
+                                        .child(word.text.to_string())
+                                }),
+                        ),
+                ),
+        }
     }
 }
 
 #[derive(Clone)]
 pub struct LyricsView {
     pub views: Entity<AHashMap<usize, Entity<LyricLineView>>>,
+
     pub scroll_handle: ScrollHandle,
     pub list_controller: VirtualListScrollController,
+
+    pub measured_heights: Vec<Pixels>,
+    pub measured_lines: Rc<RefCell<AHashSet<usize>>>,
 
     pub last_active_line: usize,
 
@@ -85,8 +135,12 @@ impl LyricsView {
     pub fn new(cx: &mut App, scroll_handle: ScrollHandle) -> Entity<Self> {
         cx.new(|cx| Self {
             views: cx.new(|_| AHashMap::new()),
+
             scroll_handle,
             list_controller: VirtualListScrollController::new(),
+
+            measured_heights: Vec::new(),
+            measured_lines: Rc::new(RefCell::new(AHashSet::new())),
 
             last_active_line: 0,
 
@@ -99,11 +153,12 @@ impl LyricsView {
         views: &Entity<AHashMap<usize, Entity<LyricLineView>>>,
         line: LyricLine,
         idx: usize,
+        sync_type: SyncType,
         cx: &mut App,
     ) -> Entity<LyricLineView> {
         views.update(cx, |this, cx| {
             this.entry(idx)
-                .or_insert_with(|| LyricLineView::new(cx, line, idx))
+                .or_insert_with(|| LyricLineView::new(cx, line, idx, sync_type))
                 .clone()
         })
     }
@@ -128,6 +183,8 @@ impl LyricsView {
 
 impl Render for LyricsView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let entity = cx.entity();
+
         let state = cx.global::<Controller>().state.read(cx);
 
         let playback = self.interpolated_playback(state.playback.status == PlaybackStatus::Playing);
@@ -144,6 +201,10 @@ impl Render for LyricsView {
                 .into_any_element();
         };
 
+        if self.measured_heights.len() != lyrics.lines.len() {
+            self.measured_heights = vec![px(110.0); lyrics.lines.len()];
+        }
+
         let active_line = Self::active_line(&lyrics.lines, playback);
 
         if active_line != self.last_active_line {
@@ -154,13 +215,18 @@ impl Render for LyricsView {
 
         let views = self.views.clone();
         let lines = lyrics.lines.clone();
+        let sync_type = lyrics.sync_type.clone();
 
-        let estimated_heights = vec![px(110.0); lines.len()];
+        let measured_heights = Rc::new(self.measured_heights.clone());
+
+        let measured_lines = self.measured_lines.clone();
+
+        let list_entity = entity.clone();
 
         vlist(
             cx.entity(),
             "lyrics",
-            estimated_heights.into(),
+            measured_heights,
             self.scroll_handle.clone(),
             self.list_controller.clone(),
             move |_this, range, _, cx| {
@@ -168,9 +234,32 @@ impl Render for LyricsView {
                     .map(|idx| {
                         let line = lines[idx].clone();
 
-                        div()
-                            .w_full()
-                            .child(LyricsView::get_or_create_line(&views, line, idx, cx))
+                        let content = div().w_full().child(LyricsView::get_or_create_line(
+                            &views,
+                            line,
+                            idx,
+                            sync_type.clone(),
+                            cx,
+                        ));
+
+                        observe_bounds(("lyrics_line_measure", idx), content, {
+                            let entity = list_entity.clone();
+
+                            let measured_lines = measured_lines.clone();
+
+                            move |bounds, _, cx| {
+                                entity.update(cx, |this, _| {
+                                    let height = bounds.size.height;
+
+                                    if let Some(existing) = this.measured_heights.get_mut(idx) {
+                                        *existing = height;
+                                    }
+
+                                    measured_lines.borrow_mut().insert(idx);
+                                });
+                            }
+                        })
+                        .into_any_element()
                     })
                     .collect::<Vec<_>>()
             },
