@@ -3,9 +3,7 @@ use crate::controller::state::PlaybackStatus;
 use crate::lyrics_manager::{LyricLine, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
-
 use ahash::{AHashMap, AHashSet};
-
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
     ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, px, rgb,
@@ -47,14 +45,25 @@ pub struct LyricLineView {
     pub line: LyricLine,
     pub idx: usize,
     pub sync_type: SyncType,
+    pub primary_line: usize,
+    pub active_words: Rc<AHashSet<(usize, usize)>>,
 }
 
 impl LyricLineView {
-    pub fn new(cx: &mut App, line: LyricLine, idx: usize, sync_type: SyncType) -> Entity<Self> {
+    pub fn new(
+        cx: &mut App,
+        line: LyricLine,
+        idx: usize,
+        sync_type: SyncType,
+        primary_line: usize,
+        active_words: Rc<AHashSet<(usize, usize)>>,
+    ) -> Entity<Self> {
         cx.new(|_| Self {
             line,
             idx,
             sync_type,
+            primary_line,
+            active_words,
         })
     }
 }
@@ -74,7 +83,11 @@ impl Render for LyricLineView {
                         .text_center()
                         .text_size(LYRICS_TEXT_SIZE)
                         .font_weight(FontWeight::BOLD)
-                        .text_color(rgb(0xffffff))
+                        .text_color(if self.idx == self.primary_line {
+                            rgb(0xffffff)
+                        } else {
+                            rgb(0x666666)
+                        })
                         .child(self.line.text.to_string()),
                 ),
 
@@ -95,7 +108,6 @@ impl Render for LyricLineView {
                         .gap_x_1()
                         .text_size(LYRICS_TEXT_SIZE)
                         .font_weight(FontWeight::BOLD)
-                        .text_color(rgb(0xffffff))
                         .children(
                             self.line
                                 .words
@@ -105,8 +117,15 @@ impl Render for LyricLineView {
                                 .flatten()
                                 .enumerate()
                                 .map(|(word_idx, word)| {
+                                    let active = self.active_words.contains(&(self.idx, word_idx));
+
                                     div()
                                         .id(format!("word_{}_{}", self.idx, word_idx))
+                                        .text_color(if active {
+                                            rgb(0xffffff)
+                                        } else {
+                                            rgb(0x666666)
+                                        })
                                         .child(word.text.to_string())
                                 }),
                         ),
@@ -125,7 +144,9 @@ pub struct LyricsView {
     pub measured_heights: Vec<Pixels>,
     pub measured_lines: Rc<RefCell<AHashSet<usize>>>,
 
-    pub last_active_line: usize,
+    pub primary_line: usize,
+    pub active_words: Rc<AHashSet<(usize, usize)>>,
+    pub last_scrolled_line: usize,
 
     pub last_playback: Duration,
     pub elapsed_since_last_update: Instant,
@@ -142,34 +163,69 @@ impl LyricsView {
             measured_heights: Vec::new(),
             measured_lines: Rc::new(RefCell::new(AHashSet::new())),
 
-            last_active_line: 0,
+            primary_line: 0,
+            active_words: Rc::new(AHashSet::new()),
+            last_scrolled_line: 0,
 
             last_playback: Duration::ZERO,
             elapsed_since_last_update: Instant::now(),
         })
     }
 
-    fn get_or_create_line(
-        views: &Entity<AHashMap<usize, Entity<LyricLineView>>>,
-        line: LyricLine,
-        idx: usize,
-        sync_type: SyncType,
-        cx: &mut App,
-    ) -> Entity<LyricLineView> {
-        views.update(cx, |this, cx| {
-            this.entry(idx)
-                .or_insert_with(|| LyricLineView::new(cx, line, idx, sync_type))
-                .clone()
-        })
-    }
+    fn update_active_indices(&mut self, lyrics: &Lyrics, playback: Duration) {
+        if lyrics.lines.is_empty() {
+            self.primary_line = 0;
+            self.active_words = Rc::new(AHashSet::new());
+            return;
+        }
 
-    fn active_line(lines: &[LyricLine], playback: Duration) -> usize {
-        lines
-            .iter()
-            .enumerate()
-            .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
-            .map(|(idx, _)| idx)
-            .unwrap_or(0)
+        let current_start = lyrics.lines[self.primary_line]
+            .start
+            .unwrap_or(Duration::ZERO);
+
+        if playback < current_start {
+            self.primary_line = lyrics
+                .lines
+                .partition_point(|line| line.start.unwrap_or(Duration::ZERO) <= playback)
+                .saturating_sub(1);
+        }
+
+        while self.primary_line + 1 < lyrics.lines.len() {
+            let next_start = lyrics.lines[self.primary_line + 1]
+                .start
+                .unwrap_or(Duration::MAX);
+
+            if playback >= next_start {
+                self.primary_line += 1;
+            } else {
+                break;
+            }
+        }
+
+        let mut active_words = AHashSet::new();
+
+        let start = self.primary_line.saturating_sub(1);
+        let end = (self.primary_line + 2).min(lyrics.lines.len());
+
+        for line_idx in start..end {
+            let line = &lyrics.lines[line_idx];
+
+            if let Some(words) = &line.words {
+                for (word_idx, word) in words.iter().enumerate() {
+                    let next_start = words
+                        .get(word_idx + 1)
+                        .map(|w| w.start)
+                        .or(line.end)
+                        .unwrap_or(Duration::MAX);
+
+                    if playback >= word.start && playback < next_start {
+                        active_words.insert((line_idx, word_idx));
+                    }
+                }
+            }
+        }
+
+        self.active_words = Rc::new(active_words);
     }
 
     fn interpolated_playback(&self, playing: bool) -> Duration {
@@ -205,12 +261,15 @@ impl Render for LyricsView {
             self.measured_heights = vec![px(110.0); lyrics.lines.len()];
         }
 
-        let active_line = Self::active_line(&lyrics.lines, playback);
+        self.update_active_indices(lyrics, playback);
 
-        if active_line != self.last_active_line {
-            self.last_active_line = active_line;
+        let primary_line = self.primary_line;
+        let active_words = self.active_words.clone();
 
-            self.list_controller.scroll_to_item(active_line);
+        if primary_line != self.last_scrolled_line {
+            self.last_scrolled_line = primary_line;
+
+            self.list_controller.scroll_to_item(primary_line);
         }
 
         let views = self.views.clone();
@@ -234,12 +293,13 @@ impl Render for LyricsView {
                     .map(|idx| {
                         let line = lines[idx].clone();
 
-                        let content = div().w_full().child(LyricsView::get_or_create_line(
-                            &views,
+                        let content = div().w_full().child(LyricLineView::new(
+                            cx,
                             line,
                             idx,
                             sync_type.clone(),
-                            cx,
+                            primary_line,
+                            active_words.clone(),
                         ));
 
                         observe_bounds(("lyrics_line_measure", idx), content, {
