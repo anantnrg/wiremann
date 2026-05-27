@@ -1,5 +1,6 @@
 use crate::controller::Controller;
 use crate::controller::state::PlaybackStatus;
+use crate::library::TrackId;
 use crate::lyrics_manager::{LyricLine, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
@@ -7,12 +8,12 @@ use ahash::{AHashMap, AHashSet};
 use gpui::prelude::FluentBuilder;
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, linear_color_stop, px, rgb,
+    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, px, rgb,
 };
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const LYRICS_TEXT_SIZE: Pixels = px(38.0);
 
@@ -20,6 +21,7 @@ const LYRICS_TEXT_SIZE: Pixels = px(38.0);
 pub struct LyricsStateInner {
     pub status: LyricsStatus,
     pub lyrics: Option<Lyrics>,
+    pub track_id: Option<TrackId>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -38,6 +40,7 @@ impl LyricsStateInner {
         Self {
             status: LyricsStatus::Unavailable,
             lyrics: None,
+            track_id: None,
         }
     }
 }
@@ -99,17 +102,16 @@ impl Render for LyricLineView {
                 .id(("line", self.idx))
                 .w_full()
                 .py_2()
+                .px_4()
                 .flex()
                 .justify_center()
                 .child(
                     div()
-                        .max_w(px(900.0))
                         .w_full()
                         .flex()
                         .flex_row()
                         .flex_wrap()
                         .justify_center()
-                        .gap_x_1()
                         .children(
                             self.line
                                 .words
@@ -119,13 +121,7 @@ impl Render for LyricLineView {
                                 .flatten()
                                 .enumerate()
                                 .map(|(word_idx, word)| {
-                                    let words = self.line.words.as_ref().unwrap();
-
-                                    let next_start = words
-                                        .get(word_idx + 1)
-                                        .map(|w| w.start)
-                                        .or(self.line.end)
-                                        .unwrap_or(word.start + Duration::from_millis(300));
+                                    let next_start = word.end;
 
                                     let progress = if self.playback < word.start {
                                         0.0
@@ -135,7 +131,7 @@ impl Render for LyricLineView {
                                         let elapsed = self.playback - word.start;
                                         let total = next_start - word.start;
 
-                                        elapsed.as_secs_f32() / total.as_secs_f32()
+                                        (elapsed.as_secs_f64() / total.as_secs_f64()) as f32
                                     }
                                     .clamp(0.0, 1.0);
 
@@ -206,11 +202,7 @@ pub struct LyricsView {
 
     pub primary_line: usize,
     pub last_scrolled_line: usize,
-
-    pub interpolated_playback: Duration,
-    pub last_raw_playback: Duration,
-    pub was_playing: bool,
-    pub elapsed_since_last_update: Instant,
+    pub last_track_id: Option<TrackId>,
 }
 
 impl LyricsView {
@@ -227,56 +219,30 @@ impl LyricsView {
 
             primary_line: 0,
             last_scrolled_line: 0,
-
-            interpolated_playback: Duration::ZERO,
-            last_raw_playback: Duration::ZERO,
-            was_playing: false,
-            elapsed_since_last_update: Instant::now(),
+            last_track_id: None,
         })
     }
 
-    fn update_playback(&mut self, raw_playback: Duration, playing: bool) -> Duration {
-        let now = Instant::now();
-        let frame_delta = now.duration_since(self.elapsed_since_last_update);
-
-        let drift = if raw_playback > self.interpolated_playback {
-            raw_playback - self.interpolated_playback
-        } else {
-            self.interpolated_playback - raw_playback
-        };
-
-        if drift > Duration::from_millis(400) {
-            self.interpolated_playback = raw_playback;
-        } else {
-            if playing {
-                self.interpolated_playback += frame_delta;
-
-                if raw_playback > self.interpolated_playback {
-                    self.interpolated_playback = raw_playback;
-                }
-            } else {
-                self.interpolated_playback = raw_playback;
-            }
+    fn update_primary_line(&mut self, lyrics: &Lyrics, playback: Duration) {
+        if lyrics.lines.is_empty() {
+            self.primary_line = 0;
+            return;
         }
 
-        self.last_raw_playback = raw_playback;
-        self.was_playing = playing;
-        self.elapsed_since_last_update = now;
-
-        self.interpolated_playback
+        self.primary_line = lyrics
+            .lines
+            .partition_point(|line| line.start.unwrap_or(Duration::ZERO) <= playback)
+            .saturating_sub(1);
     }
 }
 
 impl Render for LyricsView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let entity = cx.entity();
 
         let state = cx.global::<Controller>().state.read(cx);
 
-        let playback = self.update_playback(
-            state.playback.position,
-            state.playback.status == PlaybackStatus::Playing,
-        );
+        let playback = state.playback.position;
 
         let lyrics_state = cx.global::<LyricsState>().0.read(cx);
 
@@ -290,9 +256,24 @@ impl Render for LyricsView {
                 .into_any_element();
         };
 
+        if state.playback.status == PlaybackStatus::Playing && lyrics.sync_type == SyncType::Word {
+            window.request_animation_frame();
+        }
+
+        if self.last_track_id != lyrics_state.track_id {
+            self.last_track_id = lyrics_state.track_id;
+            self.primary_line = 0;
+            self.last_scrolled_line = 0;
+            self.measured_heights.clear();
+            self.measured_lines.borrow_mut().clear();
+            self.word_bounds.borrow_mut().clear();
+        }
+
         if self.measured_heights.len() != lyrics.lines.len() {
             self.measured_heights = vec![px(110.0); lyrics.lines.len()];
         }
+
+        self.update_primary_line(lyrics, playback);
 
         let primary_line = self.primary_line;
         let word_bounds = self.word_bounds.clone();

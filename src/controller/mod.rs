@@ -129,10 +129,16 @@ impl Controller {
                                     cx.notify();
                                 });
                             });
-                            this.lyrics.update(cx, |this, cx| {
-                                this.last_raw_playback = *pos;
-                                cx.notify();
-                            });
+                            // this.lyrics.update(cx, |this, cx| {
+                            //     let playing =
+                            //         self.state.read(cx).playback.status == PlaybackStatus::Playing;
+
+                            //     this.synchronize_playback(*pos, playing);
+
+                            //     if !playing {
+                            //         cx.notify();
+                            //     }
+                            // });
                         });
                         cx.notify();
                     });
@@ -919,9 +925,12 @@ impl Controller {
 
                     lyrics_state.update(cx, |this, cx| {
                         this.lyrics = lyrics.clone();
+                        this.track_id = Some(current);
+
                         if lyrics.is_some() {
                             this.status = LyricsStatus::Available;
                         }
+
                         cx.notify();
                     })
                 }
