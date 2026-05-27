@@ -120,7 +120,7 @@ where
         content_height: sum,
         scroll_state: controller.state.clone(),
         render: Box::new(render),
-        overscan: 2,
+        overscan: 8,
         top_padding: px(0.0),
         bottom_padding: px(0.0),
     }
@@ -276,7 +276,7 @@ impl Element for VirtualList {
             bounds,
             Size {
                 width: bounds.size.width,
-                height: self.content_height,
+                height: padded_height,
             },
             window,
             cx,
