@@ -10,7 +10,7 @@ use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
     ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, gradient_color_stop,
-    linear_gradient, px, rgb, rgba,
+    linear_gradient, px, relative, rgb, rgba,
 };
 
 use std::rc::Rc;
@@ -115,7 +115,7 @@ impl Render for LyricLineView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = cx.global::<Controller>().state.read(cx);
 
-        let playback = state.playback.position;
+        let playback = state.playback.position + Duration::from_millis(80);
 
         let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
 
@@ -297,11 +297,15 @@ impl Render for LyricLineView {
 #[derive(Clone)]
 pub struct LyricsView {
     pub views: Entity<AHashMap<usize, Entity<LyricLineView>>>,
+
     pub scroll_handle: ScrollHandle,
+    pub list_controller: VirtualListScrollController,
+
     pub last_active_line: usize,
+    pub last_track_id: Option<TrackId>,
+
     pub panel_bounds: Option<Bounds<Pixels>>,
     pub measured_heights: Vec<Pixels>,
-    pub list_controller: VirtualListScrollController,
     pub word_bounds: Rc<RefCell<AHashMap<(usize, usize), Bounds<Pixels>>>>,
 }
 
@@ -315,6 +319,7 @@ impl LyricsView {
             measured_heights: Vec::new(),
             list_controller: VirtualListScrollController::new(),
             word_bounds: Rc::new(RefCell::new(AHashMap::new())),
+            last_track_id: None,
         })
     }
 
@@ -351,9 +356,9 @@ impl Render for LyricsView {
 
         let playback = state.playback.position;
 
-        let lyrics = cx.global::<LyricsState>().0.read(cx).lyrics.clone();
+        let lyrics_state = cx.global::<LyricsState>().0.read(cx);
 
-        let Some(lyrics) = lyrics else {
+        let Some(lyrics) = lyrics_state.lyrics.clone() else {
             return div()
                 .size_full()
                 .flex()
@@ -372,6 +377,16 @@ impl Render for LyricsView {
         if self.measured_heights.len() != lyrics.lines.len() {
             self.measured_heights =
                 vec![px(LYRICS_TEXT_SIZE.to_f64() as f32 * 2.5); lyrics.lines.len()];
+        }
+
+        if self.last_track_id != lyrics_state.track_id {
+            self.last_track_id = lyrics_state.track_id;
+            self.views.update(cx, |this, _| this.clear());
+            self.word_bounds.borrow_mut().clear();
+            self.measured_heights.clear();
+
+            self.last_active_line = 0;
+            self.list_controller.scroll_to_item(0);
         }
 
         let active_line = Self::active_line(&lyrics.lines, playback);
@@ -456,35 +471,40 @@ impl Render for LyricsView {
             },
         );
 
-        let root =
-            div()
-                .font_family("Space Grotesk")
-                .relative()
-                .w_full()
-                .min_w_0()
-                .h_full()
-                .min_h_0()
-                .child(list)
-                .child(div().absolute().top_0().left_0().right_0().h(px(180.0)).bg(
-                    linear_gradient(
+        let root = div()
+            .font_family("Space Grotesk")
+            .relative()
+            .w_full()
+            .min_w_0()
+            .h_full()
+            .min_h_0()
+            .child(list)
+            .child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .h(relative(0.32))
+                    .bg(linear_gradient(
                         180.,
                         gradient_color_stop(rgb(0x000000), 0.0),
                         gradient_color_stop(rgba(0x00000000), 1.0),
-                    ),
-                ))
-                .child(
-                    div()
-                        .absolute()
-                        .bottom_0()
-                        .left_0()
-                        .right_0()
-                        .h(px(180.0))
-                        .bg(linear_gradient(
-                            0.,
-                            gradient_color_stop(rgb(0x000000), 0.0),
-                            gradient_color_stop(rgba(0x00000000), 1.0),
-                        )),
-                );
+                    )),
+            )
+            .child(
+                div()
+                    .absolute()
+                    .bottom_0()
+                    .left_0()
+                    .right_0()
+                    .h(relative(0.32))
+                    .bg(linear_gradient(
+                        0.,
+                        gradient_color_stop(rgb(0x000000), 0.0),
+                        gradient_color_stop(rgba(0x00000000), 1.0),
+                    )),
+            );
 
         observe_bounds("lyrics_panel_bounds", root, move |bounds, _, cx| {
             entity.update(cx, |this, cx| {
