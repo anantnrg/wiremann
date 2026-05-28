@@ -25,10 +25,8 @@ use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
 use gpui::{App, Entity, Global, Rgba, rgb};
 use okmain::rgb::Rgb;
-use okmain::{InputImage, colors};
 use rand::rng;
 use rand::seq::{IteratorRandom, SliceRandom};
-use ron::de;
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 use std::{path::PathBuf, sync::Arc};
@@ -665,7 +663,7 @@ impl Controller {
                                 artist: track.artist.clone(),
                                 album: track.album.clone(),
                                 image: Some((width, height, image.clone())),
-                                duration: track.duration.as_secs() as u64,
+                                duration: track.duration.as_secs(),
                             })
                             .ok();
                     }
@@ -684,32 +682,27 @@ impl Controller {
                     let colors = okmain::colors(input);
 
                     fn rgb_to_rgba(color: Rgb<u8>) -> Rgba {
-                        rgb(((color.r as u32) << 16) | ((color.g as u32) << 8) | (color.b as u32))
+                        rgb((u32::from(color.r) << 16) | (u32::from(color.g) << 8) | u32::from(color.b))
                     }
                     let dominant = DominantColors {
-                        color1: colors
-                            .get(0)
+                        color1: colors.first()
                             .copied()
-                            .map(rgb_to_rgba)
-                            .unwrap_or(rgb(0x000000)),
+                            .map_or(rgb(0x000000), rgb_to_rgba),
 
                         color2: colors
                             .get(1)
                             .copied()
-                            .map(rgb_to_rgba)
-                            .unwrap_or(rgb(0x000000)),
+                            .map_or(rgb(0x000000), rgb_to_rgba),
 
                         color3: colors
                             .get(2)
                             .copied()
-                            .map(rgb_to_rgba)
-                            .unwrap_or(rgb(0x000000)),
+                            .map_or(rgb(0x000000), rgb_to_rgba),
 
                         color4: colors
                             .get(3)
                             .copied()
-                            .map(rgb_to_rgba)
-                            .unwrap_or(rgb(0x000000)),
+                            .map_or(rgb(0x000000), rgb_to_rgba),
                     };
                     *cx.global_mut::<DominantColors>() = dominant;
                 }
@@ -826,8 +819,7 @@ impl Controller {
                     .state
                     .read(cx)
                     .playback
-                    .current
-                    .clone();
+                    .current;
 
                 if let Some(current) = current
                     && current == *id
@@ -843,7 +835,7 @@ impl Controller {
                             LyricsStatus::Unavailable
                         };
                         cx.notify();
-                    })
+                    });
                 }
             }
             CacherEvent::MissingLyrics(id) => {
@@ -929,8 +921,7 @@ impl Controller {
                     .state
                     .read(cx)
                     .playback
-                    .current
-                    .clone();
+                    .current;
 
                 if let Some(current) = current
                     && current == *id
@@ -948,7 +939,7 @@ impl Controller {
                         };
 
                         cx.notify();
-                    })
+                    });
                 }
                 if let Some(lyrics) = lyrics {
                     self.cacher_tx
@@ -1277,7 +1268,7 @@ impl Controller {
                 title: title.to_string(),
                 artist: artist.to_string(),
                 album: album.to_string(),
-                duration: duration,
+                duration,
             })
             .ok();
     }

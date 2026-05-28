@@ -11,9 +11,8 @@ use std::cell::RefCell;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use gpui::{
     Animation, AnimationExt, App, AppContext, Bounds, Context, Entity, FontWeight, Global,
-    InteractiveElement, IntoElement, ParentElement, Pixels, Render, ScrollHandle, Styled,
-    Transformation, Window, div, gradient_color_stop, linear, linear_gradient, percentage, px,
-    relative, rgb, rgba,
+    InteractiveElement, IntoElement, ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, gradient_color_stop, linear, linear_gradient, percentage, px,
+    relative, rgba,
 };
 
 use std::rc::Rc;
@@ -39,7 +38,14 @@ pub struct LyricsState(pub Entity<LyricsStateInner>);
 
 impl Global for LyricsState {}
 
+impl Default for LyricsStateInner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LyricsStateInner {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             status: LyricsStatus::Unavailable,
@@ -96,8 +102,7 @@ impl LyricLineView {
 
         let next_time = words
             .get(active_idx + 1)
-            .map(|w| w.start)
-            .unwrap_or(active_word.end);
+            .map_or(active_word.end, |w| w.start);
 
         let duration = next_time.saturating_sub(active_word.start);
 
@@ -131,9 +136,8 @@ impl Render for LyricLineView {
             .lines
             .iter()
             .enumerate()
-            .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
-            .map(|(idx, _)| idx)
-            .unwrap_or(0);
+            .rfind(|(_, line)| line.start.is_some_and(|s| playback >= s))
+            .map_or(0, |(idx, _)| idx);
 
         let is_active_line = self.idx == active_line;
         let distance = self.idx.abs_diff(active_line) as f32;
@@ -193,15 +197,14 @@ impl Render for LyricLineView {
                             .flex_row()
                             .flex_wrap()
                             .justify_center()
-                            .children(words.into_iter().enumerate().map(|(word_idx, word)| {
+                            .children(words.iter().enumerate().map(|(word_idx, word)| {
                                 let progress = {
                                     let next_start = self
                                         .line
                                         .words
                                         .as_ref()
                                         .and_then(|w| w.get(word_idx + 1))
-                                        .map(|w| w.start)
-                                        .unwrap_or(word.end);
+                                        .map_or(word.end, |w| w.start);
 
                                     if playback < word.start {
                                         0.0
@@ -251,7 +254,7 @@ impl Render for LyricLineView {
                                                             .get(&(self.idx, word_idx))
                                                             .map(|b| b.size.width * progress)
                                                     },
-                                                    |this, width| this.w(width),
+                                                    gpui::Styled::w,
                                                 )
                                                 .child(
                                                     div()
@@ -346,9 +349,8 @@ impl LyricsView {
         lines
             .iter()
             .enumerate()
-            .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
-            .map(|(idx, _)| idx)
-            .unwrap_or(0)
+            .rfind(|(_, line)| line.start.is_some_and(|s| playback >= s))
+            .map_or(0, |(idx, _)| idx)
     }
 }
 
@@ -501,13 +503,12 @@ impl Render for LyricsView {
                                     entity.update(cx, |this, cx| {
                                         let height = bounds.size.height;
 
-                                        if let Some(existing) = this.measured_heights.get_mut(idx) {
-                                            if *existing != height {
+                                        if let Some(existing) = this.measured_heights.get_mut(idx)
+                                            && *existing != height {
                                                 *existing = height;
 
                                                 cx.notify();
                                             }
-                                        }
                                     });
                                 }
                             },

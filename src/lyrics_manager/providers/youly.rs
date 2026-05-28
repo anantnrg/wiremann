@@ -50,7 +50,7 @@ impl LyricsProvider for YouLY {
         {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("YouLY request failed: {:?}", e);
+                eprintln!("YouLY request failed: {e:?}");
                 return Ok(None);
             }
         };
@@ -62,12 +62,12 @@ impl LyricsProvider for YouLY {
         let text = match resp.text() {
             Ok(t) => t,
             Err(e) => {
-                eprintln!("Failed to read response: {:?}", e);
+                eprintln!("Failed to read response: {e:?}");
                 return Ok(None);
             }
         };
 
-        return self.parse(text);
+        self.parse(text)
     }
 
     fn endpoint(&self) -> &'static str {
@@ -88,23 +88,20 @@ impl YouLY {
         let json: Value = match serde_json::from_str(&data) {
             Ok(j) => j,
             Err(e) => {
-                eprintln!("YouLY JSON parse failed: {:?}", e);
+                eprintln!("YouLY JSON parse failed: {e:?}");
                 return Ok(None);
             }
         };
 
-        let lyrics_value = match json.get("lyrics") {
-            Some(v) => v.clone(),
-            None => {
-                eprintln!("YouLY missing 'lyrics' field");
-                return Ok(None);
-            }
+        let lyrics_value = if let Some(v) = json.get("lyrics") { v.clone() } else {
+            eprintln!("YouLY missing 'lyrics' field");
+            return Ok(None);
         };
 
         let lines: Vec<YouLYLine> = match serde_json::from_value(lyrics_value) {
             Ok(l) => l,
             Err(e) => {
-                eprintln!("YouLY lyrics parse failed: {:?}", e);
+                eprintln!("YouLY lyrics parse failed: {e:?}");
                 return Ok(None);
             }
         };

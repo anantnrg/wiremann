@@ -55,6 +55,6 @@ impl Cacher {
 
         let cached_lyrics: Lyrics = bitcode::decode(&decompressed)?;
 
-        return Ok(Some(cached_lyrics));
+        Ok(Some(cached_lyrics))
     }
 }

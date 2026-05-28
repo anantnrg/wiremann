@@ -16,7 +16,7 @@ use crate::{
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FontWeight, InteractiveElement, IntoElement,
     ObjectFit, ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled,
-    StyledImage, UniformListScrollHandle, Window, div, gradient_color_stop, img, px, rgb, rgba,
+    StyledImage, UniformListScrollHandle, Window, div, gradient_color_stop, img, px, rgba,
 };
 use gpui::{prelude::FluentBuilder, relative};
 

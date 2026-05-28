@@ -33,6 +33,7 @@ pub struct VirtualListScrollController {
 
 impl VirtualListScrollController {
     /// Creates a new virtual list scroll controller.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             state: Rc::new(RefCell::new(VirtualListScrollState::default())),
@@ -306,6 +307,6 @@ impl Element for VirtualList {
                     item.paint(window, cx);
                 }
             },
-        )
+        );
     }
 }

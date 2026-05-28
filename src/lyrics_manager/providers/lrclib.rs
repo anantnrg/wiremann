@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::time::Duration;
 
 use serde_json::Value;
@@ -40,7 +39,7 @@ impl LyricsProvider for LrcLib {
         {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("LRCLIB request failed: {:?}", e);
+                eprintln!("LRCLIB request failed: {e:?}");
                 return Ok(None);
             }
         };
@@ -52,12 +51,12 @@ impl LyricsProvider for LrcLib {
         let text = match resp.text() {
             Ok(t) => t,
             Err(e) => {
-                eprintln!("Failed to read response: {:?}", e);
+                eprintln!("Failed to read response: {e:?}");
                 return Ok(None);
             }
         };
 
-        return self.parse(text);
+        self.parse(text)
     }
 
     fn endpoint(&self) -> &'static str {
@@ -78,52 +77,43 @@ impl LrcLib {
         let json: Value = match serde_json::from_str(&data) {
             Ok(j) => j,
             Err(e) => {
-                eprintln!("LRCLIB JSON parse failed: {:?}", e);
+                eprintln!("LRCLIB JSON parse failed: {e:?}");
                 return Ok(None);
             }
         };
 
         match json.get("syncedLyrics") {
-            Some(v) => match v.as_str() {
-                Some(s) => return Self::parse_lrc(s),
-                None => {
-                    eprintln!("LRCLIB syncedLyrics not a string");
-                    return Ok(None);
-                }
+            Some(v) => if let Some(s) = v.as_str() { Self::parse_lrc(s) } else {
+                eprintln!("LRCLIB syncedLyrics not a string");
+                Ok(None)
             },
-            None => match json.get("plainLyrics") {
-                Some(v) => {
-                    let mut lyrics = Lyrics {
-                        lines: Vec::new().into(),
-                        sync_type: SyncType::Unsynced,
-                    };
-                    match v.as_str() {
-                        Some(s) => {
-                            let mut lines = Vec::new();
-                            for line in s.lines() {
-                                lines.push(LyricLine {
-                                    text: line.to_string().into(),
-                                    start: None,
-                                    end: None,
-                                    words: None,
-                                });
-                            }
-
-                            lyrics.lines = lines.into();
-                            return Ok(Some(lyrics));
-                        }
-                        None => {
-                            eprintln!("LRCLIB syncedLyrics not a string");
-                            return Ok(None);
-                        }
+            None => if let Some(v) = json.get("plainLyrics") {
+                let mut lyrics = Lyrics {
+                    lines: Vec::new().into(),
+                    sync_type: SyncType::Unsynced,
+                };
+                if let Some(s) = v.as_str() {
+                    let mut lines = Vec::new();
+                    for line in s.lines() {
+                        lines.push(LyricLine {
+                            text: line.to_string().into(),
+                            start: None,
+                            end: None,
+                            words: None,
+                        });
                     }
+
+                    lyrics.lines = lines.into();
+                    Ok(Some(lyrics))
+                } else {
+                    eprintln!("LRCLIB syncedLyrics not a string");
+                    Ok(None)
                 }
-                None => {
-                    eprintln!("LRCLIB no lyrics found");
-                    return Ok(None);
-                }
+            } else {
+                eprintln!("LRCLIB no lyrics found");
+                Ok(None)
             },
-        };
+        }
     }
 
     pub fn parse_lrc(data: &str) -> Result<Option<Lyrics>, LyricsError> {
@@ -171,11 +161,10 @@ impl LrcLib {
             }
         }
 
-        if let Some(last) = lines.last_mut() {
-            if last.end.is_none() {
+        if let Some(last) = lines.last_mut()
+            && last.end.is_none() {
                 last.end = last.start;
             }
-        }
 
         lyrics.lines = lines.into();
 
