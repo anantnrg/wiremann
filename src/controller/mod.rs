@@ -652,6 +652,12 @@ impl Controller {
                 let width = image.size(0).width.0.cast_unsigned();
                 let height = image.size(0).height.0.cast_unsigned();
                 if let Some(image) = image.as_bytes(0) {
+                    fn rgb_to_rgba(color: Rgb<u8>) -> Rgba {
+                        rgb((u32::from(color.r) << 16)
+                            | (u32::from(color.g) << 8)
+                            | u32::from(color.b))
+                    }
+
                     let image = image.to_vec();
                     let state = self.state.read(cx);
                     if let Some(track_id) = &state.playback.current
@@ -681,11 +687,6 @@ impl Controller {
 
                     let colors = okmain::colors(input);
 
-                    fn rgb_to_rgba(color: Rgb<u8>) -> Rgba {
-                        rgb((u32::from(color.r) << 16)
-                            | (u32::from(color.g) << 8)
-                            | u32::from(color.b))
-                    }
                     let dominant = DominantColors {
                         color1: colors.first().copied().map_or(rgb(0x000000), rgb_to_rgba),
 
