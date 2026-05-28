@@ -14,7 +14,7 @@ use crate::library::{Track, TrackId};
 use crate::ui::components::lyrics::{LyricsState, LyricsStatus};
 use crate::ui::components::toasts::scanning_status::ScanningStatus;
 use crate::ui::components::toasts::{ToastKind, ToastPhase};
-use crate::ui::helpers::{drop_image_from_app, secs_to_slider};
+use crate::ui::helpers::{drop_image_from_app, duration_to_slider};
 use crate::ui::theme::DominantColors;
 use crate::ui::wiremann::Wiremann;
 use crate::{
@@ -121,14 +121,24 @@ impl Controller {
                                     };
 
                                     let duration = if let Some(track) = current {
-                                        track.duration.as_secs()
+                                        track.duration
                                     } else {
-                                        0
+                                        Duration::default()
                                     };
-                                    this.set_value(secs_to_slider(*pos, duration), cx);
+                                    this.set_value(duration_to_slider(*pos, duration), cx);
                                     cx.notify();
                                 });
                             });
+                            // this.lyrics.update(cx, |this, cx| {
+                            //     let playing =
+                            //         self.state.read(cx).playback.status == PlaybackStatus::Playing;
+
+                            //     this.synchronize_playback(*pos, playing);
+
+                            //     if !playing {
+                            //         cx.notify();
+                            //     }
+                            // });
                         });
                         cx.notify();
                     });
@@ -176,9 +186,20 @@ impl Controller {
                             duration: track.duration.as_secs(),
                         })
                         .ok();
+
                     self.cacher_tx
                         .send(CacherCommand::GetLyrics(*track_id))
                         .ok();
+
+                    let lyrics_state = cx.global::<LyricsState>().0.clone();
+
+                    lyrics_state.update(cx, |this, cx| {
+                        this.status = LyricsStatus::Fetching;
+                        this.lyrics = None;
+                        this.track_id = Some(*track_id);
+
+                        cx.notify();
+                    });
                 }
                 self.state.update(cx, |this, cx| {
                     this.playback.current = Some(*track_id);
@@ -600,9 +621,8 @@ impl Controller {
                             });
                             this.playback_slider_state.update(cx, |this, cx| {
                                 if let Some(duration) = duration {
-                                    // TODO: maybe use millis for slider?
                                     this.set_value(
-                                        secs_to_slider(playback_state.position, duration.as_secs()),
+                                        duration_to_slider(playback_state.position, duration),
                                         cx,
                                     );
                                 }
@@ -816,9 +836,12 @@ impl Controller {
 
                     lyrics_state.update(cx, |this, cx| {
                         this.lyrics = lyrics.clone();
-                        if lyrics.is_some() {
-                            this.status = LyricsStatus::Available;
-                        }
+                        this.track_id = Some(current);
+                        this.status = if lyrics.is_some() {
+                            LyricsStatus::Available
+                        } else {
+                            LyricsStatus::Unavailable
+                        };
                         cx.notify();
                     })
                 }
@@ -916,9 +939,14 @@ impl Controller {
 
                     lyrics_state.update(cx, |this, cx| {
                         this.lyrics = lyrics.clone();
-                        if lyrics.is_some() {
-                            this.status = LyricsStatus::Available;
-                        }
+                        this.track_id = Some(current);
+
+                        this.status = if lyrics.is_some() {
+                            LyricsStatus::Available
+                        } else {
+                            LyricsStatus::Unavailable
+                        };
+
                         cx.notify();
                     })
                 }
@@ -1158,7 +1186,7 @@ impl Controller {
             .send(CacherCommand::WritePlaybackState(state.playback));
     }
 
-    pub fn seek(&self, pos: u64) {
+    pub fn seek(&self, pos: Duration) {
         let _ = self.audio_tx.send(AudioCommand::Seek(pos));
     }
 

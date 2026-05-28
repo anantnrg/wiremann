@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use gpui::{App, KeyBinding, actions};
 
 use crate::{
@@ -106,13 +108,13 @@ fn repeat(_: &Repeat, cx: &mut App) {
 fn seek_forward(_: &SeekForward, cx: &mut App) {
     let controller = cx.global::<Controller>().clone();
     let current = controller.state.read(cx).playback.position;
-    controller.seek(current.saturating_add(5));
+    controller.seek(current.saturating_add(Duration::from_secs(5)));
 }
 
 fn seek_back(_: &SeekBack, cx: &mut App) {
     let controller = cx.global::<Controller>().clone();
     let current = controller.state.read(cx).playback.position;
-    controller.seek(current.saturating_sub(5));
+    controller.seek(current.saturating_sub(Duration::from_secs(5)));
 }
 
 fn cycle_next(_: &CycleNext, cx: &mut App) {

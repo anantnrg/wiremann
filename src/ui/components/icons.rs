@@ -1,7 +1,7 @@
 // Ref: https://github.com/longbridge/gpui-component/blob/main/crates/ui/src/icon.rs
 use gpui::{
     AnyElement, App, AppContext, Context, Entity, Hsla, IntoElement, Radians, Render, RenderOnce,
-    SharedString, StyleRefinement, Styled, Svg, Transformation, Window,
+    SharedString, StyleRefinement, Styled, Svg, TextColor, Transformation, Window,
     prelude::FluentBuilder as _, svg, white,
 };
 
@@ -113,15 +113,17 @@ impl Styled for Icon {
         &mut self.style
     }
 
-    fn text_color(mut self, color: impl Into<Hsla>) -> Self {
-        self.text_color = Some(color.into());
+    fn text_color(mut self, color: impl Into<TextColor>) -> Self {
+        self.text_color = Some(color.into().to_hsla());
         self
     }
 }
 
 impl RenderOnce for Icon {
     fn render(self, window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let text_color = self.text_color.unwrap_or_else(|| window.text_style().color);
+        let text_color = self
+            .text_color
+            .unwrap_or_else(|| window.text_style().color.to_hsla());
         let text_size = window.text_style().font_size.to_pixels(window.rem_size());
         let has_base_size = self.style.size.width.is_some() || self.style.size.height.is_some();
 

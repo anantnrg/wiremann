@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use serde_json::Value;
@@ -93,20 +94,22 @@ impl LrcLib {
             None => match json.get("plainLyrics") {
                 Some(v) => {
                     let mut lyrics = Lyrics {
-                        lines: Vec::new(),
+                        lines: Vec::new().into(),
                         sync_type: SyncType::Unsynced,
                     };
                     match v.as_str() {
                         Some(s) => {
+                            let mut lines = Vec::new();
                             for line in s.lines() {
-                                lyrics.lines.push(LyricLine {
-                                    text: line.to_string(),
+                                lines.push(LyricLine {
+                                    text: line.to_string().into(),
                                     start: None,
                                     end: None,
                                     words: None,
                                 });
                             }
 
+                            lyrics.lines = lines.into();
                             return Ok(Some(lyrics));
                         }
                         None => {
@@ -125,12 +128,13 @@ impl LrcLib {
 
     pub fn parse_lrc(data: &str) -> Result<Option<Lyrics>, LyricsError> {
         let mut lyrics = Lyrics {
-            lines: Vec::new(),
+            lines: Vec::new().into(),
             sync_type: SyncType::Line,
         };
 
         let data = data.replace("\\n", "\n");
 
+        let mut lines = vec![];
         for line in data.lines() {
             if let Some((time_part, text)) = line.split_once("] ") {
                 let timestamp = time_part.trim_start_matches('[');
@@ -150,8 +154,8 @@ impl LrcLib {
 
                         let start = Duration::from_millis(total);
 
-                        lyrics.lines.push(LyricLine {
-                            text: text.to_string(),
+                        lines.push(LyricLine {
+                            text: text.to_string().into(),
                             start: Some(start),
                             end: None,
                             words: None,
@@ -161,17 +165,19 @@ impl LrcLib {
             }
         }
 
-        for i in 0..lyrics.lines.len().saturating_sub(1) {
-            if lyrics.lines[i].end.is_none() {
-                lyrics.lines[i].end = lyrics.lines[i + 1].start;
+        for i in 0..lines.len().saturating_sub(1) {
+            if lines[i].end.is_none() {
+                lines[i].end = lines[i + 1].start;
             }
         }
 
-        if let Some(last) = lyrics.lines.last_mut() {
+        if let Some(last) = lines.last_mut() {
             if last.end.is_none() {
                 last.end = last.start;
             }
         }
+
+        lyrics.lines = lines.into();
 
         Ok(Some(lyrics))
     }

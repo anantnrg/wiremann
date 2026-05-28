@@ -1,3 +1,4 @@
+pub mod bounds_observer;
 pub mod controlbar;
 mod element_ext;
 pub mod icons;

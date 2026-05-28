@@ -7,11 +7,12 @@ use gpui::RenderImage;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum AudioEvent {
     TrackLoaded(TrackId, PathBuf),
-    Position(u64),
+    Position(Duration),
     PlaybackStatus(PlaybackStatus),
     TrackEnded,
 }
@@ -65,9 +66,9 @@ pub enum SystemIntegrationEvent {
     Next,
     Prev,
     Stop,
-    SeekForward(u64),
-    SeekBackward(u64),
-    Position(u64),
+    SeekForward(Duration),
+    SeekBackward(Duration),
+    Position(Duration),
     Volume(f64),
 }
 

@@ -71,7 +71,6 @@ pub fn run() -> Result<(), AppError> {
                     }),
                     app_icon,
                     window_background: gpui::WindowBackgroundAppearance::Blurred,
-                    always_transparent: true,
                     ..Default::default()
                 },
                 |window, cx| {
@@ -201,7 +200,7 @@ pub fn run() -> Result<(), AppError> {
                                     .ok();
                             }
 
-                            if last_pos_request.elapsed() >= Duration::from_millis(256) {
+                            if last_pos_request.elapsed() >= Duration::from_millis(16) {
                                 controller.get_pos();
 
                                 last_pos_request = Instant::now();
@@ -214,7 +213,7 @@ pub fn run() -> Result<(), AppError> {
                             }
 
                             cx.background_executor()
-                                .timer(Duration::from_millis(64))
+                                .timer(Duration::from_millis(16))
                                 .await;
                         }
                     })

@@ -1,11 +1,11 @@
 use crate::{
     controller::{Controller, state::PlaybackStatus},
     ui::{
-        animations::ease_in_out_expo,
         components::{
             controlbar::ControlBar,
             icons::{Icon, Icons},
             image_cache::ImageCache,
+            lyrics::LyricsView,
             queue::Queue,
             scrollbar::{RightPad, floating_scrollbar},
         },
@@ -13,9 +13,9 @@ use crate::{
     },
 };
 use gpui::{
-    Animation, AnimationExt, App, AppContext, Context, ElementId, Entity, FontWeight,
-    InteractiveElement, IntoElement, ObjectFit, ParentElement, Render, StatefulInteractiveElement,
-    Styled, StyledImage, UniformListScrollHandle, Window, div, img, px, rgb,
+    App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit,
+    ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage,
+    UniformListScrollHandle, Window, div, img, px, rgb,
 };
 use gpui::{prelude::FluentBuilder, relative};
 
@@ -23,6 +23,8 @@ use gpui::{prelude::FluentBuilder, relative};
 pub struct PlayerPage {
     pub queue: Entity<Queue>,
     queue_scroll_handle: UniformListScrollHandle,
+    pub lyrics: Entity<LyricsView>,
+    lyrics_scroll_handle: UniformListScrollHandle,
     pub controlbar: Entity<ControlBar>,
     show_panel: Entity<bool>,
     current_panel: Entity<Panel>,
@@ -43,6 +45,8 @@ impl PlayerPage {
         PlayerPage {
             queue: Queue::new(cx, queue_scroll_handle.clone()),
             queue_scroll_handle,
+            lyrics: LyricsView::new(cx, ScrollHandle::new()),
+            lyrics_scroll_handle: UniformListScrollHandle::new(),
             controlbar,
             show_panel,
             current_panel,
@@ -59,7 +63,8 @@ impl Render for PlayerPage {
         let controller = cx.global::<Controller>().clone();
         let state = controller.state.read(cx);
         let thumbnail = cx.global::<ImageCache>().current.clone();
-        let scroll_handle = self.queue_scroll_handle.clone();
+        let queue_scroll_handle = self.queue_scroll_handle.clone();
+        let lyrics_scroll_handle = self.lyrics_scroll_handle.clone();
         let show_panel = self.show_panel.clone();
 
         let current = if let Some(id) = state.playback.current {
@@ -412,7 +417,7 @@ impl Render for PlayerPage {
                                     .child(self.queue.clone())
                                     .child(floating_scrollbar(
                                         "queue_scrollbar",
-                                        scroll_handle,
+                                        queue_scroll_handle,
                                         RightPad::Pad,
                                     ))
                             } else {
@@ -420,11 +425,13 @@ impl Render for PlayerPage {
                                     .id("lyrics_container")
                                     .w_full()
                                     .h_full()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .text_color(theme.player_panel_show_hide_text)
-                                    .child("No lyrics loaded")
+                                    .px_8()
+                                    .child(self.lyrics.clone())
+                                    .child(floating_scrollbar(
+                                        "lyrics_scrollbar",
+                                        lyrics_scroll_handle,
+                                        RightPad::Pad,
+                                    ))
                             }
                         })
                     })

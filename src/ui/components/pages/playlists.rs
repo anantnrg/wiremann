@@ -6,15 +6,14 @@ use crate::ui::components::Page;
 use crate::ui::components::icons::{Icon, Icons};
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
-use crate::ui::components::virtual_list::vlist;
 use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use crate::ui::theme::Theme;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     App, AppContext, Context, Div, Entity, FontWeight, ImageSource, InteractiveElement,
     IntoElement, ObjectFit, ParentElement, Pixels, Render, ScrollHandle,
-    StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle, Window, div, img, px,
-    rems, uniform_list,
+    StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle,
+    VirtualListScrollController, Window, div, img, px, rems, uniform_list, vlist,
 };
 use std::rc::Rc;
 
@@ -30,6 +29,7 @@ pub struct PlaylistsPage {
 
     selected_playlist: Entity<Option<PlaylistId>>,
     last_fp: u128,
+    pub list_controller: VirtualListScrollController,
 }
 
 #[derive(Clone)]
@@ -58,6 +58,7 @@ impl PlaylistsPage {
             heights: Rc::new(Vec::new()),
             selected_playlist: cx.new(|_| current_playlist),
             last_fp: 0,
+            list_controller: VirtualListScrollController::new(),
         }
     }
 
@@ -595,6 +596,7 @@ impl Render for PlaylistsPage {
                         "playlists_main",
                         heights.clone(),
                         main_scroll_handle,
+            self.list_controller.clone(),
                         {
                             let selected = selected.clone();
 

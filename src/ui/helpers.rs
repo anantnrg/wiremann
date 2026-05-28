@@ -2,6 +2,7 @@ use crate::library::TrackId;
 use crate::library::playlists::PlaylistId;
 use gpui::RenderImage;
 use std::sync::Arc;
+use std::time::Duration;
 
 #[must_use]
 #[allow(
@@ -9,8 +10,8 @@ use std::sync::Arc;
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss
 )]
-pub fn slider_to_secs(slider: f32, duration_secs: u64) -> u64 {
-    ((slider.clamp(0.0, 100.0) / 100.0) * duration_secs as f32) as u64
+pub fn slider_to_duration(slider: f32, duration: Duration) -> Duration {
+    Duration::from_millis(((slider.clamp(0.0, 100.0) / 100.0) * duration.as_millis() as f32) as u64)
 }
 
 #[must_use]
@@ -19,11 +20,13 @@ pub fn slider_to_secs(slider: f32, duration_secs: u64) -> u64 {
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss
 )]
-pub fn secs_to_slider(pos: u64, duration: u64) -> f32 {
-    if duration == 0 {
+pub fn duration_to_slider(pos: Duration, duration: Duration) -> f32 {
+    let duration_ms = duration.as_millis();
+
+    if duration_ms == 0 {
         0.0
     } else {
-        (pos as f32 / duration as f32) * 100.0
+        (pos.as_millis() as f32 / duration_ms as f32) * 100.0
     }
 }
 
