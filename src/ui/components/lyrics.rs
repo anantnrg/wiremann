@@ -2,15 +2,17 @@ use crate::controller::Controller;
 use crate::library::TrackId;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
+use crate::ui::components::icons::{Icon, Icons};
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use std::cell::RefCell;
 
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use gpui::{
-    App, AppContext, Bounds, Context, Entity, FontWeight, Global, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, gradient_color_stop,
-    linear_gradient, px, relative, rgb, rgba,
+    Animation, AnimationExt, App, AppContext, Bounds, Context, Entity, FontWeight, Global,
+    InteractiveElement, IntoElement, ParentElement, Pixels, Render, ScrollHandle, Styled,
+    Transformation, Window, div, gradient_color_stop, linear, linear_gradient, percentage, px,
+    relative, rgb, rgba,
 };
 
 use std::rc::Rc;
@@ -366,13 +368,31 @@ impl Render for LyricsView {
                     .items_center()
                     .justify_center()
                     .child(
-                        div().flex().flex_col().gap_2().items_center().child(
-                            div()
-                                .text_color(rgb(0xffffff))
-                                .opacity(0.5)
-                                .text_sm()
-                                .child("Fetching lyrics..."),
-                        ),
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_3()
+                            .items_center()
+                            .child(
+                                Icon::new(Icons::Loader)
+                                    .size_6()
+                                    .text_color(rgb(0xffffff))
+                                    .opacity(0.64)
+                                    .with_animation(
+                                        "lyrics_loader_spin",
+                                        Animation::new(Duration::from_secs(1))
+                                            .repeat()
+                                            .with_easing(linear),
+                                        |icon, delta| icon.rotate(percentage(delta)),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .text_color(rgb(0xffffff))
+                                    .opacity(0.64)
+                                    .text_lg()
+                                    .child("Fetching lyrics..."),
+                            ),
                     )
                     .into_any_element();
             }
@@ -386,8 +406,8 @@ impl Render for LyricsView {
                     .child(
                         div()
                             .text_color(rgb(0xffffff))
-                            .opacity(0.5)
-                            .text_xl()
+                            .opacity(0.64)
+                            .text_lg()
                             .child("No lyrics"),
                     )
                     .into_any_element();
