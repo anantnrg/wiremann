@@ -146,7 +146,7 @@ impl Default for Theme {
             switcher_text_hover: rgb(0xFFFFFF),
             switcher_text_active: rgb(0x050505),
 
-            player_bg: rgba(0x050505B8),
+            player_bg: rgba(0x050505A0),
             player_title_text: rgb(0xFAFAFA),
             player_artist_text: rgb(0x71717A),
 
@@ -162,7 +162,7 @@ impl Default for Theme {
             player_play_pause_hover: rgb(0xFFFFFF),
             player_play_pause_text: rgb(0x050505),
 
-            player_panel_bg: rgba(0x050505B8),
+            player_panel_bg: rgba(0x050505A0),
             player_panel_tab_bg: rgba(0xFFFFFF00),
             player_panel_tab_bg_hover: rgba(0xFFFFFF0A),
             player_panel_tab_bg_active: rgba(0xFFFFFF14),
