@@ -358,21 +358,45 @@ impl Render for LyricsView {
 
         let lyrics_state = cx.global::<LyricsState>().0.read(cx);
 
-        let Some(lyrics) = lyrics_state.lyrics.clone() else {
-            return div()
-                .size_full()
-                .flex()
-                .items_center()
-                .justify_center()
-                .child(
-                    div()
-                        .text_color(rgb(0xffffff))
-                        .opacity(0.5)
-                        .text_xl()
-                        .child("No lyrics"),
-                )
-                .into_any_element();
-        };
+        match lyrics_state.status {
+            LyricsStatus::Fetching => {
+                return div()
+                    .size_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        div().flex().flex_col().gap_2().items_center().child(
+                            div()
+                                .text_color(rgb(0xffffff))
+                                .opacity(0.5)
+                                .text_sm()
+                                .child("Fetching lyrics..."),
+                        ),
+                    )
+                    .into_any_element();
+            }
+
+            LyricsStatus::Unavailable => {
+                return div()
+                    .size_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        div()
+                            .text_color(rgb(0xffffff))
+                            .opacity(0.5)
+                            .text_xl()
+                            .child("No lyrics"),
+                    )
+                    .into_any_element();
+            }
+
+            LyricsStatus::Available => {}
+        }
+
+        let lyrics = lyrics_state.lyrics.clone().unwrap();
 
         if self.measured_heights.len() != lyrics.lines.len() {
             self.measured_heights =
