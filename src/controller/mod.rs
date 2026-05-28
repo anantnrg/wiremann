@@ -836,6 +836,7 @@ impl Controller {
 
                     lyrics_state.update(cx, |this, cx| {
                         this.lyrics = lyrics.clone();
+                        this.track_id = Some(current);
                         this.status = if lyrics.is_some() {
                             LyricsStatus::Available
                         } else {
