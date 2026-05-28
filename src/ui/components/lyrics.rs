@@ -3,6 +3,7 @@ use crate::library::TrackId;
 use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use crate::ui::components::icons::{Icon, Icons};
+use crate::ui::theme::Theme;
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use std::cell::RefCell;
@@ -116,6 +117,7 @@ impl LyricLineView {
 impl Render for LyricLineView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = cx.global::<Controller>().state.read(cx);
+        let theme = *cx.global::<Theme>();
 
         let playback = state.playback.position + Duration::from_millis(80);
 
@@ -166,7 +168,7 @@ impl Render for LyricLineView {
                             .text_center()
                             .text_size(LYRICS_TEXT_SIZE)
                             .font_weight(FontWeight::BOLD)
-                            .text_color(rgb(0xffffff))
+                            .text_color(theme.lyrics_text_active)
                             .opacity(opacity)
                             .child(self.line.text.to_string()),
                     )
@@ -229,7 +231,7 @@ impl Render for LyricLineView {
                                                 .id(format!("base_word_{}_{}", self.idx, word_idx))
                                                 .text_size(LYRICS_TEXT_SIZE)
                                                 .font_weight(FontWeight::BOLD)
-                                                .text_color(rgb(0xffffff))
+                                                .text_color(theme.lyrics_text_inactive)
                                                 .opacity(inactive_opacity)
                                                 .child(word.text.to_string()),
                                         )
@@ -258,7 +260,7 @@ impl Render for LyricLineView {
                                                         .items_center()
                                                         .text_size(LYRICS_TEXT_SIZE)
                                                         .font_weight(FontWeight::BOLD)
-                                                        .text_color(rgb(0xffffff))
+                                                        .text_color(theme.lyrics_text_active)
                                                         .opacity(active_opacity)
                                                         .child(word.text.to_string()),
                                                 ),
@@ -288,7 +290,7 @@ impl Render for LyricLineView {
                     div()
                         .text_size(LYRICS_TEXT_SIZE)
                         .font_weight(FontWeight::BOLD)
-                        .text_color(rgb(0xffffff))
+                        .text_color(theme.lyrics_text_active)
                         .child(self.line.text.to_string()),
                 )
                 .into_any_element(),
@@ -353,6 +355,7 @@ impl LyricsView {
 impl Render for LyricsView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let entity = cx.entity();
+        let theme = *cx.global::<Theme>();
 
         let state = cx.global::<Controller>().state.read(cx);
 
@@ -376,8 +379,7 @@ impl Render for LyricsView {
                             .child(
                                 Icon::new(Icons::Loader)
                                     .size_6()
-                                    .text_color(rgb(0xffffff))
-                                    .opacity(0.64)
+                                    .text_color(theme.lyrics_loading_icon)
                                     .with_animation(
                                         "lyrics_loader_spin",
                                         Animation::new(Duration::from_secs(1))
@@ -388,8 +390,7 @@ impl Render for LyricsView {
                             )
                             .child(
                                 div()
-                                    .text_color(rgb(0xffffff))
-                                    .opacity(0.64)
+                                    .text_color(theme.lyrics_loading_text)
                                     .text_lg()
                                     .child("Fetching lyrics..."),
                             ),
@@ -405,8 +406,7 @@ impl Render for LyricsView {
                     .justify_center()
                     .child(
                         div()
-                            .text_color(rgb(0xffffff))
-                            .opacity(0.64)
+                            .text_color(theme.lyrics_empty_text)
                             .text_lg()
                             .child("No lyrics"),
                     )
@@ -534,7 +534,7 @@ impl Render for LyricsView {
                     .h(relative(0.32))
                     .bg(linear_gradient(
                         180.,
-                        gradient_color_stop(rgb(0x000000), 0.0),
+                        gradient_color_stop(theme.lyrics_fade_top, 0.0),
                         gradient_color_stop(rgba(0x00000000), 1.0),
                     )),
             )
@@ -547,7 +547,7 @@ impl Render for LyricsView {
                     .h(relative(0.32))
                     .bg(linear_gradient(
                         0.,
-                        gradient_color_stop(rgb(0x000000), 0.0),
+                        gradient_color_stop(theme.lyrics_fade_bottom, 0.0),
                         gradient_color_stop(rgba(0x00000000), 1.0),
                     )),
             );
