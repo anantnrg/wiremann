@@ -63,7 +63,7 @@ impl Element for BoundsObserver {
     ) -> Self::PrepaintState {
         child.prepaint(window, cx);
 
-        let changed = self.last_bounds.map(|last| last != bounds).unwrap_or(true);
+        let changed = self.last_bounds != Some(bounds);
 
         if changed {
             self.last_bounds = Some(bounds);

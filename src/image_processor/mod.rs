@@ -7,7 +7,6 @@ use crate::library::{ImageId, TrackId};
 use crate::{cacher::ImageKind, errors::ImageProcessorError, scanner::metadata};
 use crossbeam_channel::{Receiver, Sender, select, tick};
 use dashmap::DashSet;
-use garb::bytes::rgba_to_bgra_inplace;
 use gpui::RenderImage;
 use image::{DynamicImage, EncodableLayout, Frame, imageops};
 use smallvec::smallvec;
@@ -305,7 +304,7 @@ fn render_playlist_thumbnail(
         }
     }
 
-    let mut image = canvas.to_rgba8();
+    let image = canvas.to_rgba8();
 
     let hash = ImageId::generate(image.as_bytes()).ok();
 

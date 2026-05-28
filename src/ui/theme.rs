@@ -51,6 +51,18 @@ pub struct Theme {
     pub queue_item_bg_hover: Rgba,
     pub queue_item_bg_current: Rgba,
 
+    // Lyrics
+    pub lyrics_text_active: Rgba,
+    pub lyrics_text_inactive: Rgba,
+
+    pub lyrics_loading_icon: Rgba,
+    pub lyrics_loading_text: Rgba,
+
+    pub lyrics_empty_text: Rgba,
+
+    pub lyrics_fade_top: Rgba,
+    pub lyrics_fade_bottom: Rgba,
+
     // Controlbar
     pub playback_slider_track: Rgba,
     pub playback_slider_fill: Rgba,
@@ -146,7 +158,7 @@ impl Default for Theme {
             switcher_text_hover: rgb(0xFFFFFF),
             switcher_text_active: rgb(0x050505),
 
-            player_bg: rgba(0x050505B8),
+            player_bg: rgba(0x050505A0),
             player_title_text: rgb(0xFAFAFA),
             player_artist_text: rgb(0x71717A),
 
@@ -162,7 +174,7 @@ impl Default for Theme {
             player_play_pause_hover: rgb(0xFFFFFF),
             player_play_pause_text: rgb(0x050505),
 
-            player_panel_bg: rgba(0x050505B8),
+            player_panel_bg: rgba(0x050505A0),
             player_panel_tab_bg: rgba(0xFFFFFF00),
             player_panel_tab_bg_hover: rgba(0xFFFFFF0A),
             player_panel_tab_bg_active: rgba(0xFFFFFF14),
@@ -181,6 +193,17 @@ impl Default for Theme {
 
             queue_item_bg_hover: rgba(0xFFFFFF08),
             queue_item_bg_current: rgba(0xFFFFFF10),
+
+            lyrics_text_active: rgb(0xFFFFFF),
+            lyrics_text_inactive: rgb(0xFFFFFF),
+
+            lyrics_loading_icon: rgba(0xFFFFFFA3),
+            lyrics_loading_text: rgba(0xFFFFFFA3),
+
+            lyrics_empty_text: rgba(0xFFFFFFA3),
+
+            lyrics_fade_top: rgb(0x000000),
+            lyrics_fade_bottom: rgb(0x000000),
 
             playback_slider_track: rgba(0xFFFFFF14),
             playback_slider_fill: rgb(0xFAFAFA),

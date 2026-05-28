@@ -47,9 +47,9 @@ impl ScrollableHandle {
     #[must_use]
     pub fn max_offset(&self) -> gpui::Size<Pixels> {
         match self {
-            ScrollableHandle::Regular(h) => h.max_offset().into(),
+            ScrollableHandle::Regular(h) => h.max_offset(),
             ScrollableHandle::UniformList { handle, .. } => {
-                handle.0.borrow().base_handle.max_offset().into()
+                handle.0.borrow().base_handle.max_offset()
             }
         }
     }

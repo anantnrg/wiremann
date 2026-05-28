@@ -26,6 +26,7 @@ pub struct VirtualListScrollState {
 
 /// Controller for programmatically scrolling a [`VirtualList`].
 #[derive(Clone)]
+#[allow(clippy::new_without_default)]
 pub struct VirtualListScrollController {
     /// Shared scroll state.
     pub state: Rc<RefCell<VirtualListScrollState>>,
@@ -33,6 +34,7 @@ pub struct VirtualListScrollController {
 
 impl VirtualListScrollController {
     /// Creates a new virtual list scroll controller.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             state: Rc::new(RefCell::new(VirtualListScrollState::default())),
@@ -78,7 +80,7 @@ pub fn vlist<R, V>(
     id: impl Into<ElementId>,
     heights: Rc<Vec<Pixels>>,
     scroll_handle: ScrollHandle,
-    controller: VirtualListScrollController,
+    controller: &VirtualListScrollController,
     f: impl 'static + Fn(&mut V, Range<usize>, &mut Window, &mut Context<V>) -> Vec<R>,
 ) -> VirtualList
 where
@@ -306,6 +308,6 @@ impl Element for VirtualList {
                     item.paint(window, cx);
                 }
             },
-        )
+        );
     }
 }

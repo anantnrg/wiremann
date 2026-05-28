@@ -2,6 +2,7 @@ use crate::{
     controller::{Controller, state::PlaybackStatus},
     ui::{
         components::{
+            bounds_observer::observe_bounds,
             controlbar::ControlBar,
             icons::{Icon, Icons},
             image_cache::ImageCache,
@@ -13,9 +14,9 @@ use crate::{
     },
 };
 use gpui::{
-    App, AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ObjectFit,
-    ParentElement, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage,
-    UniformListScrollHandle, Window, div, img, px, rgb,
+    App, AppContext, Bounds, Context, Entity, FontWeight, InteractiveElement, IntoElement,
+    ObjectFit, ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled,
+    StyledImage, UniformListScrollHandle, Window, div, gradient_color_stop, img, px, rgba,
 };
 use gpui::{prelude::FluentBuilder, relative};
 
@@ -28,6 +29,7 @@ pub struct PlayerPage {
     pub controlbar: Entity<ControlBar>,
     show_panel: Entity<bool>,
     current_panel: Entity<Panel>,
+    album_bounds: Option<Bounds<Pixels>>,
 }
 
 #[derive(PartialEq)]
@@ -50,13 +52,14 @@ impl PlayerPage {
             controlbar,
             show_panel,
             current_panel,
+            album_bounds: None,
         }
     }
 }
 
 impl Render for PlayerPage {
     #[allow(clippy::too_many_lines)]
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = *cx.global::<Theme>();
         let dominant_colors = *cx.global::<DominantColors>();
 
@@ -73,18 +76,37 @@ impl Render for PlayerPage {
             None
         };
 
+        let gradient_pos = self.album_bounds.map(|bounds| {
+            let center_x = bounds.origin.x + bounds.size.width / 2.0;
+            let center_y = bounds.origin.y + bounds.size.height / 2.0;
+
+            (
+                center_x / px(window.viewport_size().width.to_f64() as f32),
+                center_y / px(window.viewport_size().height.to_f64() as f32),
+            )
+        });
+        let (gx, gy) = gradient_pos.unwrap_or((0.5, 0.4));
+
         div()
             .size_full()
             .flex()
             .items_center()
             .justify_center()
-            .child(div().h_full().w_full().absolute().bg(gpui::radial_gradient(
-                0.4,
-                0.4,
-                1.0,
-                1.0,
-                gpui::gradient_color_stop(dominant_colors.color1, 0.0),
-                gpui::gradient_color_stop(rgb(0x000000), 1.0),
+            .child(div().absolute().size_full().bg(gpui::radial_gradient(
+                gx,
+                gy - 0.03,
+                0.72,
+                0.58,
+                gradient_color_stop(dominant_colors.color1, 0.0),
+                gradient_color_stop(rgba(0x00000000), 1.0),
+            )))
+            .child(div().absolute().size_full().bg(gpui::radial_gradient(
+                gx,
+                gy - 0.03,
+                1.9,
+                1.4,
+                gradient_color_stop(dominant_colors.color1.blend(dominant_colors.color2), 0.0),
+                gradient_color_stop(rgba(0x00000000), 1.0),
             )))
             .child(
                 div()
@@ -109,22 +131,48 @@ impl Render for PlayerPage {
                             .flex_shrink_0()
                             .flex_1()
                             .child(if let Some(thumbnail) = thumbnail {
-                                div().flex().flex_1().child(
-                                    img(thumbnail)
-                                        .object_fit(ObjectFit::Cover)
-                                        .size_full()
-                                        .rounded_xl()
-                                        .border_2()
-                                        .border_color(theme.border),
+                                observe_bounds(
+                                    "album_bounds",
+                                    div().flex().flex_1().child(
+                                        img(thumbnail)
+                                            .object_fit(ObjectFit::Cover)
+                                            .size_full()
+                                            .rounded_xl()
+                                            .border_2()
+                                            .border_color(theme.border),
+                                    ),
+                                    {
+                                        let entity = cx.entity();
+
+                                        move |bounds, _, cx| {
+                                            entity.update(cx, |this, cx| {
+                                                this.album_bounds = Some(bounds);
+                                                cx.notify();
+                                            });
+                                        }
+                                    },
                                 )
                             } else {
-                                div().flex().flex_1().child(
-                                    img("icons/placeholder.svg")
-                                        .object_fit(ObjectFit::Contain)
-                                        .size_full()
-                                        .rounded_xl()
-                                        .border_2()
-                                        .border_color(theme.border),
+                                observe_bounds(
+                                    "album_placeholder_bounds",
+                                    div().flex().flex_1().child(
+                                        img("icons/placeholder.svg")
+                                            .object_fit(ObjectFit::Contain)
+                                            .size_full()
+                                            .rounded_xl()
+                                            .border_2()
+                                            .border_color(theme.border),
+                                    ),
+                                    {
+                                        let entity = cx.entity();
+
+                                        move |bounds, _, cx| {
+                                            entity.update(cx, |this, cx| {
+                                                this.album_bounds = Some(bounds);
+                                                cx.notify();
+                                            });
+                                        }
+                                    },
                                 )
                             })
                             .child(

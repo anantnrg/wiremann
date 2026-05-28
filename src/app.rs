@@ -31,11 +31,8 @@ pub struct AppPaths {
     pub data: PathBuf,
 }
 
-#[allow(
-    clippy::too_many_lines,
-    clippy::missing_panics_doc,
-    clippy::missing_errors_doc
-)]
+static ICON_PNG: &[u8] = include_bytes!("../assets/logos/logo.png");
+
 pub fn run() -> Result<(), AppError> {
     let assets = Assets {};
 
@@ -44,7 +41,6 @@ pub fn run() -> Result<(), AppError> {
         .run(move |cx| {
             let bounds = Bounds::centered(None, size(px(1280.0), px(760.0)), cx);
             assets.load_fonts(cx).expect("Could not load fonts");
-            static ICON_PNG: &[u8] = include_bytes!("../assets/logos/logo.png");
             let app_icon = gpui::WindowIcon::from_png_bytes(ICON_PNG).ok();
 
             let WorkerConfig {

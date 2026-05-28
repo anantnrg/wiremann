@@ -25,10 +25,8 @@ use crossbeam_channel::{Receiver, Sender};
 use events::{AudioEvent, ScannerEvent};
 use gpui::{App, Entity, Global, Rgba, rgb};
 use okmain::rgb::Rgb;
-use okmain::{InputImage, colors};
 use rand::rng;
 use rand::seq::{IteratorRandom, SliceRandom};
-use ron::de;
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 use std::{path::PathBuf, sync::Arc};
@@ -654,6 +652,12 @@ impl Controller {
                 let width = image.size(0).width.0.cast_unsigned();
                 let height = image.size(0).height.0.cast_unsigned();
                 if let Some(image) = image.as_bytes(0) {
+                    fn rgb_to_rgba(color: Rgb<u8>) -> Rgba {
+                        rgb((u32::from(color.r) << 16)
+                            | (u32::from(color.g) << 8)
+                            | u32::from(color.b))
+                    }
+
                     let image = image.to_vec();
                     let state = self.state.read(cx);
                     if let Some(track_id) = &state.playback.current
@@ -665,7 +669,7 @@ impl Controller {
                                 artist: track.artist.clone(),
                                 album: track.album.clone(),
                                 image: Some((width, height, image.clone())),
-                                duration: track.duration.as_secs() as u64,
+                                duration: track.duration.as_secs(),
                             })
                             .ok();
                     }
@@ -683,33 +687,14 @@ impl Controller {
 
                     let colors = okmain::colors(input);
 
-                    fn rgb_to_rgba(color: Rgb<u8>) -> Rgba {
-                        rgb(((color.r as u32) << 16) | ((color.g as u32) << 8) | (color.b as u32))
-                    }
                     let dominant = DominantColors {
-                        color1: colors
-                            .get(0)
-                            .copied()
-                            .map(rgb_to_rgba)
-                            .unwrap_or(rgb(0x000000)),
+                        color1: colors.first().copied().map_or(rgb(0x000000), rgb_to_rgba),
 
-                        color2: colors
-                            .get(1)
-                            .copied()
-                            .map(rgb_to_rgba)
-                            .unwrap_or(rgb(0x000000)),
+                        color2: colors.get(1).copied().map_or(rgb(0x000000), rgb_to_rgba),
 
-                        color3: colors
-                            .get(2)
-                            .copied()
-                            .map(rgb_to_rgba)
-                            .unwrap_or(rgb(0x000000)),
+                        color3: colors.get(2).copied().map_or(rgb(0x000000), rgb_to_rgba),
 
-                        color4: colors
-                            .get(3)
-                            .copied()
-                            .map(rgb_to_rgba)
-                            .unwrap_or(rgb(0x000000)),
+                        color4: colors.get(3).copied().map_or(rgb(0x000000), rgb_to_rgba),
                     };
                     *cx.global_mut::<DominantColors>() = dominant;
                 }
@@ -821,13 +806,7 @@ impl Controller {
                 }
             }
             CacherEvent::Lyrics(id, lyrics) => {
-                let current = cx
-                    .global::<Controller>()
-                    .state
-                    .read(cx)
-                    .playback
-                    .current
-                    .clone();
+                let current = cx.global::<Controller>().state.read(cx).playback.current;
 
                 if let Some(current) = current
                     && current == *id
@@ -835,7 +814,7 @@ impl Controller {
                     let lyrics_state = cx.global::<LyricsState>().0.clone();
 
                     lyrics_state.update(cx, |this, cx| {
-                        this.lyrics = lyrics.clone();
+                        this.lyrics.clone_from(lyrics);
                         this.track_id = Some(current);
                         this.status = if lyrics.is_some() {
                             LyricsStatus::Available
@@ -843,7 +822,7 @@ impl Controller {
                             LyricsStatus::Unavailable
                         };
                         cx.notify();
-                    })
+                    });
                 }
             }
             CacherEvent::MissingLyrics(id) => {
@@ -924,13 +903,7 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         match event {
             LyricsEvent::Lyrics(id, lyrics) => {
-                let current = cx
-                    .global::<Controller>()
-                    .state
-                    .read(cx)
-                    .playback
-                    .current
-                    .clone();
+                let current = cx.global::<Controller>().state.read(cx).playback.current;
 
                 if let Some(current) = current
                     && current == *id
@@ -938,7 +911,7 @@ impl Controller {
                     let lyrics_state = cx.global::<LyricsState>().0.clone();
 
                     lyrics_state.update(cx, |this, cx| {
-                        this.lyrics = lyrics.clone();
+                        this.lyrics.clone_from(lyrics);
                         this.track_id = Some(current);
 
                         this.status = if lyrics.is_some() {
@@ -948,7 +921,7 @@ impl Controller {
                         };
 
                         cx.notify();
-                    })
+                    });
                 }
                 if let Some(lyrics) = lyrics {
                     self.cacher_tx
@@ -1277,7 +1250,7 @@ impl Controller {
                 title: title.to_string(),
                 artist: artist.to_string(),
                 album: album.to_string(),
-                duration: duration,
+                duration,
             })
             .ok();
     }

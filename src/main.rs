@@ -1,4 +1,14 @@
 #![warn(clippy::pedantic)]
+#![allow(
+    clippy::unreadable_literal,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::type_complexity,
+    clippy::too_many_lines,
+    clippy::new_without_default
+)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 pub mod app;
 pub mod audio;

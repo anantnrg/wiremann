@@ -1,8 +1,9 @@
 use crate::controller::Controller;
 use crate::library::TrackId;
-use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
+use crate::lyrics_manager::{LyricLine, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use crate::ui::components::icons::{Icon, Icons};
+use crate::ui::theme::Theme;
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use std::cell::RefCell;
@@ -10,9 +11,8 @@ use std::cell::RefCell;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use gpui::{
     Animation, AnimationExt, App, AppContext, Bounds, Context, Entity, FontWeight, Global,
-    InteractiveElement, IntoElement, ParentElement, Pixels, Render, ScrollHandle, Styled,
-    Transformation, Window, div, gradient_color_stop, linear, linear_gradient, percentage, px,
-    relative, rgb, rgba,
+    InteractiveElement, IntoElement, ParentElement, Pixels, Render, ScrollHandle, Styled, Window,
+    div, gradient_color_stop, linear, linear_gradient, percentage, px, relative, rgba,
 };
 
 use std::rc::Rc;
@@ -38,7 +38,14 @@ pub struct LyricsState(pub Entity<LyricsStateInner>);
 
 impl Global for LyricsState {}
 
+impl Default for LyricsStateInner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LyricsStateInner {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             status: LyricsStatus::Unavailable,
@@ -70,52 +77,12 @@ impl LyricLineView {
             word_bounds,
         })
     }
-
-    fn active_word(words: &[LyricWord], playback: Duration) -> Option<usize> {
-        words
-            .iter()
-            .enumerate()
-            .rfind(|(_, word)| playback >= word.start)
-            .map(|(idx, _)| idx)
-    }
-    fn reveal_width(&self, playback: Duration) -> Option<Pixels> {
-        let words = self.line.words.as_ref()?;
-
-        let active_idx = Self::active_word(words, playback)?;
-
-        let active_word = &words[active_idx];
-
-        let bounds_cache = self.word_bounds.borrow();
-
-        let first_bounds = bounds_cache.get(&(self.idx, 0))?;
-
-        let active_bounds = bounds_cache.get(&(self.idx, active_idx))?;
-
-        let relative_x = active_bounds.origin.x - first_bounds.origin.x;
-
-        let next_time = words
-            .get(active_idx + 1)
-            .map(|w| w.start)
-            .unwrap_or(active_word.end);
-
-        let duration = next_time.saturating_sub(active_word.start);
-
-        let elapsed = playback.saturating_sub(active_word.start);
-
-        let progress = if duration.is_zero() {
-            1.0
-        } else {
-            elapsed.as_secs_f32() / duration.as_secs_f32()
-        }
-        .clamp(0.0, 1.0);
-
-        Some(relative_x + active_bounds.size.width * progress)
-    }
 }
 
 impl Render for LyricLineView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = cx.global::<Controller>().state.read(cx);
+        let theme = *cx.global::<Theme>();
 
         let playback = state.playback.position + Duration::from_millis(80);
 
@@ -129,9 +96,8 @@ impl Render for LyricLineView {
             .lines
             .iter()
             .enumerate()
-            .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
-            .map(|(idx, _)| idx)
-            .unwrap_or(0);
+            .rfind(|(_, line)| line.start.is_some_and(|s| playback >= s))
+            .map_or(0, |(idx, _)| idx);
 
         let is_active_line = self.idx == active_line;
         let distance = self.idx.abs_diff(active_line) as f32;
@@ -166,7 +132,7 @@ impl Render for LyricLineView {
                             .text_center()
                             .text_size(LYRICS_TEXT_SIZE)
                             .font_weight(FontWeight::BOLD)
-                            .text_color(rgb(0xffffff))
+                            .text_color(theme.lyrics_text_active)
                             .opacity(opacity)
                             .child(self.line.text.to_string()),
                     )
@@ -191,15 +157,14 @@ impl Render for LyricLineView {
                             .flex_row()
                             .flex_wrap()
                             .justify_center()
-                            .children(words.into_iter().enumerate().map(|(word_idx, word)| {
+                            .children(words.iter().enumerate().map(|(word_idx, word)| {
                                 let progress = {
                                     let next_start = self
                                         .line
                                         .words
                                         .as_ref()
                                         .and_then(|w| w.get(word_idx + 1))
-                                        .map(|w| w.start)
-                                        .unwrap_or(word.end);
+                                        .map_or(word.end, |w| w.start);
 
                                     if playback < word.start {
                                         0.0
@@ -229,7 +194,7 @@ impl Render for LyricLineView {
                                                 .id(format!("base_word_{}_{}", self.idx, word_idx))
                                                 .text_size(LYRICS_TEXT_SIZE)
                                                 .font_weight(FontWeight::BOLD)
-                                                .text_color(rgb(0xffffff))
+                                                .text_color(theme.lyrics_text_inactive)
                                                 .opacity(inactive_opacity)
                                                 .child(word.text.to_string()),
                                         )
@@ -249,7 +214,7 @@ impl Render for LyricLineView {
                                                             .get(&(self.idx, word_idx))
                                                             .map(|b| b.size.width * progress)
                                                     },
-                                                    |this, width| this.w(width),
+                                                    gpui::Styled::w,
                                                 )
                                                 .child(
                                                     div()
@@ -258,7 +223,7 @@ impl Render for LyricLineView {
                                                         .items_center()
                                                         .text_size(LYRICS_TEXT_SIZE)
                                                         .font_weight(FontWeight::BOLD)
-                                                        .text_color(rgb(0xffffff))
+                                                        .text_color(theme.lyrics_text_active)
                                                         .opacity(active_opacity)
                                                         .child(word.text.to_string()),
                                                 ),
@@ -288,7 +253,7 @@ impl Render for LyricLineView {
                     div()
                         .text_size(LYRICS_TEXT_SIZE)
                         .font_weight(FontWeight::BOLD)
-                        .text_color(rgb(0xffffff))
+                        .text_color(theme.lyrics_text_active)
                         .child(self.line.text.to_string()),
                 )
                 .into_any_element(),
@@ -344,15 +309,15 @@ impl LyricsView {
         lines
             .iter()
             .enumerate()
-            .rfind(|(_, line)| line.start.map(|s| playback >= s).unwrap_or(false))
-            .map(|(idx, _)| idx)
-            .unwrap_or(0)
+            .rfind(|(_, line)| line.start.is_some_and(|s| playback >= s))
+            .map_or(0, |(idx, _)| idx)
     }
 }
 
 impl Render for LyricsView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let entity = cx.entity();
+        let theme = *cx.global::<Theme>();
 
         let state = cx.global::<Controller>().state.read(cx);
 
@@ -376,8 +341,7 @@ impl Render for LyricsView {
                             .child(
                                 Icon::new(Icons::Loader)
                                     .size_6()
-                                    .text_color(rgb(0xffffff))
-                                    .opacity(0.64)
+                                    .text_color(theme.lyrics_loading_icon)
                                     .with_animation(
                                         "lyrics_loader_spin",
                                         Animation::new(Duration::from_secs(1))
@@ -388,8 +352,7 @@ impl Render for LyricsView {
                             )
                             .child(
                                 div()
-                                    .text_color(rgb(0xffffff))
-                                    .opacity(0.64)
+                                    .text_color(theme.lyrics_loading_text)
                                     .text_lg()
                                     .child("Fetching lyrics..."),
                             ),
@@ -405,8 +368,7 @@ impl Render for LyricsView {
                     .justify_center()
                     .child(
                         div()
-                            .text_color(rgb(0xffffff))
-                            .opacity(0.64)
+                            .text_color(theme.lyrics_empty_text)
                             .text_lg()
                             .child("No lyrics"),
                     )
@@ -473,7 +435,7 @@ impl Render for LyricsView {
             "lyrics",
             measured_heights.clone(),
             self.scroll_handle.clone(),
-            self.list_controller.clone(),
+            &self.list_controller,
             move |_this, range, _, cx| {
                 range
                     .map(|idx| {
@@ -501,12 +463,12 @@ impl Render for LyricsView {
                                     entity.update(cx, |this, cx| {
                                         let height = bounds.size.height;
 
-                                        if let Some(existing) = this.measured_heights.get_mut(idx) {
-                                            if *existing != height {
-                                                *existing = height;
+                                        if let Some(existing) = this.measured_heights.get_mut(idx)
+                                            && *existing != height
+                                        {
+                                            *existing = height;
 
-                                                cx.notify();
-                                            }
+                                            cx.notify();
                                         }
                                     });
                                 }
@@ -534,7 +496,7 @@ impl Render for LyricsView {
                     .h(relative(0.32))
                     .bg(linear_gradient(
                         180.,
-                        gradient_color_stop(rgb(0x000000), 0.0),
+                        gradient_color_stop(theme.lyrics_fade_top, 0.0),
                         gradient_color_stop(rgba(0x00000000), 1.0),
                     )),
             )
@@ -547,7 +509,7 @@ impl Render for LyricsView {
                     .h(relative(0.32))
                     .bg(linear_gradient(
                         0.,
-                        gradient_color_stop(rgb(0x000000), 0.0),
+                        gradient_color_stop(theme.lyrics_fade_bottom, 0.0),
                         gradient_color_stop(rgba(0x00000000), 1.0),
                     )),
             );
