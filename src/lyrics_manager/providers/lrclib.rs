@@ -56,7 +56,7 @@ impl LyricsProvider for LrcLib {
             }
         };
 
-        self.parse(text)
+        self.parse(&text)
     }
 
     fn endpoint(&self) -> &'static str {
@@ -73,8 +73,8 @@ impl LyricsProvider for LrcLib {
 }
 
 impl LrcLib {
-    pub fn parse(&self, data: String) -> Result<Option<Lyrics>, LyricsError> {
-        let json: Value = match serde_json::from_str(&data) {
+    pub fn parse(&self, data: &str) -> Result<Option<Lyrics>, LyricsError> {
+        let json: Value = match serde_json::from_str(data) {
             Ok(j) => j,
             Err(e) => {
                 eprintln!("LRCLIB JSON parse failed: {e:?}");
@@ -83,36 +83,42 @@ impl LrcLib {
         };
 
         match json.get("syncedLyrics") {
-            Some(v) => if let Some(s) = v.as_str() { Self::parse_lrc(s) } else {
-                eprintln!("LRCLIB syncedLyrics not a string");
-                Ok(None)
-            },
-            None => if let Some(v) = json.get("plainLyrics") {
-                let mut lyrics = Lyrics {
-                    lines: Vec::new().into(),
-                    sync_type: SyncType::Unsynced,
-                };
+            Some(v) => {
                 if let Some(s) = v.as_str() {
-                    let mut lines = Vec::new();
-                    for line in s.lines() {
-                        lines.push(LyricLine {
-                            text: line.to_string().into(),
-                            start: None,
-                            end: None,
-                            words: None,
-                        });
-                    }
-
-                    lyrics.lines = lines.into();
-                    Ok(Some(lyrics))
+                    Self::parse_lrc(s)
                 } else {
                     eprintln!("LRCLIB syncedLyrics not a string");
                     Ok(None)
                 }
-            } else {
-                eprintln!("LRCLIB no lyrics found");
-                Ok(None)
-            },
+            }
+            None => {
+                if let Some(v) = json.get("plainLyrics") {
+                    let mut lyrics = Lyrics {
+                        lines: Vec::new().into(),
+                        sync_type: SyncType::Unsynced,
+                    };
+                    if let Some(s) = v.as_str() {
+                        let mut lines = Vec::new();
+                        for line in s.lines() {
+                            lines.push(LyricLine {
+                                text: line.to_string().into(),
+                                start: None,
+                                end: None,
+                                words: None,
+                            });
+                        }
+
+                        lyrics.lines = lines.into();
+                        Ok(Some(lyrics))
+                    } else {
+                        eprintln!("LRCLIB syncedLyrics not a string");
+                        Ok(None)
+                    }
+                } else {
+                    eprintln!("LRCLIB no lyrics found");
+                    Ok(None)
+                }
+            }
         }
     }
 
@@ -162,9 +168,10 @@ impl LrcLib {
         }
 
         if let Some(last) = lines.last_mut()
-            && last.end.is_none() {
-                last.end = last.start;
-            }
+            && last.end.is_none()
+        {
+            last.end = last.start;
+        }
 
         lyrics.lines = lines.into();
 

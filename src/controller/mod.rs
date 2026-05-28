@@ -682,27 +682,18 @@ impl Controller {
                     let colors = okmain::colors(input);
 
                     fn rgb_to_rgba(color: Rgb<u8>) -> Rgba {
-                        rgb((u32::from(color.r) << 16) | (u32::from(color.g) << 8) | u32::from(color.b))
+                        rgb((u32::from(color.r) << 16)
+                            | (u32::from(color.g) << 8)
+                            | u32::from(color.b))
                     }
                     let dominant = DominantColors {
-                        color1: colors.first()
-                            .copied()
-                            .map_or(rgb(0x000000), rgb_to_rgba),
+                        color1: colors.first().copied().map_or(rgb(0x000000), rgb_to_rgba),
 
-                        color2: colors
-                            .get(1)
-                            .copied()
-                            .map_or(rgb(0x000000), rgb_to_rgba),
+                        color2: colors.get(1).copied().map_or(rgb(0x000000), rgb_to_rgba),
 
-                        color3: colors
-                            .get(2)
-                            .copied()
-                            .map_or(rgb(0x000000), rgb_to_rgba),
+                        color3: colors.get(2).copied().map_or(rgb(0x000000), rgb_to_rgba),
 
-                        color4: colors
-                            .get(3)
-                            .copied()
-                            .map_or(rgb(0x000000), rgb_to_rgba),
+                        color4: colors.get(3).copied().map_or(rgb(0x000000), rgb_to_rgba),
                     };
                     *cx.global_mut::<DominantColors>() = dominant;
                 }
@@ -814,12 +805,7 @@ impl Controller {
                 }
             }
             CacherEvent::Lyrics(id, lyrics) => {
-                let current = cx
-                    .global::<Controller>()
-                    .state
-                    .read(cx)
-                    .playback
-                    .current;
+                let current = cx.global::<Controller>().state.read(cx).playback.current;
 
                 if let Some(current) = current
                     && current == *id
@@ -827,7 +813,7 @@ impl Controller {
                     let lyrics_state = cx.global::<LyricsState>().0.clone();
 
                     lyrics_state.update(cx, |this, cx| {
-                        this.lyrics = lyrics.clone();
+                        this.lyrics.clone_from(lyrics);
                         this.track_id = Some(current);
                         this.status = if lyrics.is_some() {
                             LyricsStatus::Available
@@ -916,12 +902,7 @@ impl Controller {
     ) -> Result<(), ControllerError> {
         match event {
             LyricsEvent::Lyrics(id, lyrics) => {
-                let current = cx
-                    .global::<Controller>()
-                    .state
-                    .read(cx)
-                    .playback
-                    .current;
+                let current = cx.global::<Controller>().state.read(cx).playback.current;
 
                 if let Some(current) = current
                     && current == *id
@@ -929,7 +910,7 @@ impl Controller {
                     let lyrics_state = cx.global::<LyricsState>().0.clone();
 
                     lyrics_state.update(cx, |this, cx| {
-                        this.lyrics = lyrics.clone();
+                        this.lyrics.clone_from(lyrics);
                         this.track_id = Some(current);
 
                         this.status = if lyrics.is_some() {

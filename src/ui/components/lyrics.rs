@@ -1,6 +1,6 @@
 use crate::controller::Controller;
 use crate::library::TrackId;
-use crate::lyrics_manager::{LyricLine, LyricWord, Lyrics, SyncType};
+use crate::lyrics_manager::{LyricLine, Lyrics, SyncType};
 use crate::ui::components::bounds_observer::observe_bounds;
 use crate::ui::components::icons::{Icon, Icons};
 use crate::ui::theme::Theme;
@@ -11,8 +11,8 @@ use std::cell::RefCell;
 use crate::ui::components::virtual_list::{VirtualListScrollController, vlist};
 use gpui::{
     Animation, AnimationExt, App, AppContext, Bounds, Context, Entity, FontWeight, Global,
-    InteractiveElement, IntoElement, ParentElement, Pixels, Render, ScrollHandle, Styled, Window, div, gradient_color_stop, linear, linear_gradient, percentage, px,
-    relative, rgba,
+    InteractiveElement, IntoElement, ParentElement, Pixels, Render, ScrollHandle, Styled, Window,
+    div, gradient_color_stop, linear, linear_gradient, percentage, px, relative, rgba,
 };
 
 use std::rc::Rc;
@@ -76,46 +76,6 @@ impl LyricLineView {
             sync_type,
             word_bounds,
         })
-    }
-
-    fn active_word(words: &[LyricWord], playback: Duration) -> Option<usize> {
-        words
-            .iter()
-            .enumerate()
-            .rfind(|(_, word)| playback >= word.start)
-            .map(|(idx, _)| idx)
-    }
-    fn reveal_width(&self, playback: Duration) -> Option<Pixels> {
-        let words = self.line.words.as_ref()?;
-
-        let active_idx = Self::active_word(words, playback)?;
-
-        let active_word = &words[active_idx];
-
-        let bounds_cache = self.word_bounds.borrow();
-
-        let first_bounds = bounds_cache.get(&(self.idx, 0))?;
-
-        let active_bounds = bounds_cache.get(&(self.idx, active_idx))?;
-
-        let relative_x = active_bounds.origin.x - first_bounds.origin.x;
-
-        let next_time = words
-            .get(active_idx + 1)
-            .map_or(active_word.end, |w| w.start);
-
-        let duration = next_time.saturating_sub(active_word.start);
-
-        let elapsed = playback.saturating_sub(active_word.start);
-
-        let progress = if duration.is_zero() {
-            1.0
-        } else {
-            elapsed.as_secs_f32() / duration.as_secs_f32()
-        }
-        .clamp(0.0, 1.0);
-
-        Some(relative_x + active_bounds.size.width * progress)
     }
 }
 
@@ -475,7 +435,7 @@ impl Render for LyricsView {
             "lyrics",
             measured_heights.clone(),
             self.scroll_handle.clone(),
-            self.list_controller.clone(),
+            &self.list_controller,
             move |_this, range, _, cx| {
                 range
                     .map(|idx| {
@@ -504,11 +464,12 @@ impl Render for LyricsView {
                                         let height = bounds.size.height;
 
                                         if let Some(existing) = this.measured_heights.get_mut(idx)
-                                            && *existing != height {
-                                                *existing = height;
+                                            && *existing != height
+                                        {
+                                            *existing = height;
 
-                                                cx.notify();
-                                            }
+                                            cx.notify();
+                                        }
                                     });
                                 }
                             },

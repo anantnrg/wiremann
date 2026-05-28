@@ -67,7 +67,7 @@ impl LyricsProvider for YouLY {
             }
         };
 
-        self.parse(text)
+        Ok(Self::parse(&text))
     }
 
     fn endpoint(&self) -> &'static str {
@@ -84,25 +84,27 @@ impl LyricsProvider for YouLY {
 }
 
 impl YouLY {
-    fn parse(&self, data: String) -> Result<Option<Lyrics>, LyricsError> {
-        let json: Value = match serde_json::from_str(&data) {
+    fn parse(data: &str) -> Option<Lyrics> {
+        let json: Value = match serde_json::from_str(data) {
             Ok(j) => j,
             Err(e) => {
                 eprintln!("YouLY JSON parse failed: {e:?}");
-                return Ok(None);
+                return None;
             }
         };
 
-        let lyrics_value = if let Some(v) = json.get("lyrics") { v.clone() } else {
+        let lyrics_value = if let Some(v) = json.get("lyrics") {
+            v.clone()
+        } else {
             eprintln!("YouLY missing 'lyrics' field");
-            return Ok(None);
+            return None;
         };
 
         let lines: Vec<YouLYLine> = match serde_json::from_value(lyrics_value) {
             Ok(l) => l,
             Err(e) => {
                 eprintln!("YouLY lyrics parse failed: {e:?}");
-                return Ok(None);
+                return None;
             }
         };
 
@@ -117,7 +119,7 @@ impl YouLY {
             },
         };
 
-        Ok(Some(lyrics))
+        Some(lyrics)
     }
 }
 
