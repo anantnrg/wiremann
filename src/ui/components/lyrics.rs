@@ -396,7 +396,9 @@ impl Render for LyricsView {
             LyricsStatus::Available => {}
         }
 
-        let lyrics = lyrics_state.lyrics.clone().unwrap();
+        let Some(lyrics) = lyrics_state.lyrics.clone() else {
+            return div().into_any_element();
+        };
 
         if self.measured_heights.len() != lyrics.lines.len() {
             self.measured_heights =

@@ -186,9 +186,20 @@ impl Controller {
                             duration: track.duration.as_secs(),
                         })
                         .ok();
+
                     self.cacher_tx
                         .send(CacherCommand::GetLyrics(*track_id))
                         .ok();
+
+                    let lyrics_state = cx.global::<LyricsState>().0.clone();
+
+                    lyrics_state.update(cx, |this, cx| {
+                        this.status = LyricsStatus::Fetching;
+                        this.lyrics = None;
+                        this.track_id = Some(*track_id);
+
+                        cx.notify();
+                    });
                 }
                 self.state.update(cx, |this, cx| {
                     this.playback.current = Some(*track_id);
@@ -825,9 +836,11 @@ impl Controller {
 
                     lyrics_state.update(cx, |this, cx| {
                         this.lyrics = lyrics.clone();
-                        if lyrics.is_some() {
-                            this.status = LyricsStatus::Available;
-                        }
+                        this.status = if lyrics.is_some() {
+                            LyricsStatus::Available
+                        } else {
+                            LyricsStatus::Unavailable
+                        };
                         cx.notify();
                     })
                 }
@@ -927,9 +940,11 @@ impl Controller {
                         this.lyrics = lyrics.clone();
                         this.track_id = Some(current);
 
-                        if lyrics.is_some() {
-                            this.status = LyricsStatus::Available;
-                        }
+                        this.status = if lyrics.is_some() {
+                            LyricsStatus::Available
+                        } else {
+                            LyricsStatus::Unavailable
+                        };
 
                         cx.notify();
                     })
