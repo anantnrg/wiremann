@@ -20,21 +20,11 @@ use crate::{
     library::ImageId,
 };
 
-use super::Cacher;
+use super::{Cacher, paths::CachePaths};
 
 impl Cacher {
     fn cached_image_path(&self, id: ImageId, kind: ImageKind) -> PathBuf {
-        let hex = hex::encode(id.0);
-        let folder = &hex[0..2];
-
-        let name = match kind {
-            ImageKind::ThumbnailSmall => format!("{hex}_tmbhs.rgba.zstd"),
-            ImageKind::ThumbnailLarge => format!("{hex}_tmbhl.rgba.zstd"),
-            ImageKind::AlbumArt => format!("{hex}_art.rgba.zstd"),
-            ImageKind::Playlist => format!("{hex}_playlist.rgba.zstd"),
-        };
-
-        self.app_paths.cache.join("images").join(folder).join(name)
+        CachePaths::image_cache_path(&self.app_paths.cache, id, kind)
     }
 
     fn write_cached_image(
@@ -44,7 +34,7 @@ impl Cacher {
         cached_image: &CachedImage,
     ) -> Result<(), CacherError> {
         let final_path = self.cached_image_path(id, kind);
-        let tmp_path = final_path.with_extension("tmp");
+        let tmp_path = CachePaths::temp_file_path(&final_path);
 
         if final_path.exists() {
             return Ok(());
@@ -261,14 +251,15 @@ impl Cacher {
                 ImageKind::ThumbnailLarge => "_thumb.tmbhl",
                 _ => continue,
             };
-            if let Some(name) = entry.file_name().to_str()
-                && name.ends_with(ends_with)
-                && let Some((hex_part, _rest)) = name.split_once('_')
-            {
-                let mut arr = [0u8; 16];
+            if let Some(name) = entry.file_name().to_str() {
+                if name.ends_with(ends_with) {
+                    if let Some((hex_part, _rest)) = name.split_once('_') {
+                        let mut arr = [0u8; 16];
 
-                if hex::decode_to_slice(hex_part, &mut arr).is_ok() {
-                    set.insert(ImageId(arr));
+                        if hex::decode_to_slice(hex_part, &mut arr).is_ok() {
+                            set.insert(ImageId(arr));
+                        }
+                    }
                 }
             }
         }

@@ -1,17 +1,17 @@
 use crate::app::AppPaths;
-use crate::cacher::Cacher;
+use crate::cacher::{Cacher, paths::CachePaths};
 use crate::controller::commands::ImageProcessorCommand;
 use crate::controller::events::ImageProcessorEvent;
 use crate::library::playlists::PlaylistId;
 use crate::library::{ImageId, TrackId};
 use crate::{cacher::ImageKind, errors::ImageProcessorError, scanner::metadata};
-use crossbeam_channel::{Receiver, Sender, select, tick};
+use crossbeam_channel::{select, tick, Receiver, Sender};
 use dashmap::DashSet;
 use gpui::RenderImage;
-use image::{DynamicImage, EncodableLayout, Frame, imageops};
+use image::{imageops, DynamicImage, EncodableLayout, Frame};
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -158,11 +158,8 @@ impl ImageProcessor {
                 match metadata::read_album_art(&path) {
                     Ok(Some(image)) => {
                         if let Ok(hash) = ImageId::generate(&image) {
-                            let path = get_cached_image_path(
-                                cache_path.as_path(),
-                                hash,
-                                ImageKind::AlbumArt,
-                            );
+                            let path =
+                                CachePaths::image_cache_path(cache_path.as_path(), hash, ImageKind::AlbumArt);
 
                             if path.exists() {
                                 let _ = events_tx.send(ImageProcessorEvent::UpdateImageLookup(
@@ -313,18 +310,4 @@ fn render_playlist_thumbnail(
     let render_image = Arc::new(RenderImage::new(smallvec![frame]));
 
     (Some(render_image), hash)
-}
-
-fn get_cached_image_path(cache_path: &Path, id: ImageId, kind: ImageKind) -> PathBuf {
-    let hex = hex::encode(id.0);
-    let folder = &hex[0..2];
-
-    let name = match kind {
-        ImageKind::ThumbnailSmall => format!("{hex}_tmbhs.rgba.zstd"),
-        ImageKind::ThumbnailLarge => format!("{hex}_tmbhl.rgba.zstd"),
-        ImageKind::AlbumArt => format!("{hex}_art.rgba.zstd"),
-        ImageKind::Playlist => format!("{hex}_playlist.rgba.zstd"),
-    };
-
-    cache_path.join("images").join(folder).join(name)
 }
