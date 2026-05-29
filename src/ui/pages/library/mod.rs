@@ -1,3 +1,4 @@
+mod helpers;
 
 use crate::controller::Controller;
 use crate::library::TrackId;
@@ -6,13 +7,13 @@ use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
 use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use crate::ui::theme::Theme;
-use crate::ui::components::pages::library_helpers::*;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     App, Context, Div, FontWeight, ImageSource, InteractiveElement, IntoElement, ObjectFit,
     ParentElement, Pixels, Render, ScrollHandle, StatefulInteractiveElement, Styled, StyledImage,
     VirtualListScrollController, Window, div, img, vlist,
 };
+use helpers::*;
 use std::rc::Rc;
 
 const THUMBNAIL_MARGIN: usize = 16;
@@ -255,9 +256,13 @@ impl Render for LibraryPage {
                         .map(|idx| match &rows[idx] {
                             LibraryRow::Header(kind) => render_header(kind, heights[idx], cx),
 
-                            LibraryRow::PlaylistGridRow(ids) => render_playlist_grid(ids, heights[idx], cx),
+                            LibraryRow::PlaylistGridRow(ids) => {
+                                render_playlist_grid(ids, heights[idx], cx)
+                            }
 
-                            LibraryRow::TrackTableHeader => render_track_table_header(heights[idx], cx),
+                            LibraryRow::TrackTableHeader => {
+                                render_track_table_header(heights[idx], cx)
+                            }
 
                             LibraryRow::TrackRow(i, id) => {
                                 Self::render_track(*i, id, heights[idx], cx)
@@ -303,4 +308,3 @@ impl Render for LibraryPage {
             ))
     }
 }
-

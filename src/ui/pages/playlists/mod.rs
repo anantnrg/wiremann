@@ -1,3 +1,5 @@
+mod helpers;
+
 use crate::controller::Controller;
 use crate::library::TrackId;
 use crate::library::playlists::PlaylistId;
@@ -5,7 +7,6 @@ use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};
 use crate::ui::helpers::{fingerprint_playlists, fingerprint_tracks};
 use crate::ui::theme::Theme;
-use crate::ui::components::pages::playlists_helpers::*;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     App, AppContext, Context, Div, Entity, FontWeight, ImageSource, InteractiveElement,
@@ -13,6 +14,7 @@ use gpui::{
     StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle,
     VirtualListScrollController, Window, div, img, px, uniform_list, vlist,
 };
+use helpers::*;
 use std::rc::Rc;
 
 const THUMBNAIL_MARGIN: usize = 16;
@@ -461,4 +463,3 @@ impl Render for PlaylistsPage {
             })
     }
 }
-
