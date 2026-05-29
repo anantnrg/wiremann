@@ -1,7 +1,7 @@
 pub mod commands;
 pub mod events;
-pub mod state;
 pub mod handlers;
+pub mod state;
 use crate::cacher::ImageKind;
 use crate::controller::commands::{
     CacherCommand, ImageProcessorCommand, LyricsCommand, SystemIntegrationCommand,
