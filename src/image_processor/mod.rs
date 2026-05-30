@@ -5,10 +5,10 @@ use crate::controller::events::ImageProcessorEvent;
 use crate::controller::state::PlaylistId;
 use crate::controller::state::{ImageId, TrackId};
 use crate::{cacher::ImageKind, errors::ImageProcessorError, scanner::metadata};
-use crossbeam_channel::{select, tick, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, select, tick};
 use dashmap::DashSet;
 use gpui::RenderImage;
-use image::{imageops, DynamicImage, EncodableLayout, Frame};
+use image::{DynamicImage, EncodableLayout, Frame, imageops};
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -158,8 +158,11 @@ impl ImageProcessor {
                 match metadata::read_album_art(&path) {
                     Ok(Some(image)) => {
                         if let Ok(hash) = ImageId::generate(&image) {
-                            let path =
-                                CachePaths::image_cache_path(cache_path.as_path(), hash, ImageKind::AlbumArt);
+                            let path = CachePaths::image_cache_path(
+                                cache_path.as_path(),
+                                hash,
+                                ImageKind::AlbumArt,
+                            );
 
                             if path.exists() {
                                 let _ = events_tx.send(ImageProcessorEvent::UpdateImageLookup(

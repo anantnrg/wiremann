@@ -1,6 +1,6 @@
 use gpui::{
-    App, AppContext, Bounds, Size, WindowBackgroundAppearance, WindowBounds, WindowDecorations,
-    WindowIcon, WindowKind, WindowOptions, px, size,
+    App, Bounds, Size, WindowBackgroundAppearance, WindowBounds, WindowDecorations, WindowIcon,
+    WindowKind, WindowOptions, px, size,
 };
 
 pub fn build_window_options(app_icon: Option<WindowIcon>, cx: &mut App) -> WindowOptions {

@@ -5,8 +5,7 @@ use crate::{
         wiremann::Wiremann,
     },
 };
-
-use gpui::{AppContext, Entity};
+use gpui::{App, Entity};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -90,20 +89,20 @@ pub fn subscribe_controller_events(
     cx: &mut App,
     res_handler: &Entity<ResHandler>,
     mut controller: Controller,
-    view: &Entity<Wiremann>,
+    view: Entity<Wiremann>,
 ) {
     cx.subscribe(res_handler, move |_, event, cx| {
         if let Err(e) = match event {
-            Event::Audio(event) => controller.handle_audio_event(cx, &event, view),
-            Event::Scanner(event) => controller.handle_scanner_event(cx, &event, view),
-            Event::Cacher(event) => controller.handle_cacher_event(cx, &event, view),
+            Event::Audio(event) => controller.handle_audio_event(cx, event, &view),
+            Event::Scanner(event) => controller.handle_scanner_event(cx, event, &view),
+            Event::Cacher(event) => controller.handle_cacher_event(cx, event, &view),
             Event::ImageProcessor(event) => {
-                controller.handle_image_processor_event(cx, &event, view)
+                controller.handle_image_processor_event(cx, event, &view)
             }
             Event::SystemIntegration(event) => {
-                controller.handle_system_integration_event(cx, &event, view)
+                controller.handle_system_integration_event(cx, event, &view)
             }
-            Event::LyricsEvent(event) => controller.handle_lyrics_event(cx, &event, view),
+            Event::LyricsEvent(event) => controller.handle_lyrics_event(cx, event, &view),
         } {
             eprintln!("controller error: {e:?}");
         }

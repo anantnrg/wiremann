@@ -21,7 +21,6 @@ pub mod lyrics_manager;
 pub mod scanner;
 pub mod system_integration;
 pub mod ui;
-mod worker_config;
 
 use errors::AppError;
 
