@@ -13,21 +13,28 @@
 
 pub mod app;
 pub mod audio;
-mod cacher;
+pub mod cacher;
 pub mod controller;
 pub mod errors;
 pub mod image_processor;
+pub mod logging;
 pub mod lyrics_manager;
 pub mod scanner;
 pub mod system_integration;
 pub mod ui;
 
+use app::{ensure_app_paths, get_app_paths};
 use errors::AppError;
 
 fn main() -> Result<(), AppError> {
+    let app_paths = get_app_paths();
+    ensure_app_paths(&app_paths);
+
+    let _log_guard = logging::init(app_paths.clone()).expect("Failed to initialize logging");
+
     if cfg!(debug_assertions) {
-        eprintln!("WARNING: running in debug mode — performance will be garbage");
+        tracing::warn!("Running in debug mode, performance will be garbage");
     }
 
-    app::run()
+    app::run(app_paths)
 }

@@ -14,20 +14,19 @@ use crate::{
     scanner::Scanner,
     ui::{assets::Assets, res_handler::ResHandler, wiremann::Wiremann},
 };
-pub use paths::AppPaths;
+pub use paths::*;
 
 use gpui::{AppContext, Application, Result};
 use raw_window_handle::HasWindowHandle;
 use std::sync::Arc;
 
 use events::{spawn_event_loop, subscribe_controller_events};
-use paths::{ensure_app_paths, get_app_paths};
 use window::build_window_options;
 use workers::{WorkerConfig, calculate_worker_config, spawn_worker};
 
 static ICON_PNG: &[u8] = include_bytes!("../../assets/logos/logo.png");
 
-pub fn run() -> Result<(), AppError> {
+pub fn run(app_paths: AppPaths) -> Result<(), AppError> {
     let assets = Assets {};
 
     Application::new()
@@ -40,10 +39,6 @@ pub fn run() -> Result<(), AppError> {
                 thumbnail: thumbnail_workers,
                 cacher: cacher_workers,
             } = calculate_worker_config();
-
-            let app_paths = get_app_paths();
-
-            ensure_app_paths(&app_paths);
 
             let app_icon = gpui::WindowIcon::from_png_bytes(ICON_PNG).ok();
             let window_options = build_window_options(app_icon, cx);
