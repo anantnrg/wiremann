@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 pub struct CachePaths;
 
 impl CachePaths {
+    #[must_use]
     pub fn image_cache_path(cache_dir: &Path, id: ImageId, kind: ImageKind) -> PathBuf {
         let hex = hex::encode(id.0);
         let folder = &hex[0..2];
@@ -13,6 +14,7 @@ impl CachePaths {
         cache_dir.join("images").join(folder).join(name)
     }
 
+    #[must_use]
     pub fn image_filename(hex: &str, kind: ImageKind) -> String {
         match kind {
             ImageKind::ThumbnailSmall => format!("{hex}_tmbhs.rgba.zstd"),
@@ -22,6 +24,7 @@ impl CachePaths {
         }
     }
 
+    #[must_use]
     pub fn temp_file_path(final_path: &Path) -> PathBuf {
         final_path.with_extension("tmp")
     }

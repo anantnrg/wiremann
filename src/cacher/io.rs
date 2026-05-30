@@ -6,7 +6,7 @@ use ron::ser::PrettyConfig;
 use std::collections::HashSet;
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::schema::{
     CacheFile, CachedLibraryState, CachedPlaybackState, CachedQueueState, ImageKind,
@@ -73,7 +73,7 @@ where
 }
 
 pub fn write_library_state_to_disk(
-    cache_dir: &PathBuf,
+    cache_dir: &Path,
     state: &LibraryState,
 ) -> Result<(), CacherError> {
     let tmp_path = cache_dir.join("library.tmp");
@@ -87,7 +87,7 @@ pub fn write_library_state_to_disk(
 }
 
 pub fn write_playback_state_to_disk(
-    cache_dir: &PathBuf,
+    cache_dir: &Path,
     state: &PlaybackState,
 ) -> Result<(), CacherError> {
     let tmp_path = cache_dir.join("session.tmp");
@@ -108,10 +108,7 @@ pub fn write_playback_state_to_disk(
     Ok(())
 }
 
-pub fn write_queue_state_to_disk(
-    cache_dir: &PathBuf,
-    state: &QueueState,
-) -> Result<(), CacherError> {
+pub fn write_queue_state_to_disk(cache_dir: &Path, state: &QueueState) -> Result<(), CacherError> {
     let tmp_path = cache_dir.join("queue.tmp");
     let final_path = cache_dir.join("queue.bin");
 
@@ -122,7 +119,7 @@ pub fn write_queue_state_to_disk(
     Ok(())
 }
 
-pub fn read_library_state_from_disk(cache_dir: &PathBuf) -> Result<LibraryState, CacherError> {
+pub fn read_library_state_from_disk(cache_dir: &Path) -> Result<LibraryState, CacherError> {
     let path = cache_dir.join("library.bin");
 
     if !path.exists() {
@@ -135,7 +132,7 @@ pub fn read_library_state_from_disk(cache_dir: &PathBuf) -> Result<LibraryState,
     }
 }
 
-pub fn read_queue_state_from_disk(cache_dir: &PathBuf) -> Result<QueueState, CacherError> {
+pub fn read_queue_state_from_disk(cache_dir: &Path) -> Result<QueueState, CacherError> {
     let path = cache_dir.join("queue.bin");
 
     if !path.exists() {
@@ -148,7 +145,7 @@ pub fn read_queue_state_from_disk(cache_dir: &PathBuf) -> Result<QueueState, Cac
     }
 }
 
-pub fn read_playback_state_from_disk(cache_dir: &PathBuf) -> Result<PlaybackState, CacherError> {
+pub fn read_playback_state_from_disk(cache_dir: &Path) -> Result<PlaybackState, CacherError> {
     let path = cache_dir.join("session.ron");
 
     if !path.exists() {
@@ -161,7 +158,7 @@ pub fn read_playback_state_from_disk(cache_dir: &PathBuf) -> Result<PlaybackStat
     Ok(cached.into())
 }
 
-pub fn load_app_state(cache_dir: &PathBuf) -> Result<AppState, CacherError> {
+pub fn load_app_state(cache_dir: &Path) -> Result<AppState, CacherError> {
     let playback = read_playback_state_from_disk(cache_dir)?;
     let library = read_library_state_from_disk(cache_dir)?;
     let queue = read_queue_state_from_disk(cache_dir)?;

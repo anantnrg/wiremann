@@ -23,6 +23,7 @@ pub struct Cacher {
 }
 
 impl Cacher {
+    #[must_use]
     pub fn new(app_paths: AppPaths) -> (Self, Sender<CacherCommand>, Receiver<CacherEvent>) {
         let (cmd_tx, cmd_rx) = crossbeam_channel::unbounded();
         let (event_tx, event_rx) = crossbeam_channel::unbounded();

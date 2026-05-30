@@ -14,7 +14,7 @@ use gpui::{
     StatefulInteractiveElement, Styled, StyledImage, UniformListScrollHandle,
     VirtualListScrollController, Window, div, img, px, uniform_list, vlist,
 };
-use helpers::*;
+use helpers::{PlaylistsRows, build_rows, render_header, render_track_table_header};
 use std::rc::Rc;
 
 const THUMBNAIL_MARGIN: usize = 16;

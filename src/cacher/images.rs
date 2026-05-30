@@ -251,17 +251,15 @@ impl Cacher {
                 ImageKind::ThumbnailLarge => "_thumb.tmbhl",
                 _ => continue,
             };
-            if let Some(name) = entry.file_name().to_str() {
-                if name.ends_with(ends_with) {
-                    if let Some((hex_part, _rest)) = name.split_once('_') {
+            if let Some(name) = entry.file_name().to_str()
+                && name.ends_with(ends_with)
+                    && let Some((hex_part, _rest)) = name.split_once('_') {
                         let mut arr = [0u8; 16];
 
                         if hex::decode_to_slice(hex_part, &mut arr).is_ok() {
                             set.insert(ImageId(arr));
                         }
                     }
-                }
-            }
         }
 
         set

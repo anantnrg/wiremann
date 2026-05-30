@@ -209,7 +209,7 @@ impl ImageProcessor {
                         }
                         Ok(None) => {}
                         Err(err) => {
-                            warn!(error = ?err, path = %path.display(), "Failed to read album art")
+                            warn!(error = ?err, path = %path.display(), "Failed to read album art");
                         }
                     }
                 }
@@ -218,14 +218,11 @@ impl ImageProcessor {
                     continue;
                 }
 
-                match render_playlist_thumbnail(images) {
-                    (Some(thumbnail), Some(hash)) => {
-                        let _ = events_tx.send(ImageProcessorEvent::InsertPlaylistThumbnail(
-                            id, hash, thumbnail,
-                        ));
-                    }
-                    _ => warn!("Failed to generate playlist thumbnail"),
-                }
+                if let (Some(thumbnail), Some(hash)) = render_playlist_thumbnail(images) {
+                    let _ = events_tx.send(ImageProcessorEvent::InsertPlaylistThumbnail(
+                        id, hash, thumbnail,
+                    ));
+                } else { warn!("Failed to generate playlist thumbnail") }
             }
         });
     }

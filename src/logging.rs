@@ -4,7 +4,7 @@ use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberI
 
 use crate::app::AppPaths;
 
-pub fn init(app_paths: AppPaths) -> Result<WorkerGuard> {
+pub fn init(app_paths: &AppPaths) -> Result<WorkerGuard> {
     color_eyre::install()?;
 
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));

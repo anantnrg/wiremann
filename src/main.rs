@@ -3,6 +3,7 @@
     clippy::unreadable_literal,
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
     clippy::missing_panics_doc,
     clippy::missing_errors_doc,
     clippy::type_complexity,
@@ -31,7 +32,7 @@ fn main() -> Result<(), AppError> {
     let app_paths = get_app_paths();
     ensure_app_paths(&app_paths);
 
-    let _log_guard = logging::init(app_paths.clone()).expect("Failed to initialize logging");
+    let _log_guard = logging::init(&app_paths).expect("Failed to initialize logging");
 
     if cfg!(debug_assertions) {
         tracing::warn!("Running in debug mode, performance will be garbage");

@@ -7,6 +7,7 @@ pub struct AppPaths {
     pub data: PathBuf,
 }
 
+#[must_use]
 pub fn get_app_paths() -> AppPaths {
     let project_dir = directories::ProjectDirs::from("app", "wiremann", "wiremann")
         .expect("Couldn't get application paths");

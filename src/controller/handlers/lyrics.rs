@@ -1,4 +1,4 @@
-use super::*;
+use super::{Controller, App, LyricsEvent, Entity, Wiremann, ControllerError, LyricsState, LyricsStatus, CacherCommand};
 
 impl Controller {
     pub fn handle_lyrics_event(
