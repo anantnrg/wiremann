@@ -1,6 +1,6 @@
 use crate::cacher::ImageKind;
 use crate::controller::commands::CacherCommand;
-use crate::library::ImageId;
+use crate::controller::state::ImageId;
 use crossbeam_channel::Sender;
 use gpui::RenderImage;
 use lru::LruCache;

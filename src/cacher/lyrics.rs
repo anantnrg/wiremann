@@ -1,4 +1,6 @@
-use crate::{cacher::Cacher, errors::CacherError, library::TrackId, lyrics_manager::Lyrics};
+use crate::{
+    cacher::Cacher, controller::state::TrackId, errors::CacherError, lyrics_manager::Lyrics,
+};
 use std::{
     fs,
     io::{Cursor, Write},

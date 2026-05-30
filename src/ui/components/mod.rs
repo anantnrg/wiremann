@@ -5,7 +5,6 @@ pub mod icons;
 pub mod image_cache;
 pub mod lyrics;
 pub mod navbar;
-pub mod pages;
 pub mod queue;
 pub mod scrollbar;
 pub mod slider;

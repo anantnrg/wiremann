@@ -1,7 +1,7 @@
 use crate::cacher::ImageKind;
 use crate::controller::state::{AppState, PlaybackStatus};
-use crate::library::playlists::{Playlist, PlaylistId};
-use crate::library::{ImageId, Track, TrackId, TrackSource};
+use crate::controller::state::{ImageId, Track, TrackId, TrackSource};
+use crate::controller::state::{Playlist, PlaylistId};
 use crate::lyrics_manager::Lyrics;
 use gpui::RenderImage;
 use std::collections::HashMap;

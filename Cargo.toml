@@ -41,6 +41,11 @@ serde_json = "1.0.149"
 smol = "2.0.2"
 okmain = "0.2.0"
 cosmic-text = "0.19.0"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+tracing-appender = "0.2.5"
+tracing-error = "0.2.1"
+color-eyre = "0.6.5"
 
 [build-dependencies]
 winres = "0.1.12"

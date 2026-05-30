@@ -3,7 +3,7 @@ use std::time::Duration;
 use std::{fs::File, path::PathBuf};
 
 use crate::controller::state::PlaybackStatus;
-use crate::library::TrackId;
+use crate::controller::state::TrackId;
 use crate::{
     controller::{commands::AudioCommand, events::AudioEvent},
     errors::AudioError,

@@ -1,5 +1,5 @@
+use crate::controller::state::{Track, TrackId, TrackSource};
 use crate::errors::ScannerError;
-use crate::library::{Track, TrackId, TrackSource};
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::read_from_path;
 use lofty::tag::ItemKey;

@@ -1,0 +1,60 @@
+use std::{
+    panic::{AssertUnwindSafe, catch_unwind},
+    thread,
+};
+
+use tracing::{error, info};
+
+pub struct WorkerConfig {
+    pub metadata: usize,
+    pub thumbnail: usize,
+    pub cacher: usize,
+}
+
+pub fn spawn_worker<F, E>(name: &'static str, f: F)
+where
+    F: FnOnce() -> Result<(), E> + Send + 'static,
+    E: core::fmt::Debug,
+{
+    thread::Builder::new()
+        .name(name.into())
+        .spawn(move || {
+            info!("Spawning worker thread for [{name}] engine...");
+
+            let result = catch_unwind(AssertUnwindSafe(f));
+
+            match result {
+                Ok(Ok(())) => {
+                    info!("worker exited cleanly");
+                }
+                Ok(Err(e)) => {
+                    error!(error = ?e, "worker crashed");
+                }
+                Err(e) => {
+                    error!(panic = ?e, "worker panicked");
+                }
+            }
+        })
+        .unwrap_or_else(|e| {
+            panic!("failed to spawn worker thread '{name}': {e}");
+        });
+}
+
+pub fn calculate_worker_config() -> WorkerConfig {
+    let logical = num_cpus::get().max(1);
+
+    let usable = ((logical as f32) * 0.9).floor() as usize;
+    let usable = usable.max(2);
+
+    let cacher = (usable / 4).max(1);
+    let scanner_total = usable - cacher;
+
+    let metadata = scanner_total.min(8);
+    let thumbnail = scanner_total.min(8);
+
+    WorkerConfig {
+        metadata,
+        thumbnail,
+        cacher,
+    }
+}

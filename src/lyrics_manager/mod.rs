@@ -9,6 +9,7 @@ use crate::{
 };
 use bitcode::{Decode, Encode};
 use crossbeam_channel::{Receiver, Sender};
+use tracing::{error, warn};
 
 pub static APP_USER_AGENT: &str = concat!(
     env!("CARGO_PKG_NAME"),
@@ -121,10 +122,10 @@ impl LyricsManager {
                                     break;
                                 }
                                 Ok(None) => {
-                                    eprintln!("{} returned no lyrics", provider.name());
+                                    warn!(provider = %provider.name(), " returned no lyrics");
                                 }
                                 Err(e) => {
-                                    eprintln!("{} failed: {:?}", provider.name(), e);
+                                    error!(error = ?e, provider = %provider.name(), " failed");
                                 }
                             }
                         }

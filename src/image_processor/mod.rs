@@ -1,9 +1,9 @@
 use crate::app::AppPaths;
-use crate::cacher::Cacher;
+use crate::cacher::{Cacher, paths::CachePaths};
 use crate::controller::commands::ImageProcessorCommand;
 use crate::controller::events::ImageProcessorEvent;
-use crate::library::playlists::PlaylistId;
-use crate::library::{ImageId, TrackId};
+use crate::controller::state::PlaylistId;
+use crate::controller::state::{ImageId, TrackId};
 use crate::{cacher::ImageKind, errors::ImageProcessorError, scanner::metadata};
 use crossbeam_channel::{Receiver, Sender, select, tick};
 use dashmap::DashSet;
@@ -11,9 +11,10 @@ use gpui::RenderImage;
 use image::{DynamicImage, EncodableLayout, Frame, imageops};
 use smallvec::smallvec;
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::{error, warn};
 
 pub struct ImageProcessor {
     pub tx: Sender<ImageProcessorEvent>,
@@ -128,7 +129,7 @@ impl ImageProcessor {
                                                 }
                                             }
                                             Err(e) => {
-                                                eprintln!("Error occurred while processing image: {e:#?}");
+                                                error!(error = ?e, "Error occurred while processing image");
                                             }
                                         }
                                     }
@@ -158,7 +159,7 @@ impl ImageProcessor {
                 match metadata::read_album_art(&path) {
                     Ok(Some(image)) => {
                         if let Ok(hash) = ImageId::generate(&image) {
-                            let path = get_cached_image_path(
+                            let path = CachePaths::image_cache_path(
                                 cache_path.as_path(),
                                 hash,
                                 ImageKind::AlbumArt,
@@ -179,7 +180,7 @@ impl ImageProcessor {
                             }
                         }
                     }
-                    Err(err) => eprintln!("Failed album art: {err}"),
+                    Err(err) => warn!(error = ?err, "Failed to read album art"),
                     _ => {}
                 }
             }
@@ -203,11 +204,13 @@ impl ImageProcessor {
                             if let Ok(img) = image::load_from_memory(&image) {
                                 images.push(img);
                             } else {
-                                eprintln!("Invalid album art in {}", path.display());
+                                warn!(path = %path.display(), "Invalid album art");
                             }
                         }
                         Ok(None) => {}
-                        Err(err) => eprintln!("Failed album art for {}: {err}", path.display()),
+                        Err(err) => {
+                            warn!(error = ?err, path = %path.display(), "Failed to read album art");
+                        }
                     }
                 }
 
@@ -215,14 +218,11 @@ impl ImageProcessor {
                     continue;
                 }
 
-                match render_playlist_thumbnail(images) {
-                    (Some(thumbnail), Some(hash)) => {
-                        let _ = events_tx.send(ImageProcessorEvent::InsertPlaylistThumbnail(
-                            id, hash, thumbnail,
-                        ));
-                    }
-                    _ => eprintln!("Failed to generate playlist thumbnail"),
-                }
+                if let (Some(thumbnail), Some(hash)) = render_playlist_thumbnail(images) {
+                    let _ = events_tx.send(ImageProcessorEvent::InsertPlaylistThumbnail(
+                        id, hash, thumbnail,
+                    ));
+                } else { warn!("Failed to generate playlist thumbnail") }
             }
         });
     }
@@ -313,18 +313,4 @@ fn render_playlist_thumbnail(
     let render_image = Arc::new(RenderImage::new(smallvec![frame]));
 
     (Some(render_image), hash)
-}
-
-fn get_cached_image_path(cache_path: &Path, id: ImageId, kind: ImageKind) -> PathBuf {
-    let hex = hex::encode(id.0);
-    let folder = &hex[0..2];
-
-    let name = match kind {
-        ImageKind::ThumbnailSmall => format!("{hex}_tmbhs.rgba.zstd"),
-        ImageKind::ThumbnailLarge => format!("{hex}_tmbhl.rgba.zstd"),
-        ImageKind::AlbumArt => format!("{hex}_art.rgba.zstd"),
-        ImageKind::Playlist => format!("{hex}_playlist.rgba.zstd"),
-    };
-
-    cache_path.join("images").join(folder).join(name)
 }
