@@ -13,6 +13,7 @@ use crossbeam_channel::{Receiver, Sender};
 
 pub use io::CacheJob;
 pub use schema::{CachedImage, CachedTrackSource, ImageKind};
+use tracing::error;
 
 #[derive(Clone)]
 pub struct Cacher {
@@ -133,7 +134,7 @@ impl Cacher {
                 }
                 CacherCommand::WriteLyrics(id, lyrics) => {
                     if let Err(e) = self.write_cached_lyrics(id, &lyrics) {
-                        eprintln!("Error occured while writing cached lyrics: {e:#?}");
+                        error!(error = ?e, "Error occured while writing cached lyrics");
                     }
                 }
             }
@@ -199,7 +200,7 @@ impl Cacher {
                     })();
 
                     if let Err(err) = result {
-                        eprintln!("Error occurred: {err:#?}");
+                        error!(error = ?err, "Error occurred");
                     }
                 }
             }

@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use serde_json::Value;
+use tracing::warn;
 
 use crate::lyrics_manager::{APP_USER_AGENT, LyricLine, LyricsProvider, SyncType};
 use crate::{errors::LyricsError, lyrics_manager::Lyrics};
@@ -39,7 +40,7 @@ impl LyricsProvider for LrcLib {
         {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("LRCLIB request failed: {e:?}");
+                warn!(error = ?e, "LRCLIB request failed");
                 return Ok(None);
             }
         };
@@ -51,7 +52,7 @@ impl LyricsProvider for LrcLib {
         let text = match resp.text() {
             Ok(t) => t,
             Err(e) => {
-                eprintln!("Failed to read response: {e:?}");
+                warn!(error = ?e, "Failed to read response");
                 return Ok(None);
             }
         };
@@ -77,7 +78,7 @@ impl LrcLib {
         let json: Value = match serde_json::from_str(data) {
             Ok(j) => j,
             Err(e) => {
-                eprintln!("LRCLIB JSON parse failed: {e:?}");
+                warn!(error = ?e, "LRCLIB JSON parse failed");
                 return Ok(None);
             }
         };
@@ -87,7 +88,7 @@ impl LrcLib {
                 if let Some(s) = v.as_str() {
                     Self::parse_lrc(s)
                 } else {
-                    eprintln!("LRCLIB syncedLyrics not a string");
+                    warn!(provider = "LRCLIB", "LRCLIB syncedLyrics not a string");
                     Ok(None)
                 }
             }
@@ -111,11 +112,11 @@ impl LrcLib {
                         lyrics.lines = lines.into();
                         Ok(Some(lyrics))
                     } else {
-                        eprintln!("LRCLIB syncedLyrics not a string");
+                        warn!(provider = "LRCLIB", "plainLyrics is not a string");
                         Ok(None)
                     }
                 } else {
-                    eprintln!("LRCLIB no lyrics found");
+                    warn!(provider = "LRCLIB", "no lyrics found");
                     Ok(None)
                 }
             }

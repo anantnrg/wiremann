@@ -25,6 +25,7 @@ pub mod ui;
 
 use app::{ensure_app_paths, get_app_paths};
 use errors::AppError;
+use tracing::info;
 
 fn main() -> Result<(), AppError> {
     let app_paths = get_app_paths();
@@ -35,6 +36,8 @@ fn main() -> Result<(), AppError> {
     if cfg!(debug_assertions) {
         tracing::warn!("Running in debug mode, performance will be garbage");
     }
+
+    info!("Starting Wiremann...");
 
     app::run(app_paths)
 }

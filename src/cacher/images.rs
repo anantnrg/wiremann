@@ -11,6 +11,7 @@ use crossbeam_channel::{Receiver, select, tick};
 use gpui::RenderImage;
 use image::Frame;
 use smallvec::smallvec;
+use tracing::error;
 use walkdir::WalkDir;
 
 use crate::{
@@ -107,7 +108,7 @@ impl Cacher {
                                     };
                                     match cacher.write_cached_image(id, kind, &cached_image) {
                                         Ok(()) => {}
-                                        Err(err) => {eprintln!("Error occurred: {err:#?}");}
+                                        Err(err) => {error!(error = ?err, "Error occurred");}
                                     }
                                 }
                                 Ok(CacheJob::LoadThumbnails(ids, kind)) => {
@@ -157,7 +158,7 @@ impl Cacher {
                                 let _ = cacher.tx.send(CacherEvent::AlbumArt(image));
                             }
                             Err(e) => {
-                                eprintln!("Error loading album art: {e}");
+                                error!(error = ?e, "Error loading album art");
                                 let _ = cacher.tx.send(CacherEvent::MissingAlbumArt(id));
                             }
                             _ => {
@@ -180,7 +181,7 @@ impl Cacher {
                         match cacher.write_cached_image(id, kind, &cached_image) {
                             Ok(()) => {}
                             Err(err) => {
-                                eprintln!("Error occurred: {err:#?}");
+                                error!(error = ?err, "Error occurred");
                             }
                         }
                     }
@@ -202,7 +203,7 @@ impl Cacher {
                                 let _ = cacher.tx.send(CacherEvent::PlaylistThumbnail(id, image));
                             }
                             Err(e) => {
-                                eprintln!("Error loading playlist thumbnail art: {e}");
+                                error!(error = ?e, "Error loading playlist thumbnail art");
                                 let _ = cacher.tx.send(CacherEvent::MissingPlaylistThumbnail(id));
                             }
                             _ => {
@@ -225,7 +226,7 @@ impl Cacher {
                         match cacher.write_cached_image(id, kind, &cached_image) {
                             Ok(()) => {}
                             Err(err) => {
-                                eprintln!("Error occurred: {err:#?}");
+                                error!(error = ?err, "Error occurred");
                             }
                         }
                     }

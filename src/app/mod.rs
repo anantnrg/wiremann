@@ -19,6 +19,7 @@ pub use paths::*;
 use gpui::{AppContext, Application, Result};
 use raw_window_handle::HasWindowHandle;
 use std::sync::Arc;
+use tracing::info;
 
 use events::{spawn_event_loop, subscribe_controller_events};
 use window::build_window_options;
@@ -43,7 +44,11 @@ pub fn run(app_paths: AppPaths) -> Result<(), AppError> {
             let app_icon = gpui::WindowIcon::from_png_bytes(ICON_PNG).ok();
             let window_options = build_window_options(app_icon, cx);
 
+            info!("Spawning application window...");
+
             cx.open_window(window_options, |window, cx| {
+                info!("Initializing engines...");
+
                 let (mut audio, audio_tx, audio_rx) = Audio::new();
 
                 let (mut scanner, scanner_tx, scanner_rx) = Scanner::new(app_paths.clone());
@@ -98,6 +103,7 @@ pub fn run(app_paths: AppPaths) -> Result<(), AppError> {
                 let res_handler = cx.new(|_| ResHandler {});
                 let arc_res = Arc::new(res_handler.clone());
 
+                info!("Spawning event loop...");
                 spawn_event_loop(cx, controller.clone(), arc_res.clone());
 
                 subscribe_controller_events(cx, &res_handler, controller.clone(), view.clone());

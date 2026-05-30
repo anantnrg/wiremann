@@ -1,4 +1,9 @@
-use std::thread;
+use std::{
+    panic::{AssertUnwindSafe, catch_unwind},
+    thread,
+};
+
+use tracing::{error, info};
 
 pub struct WorkerConfig {
     pub metadata: usize,
@@ -11,11 +16,28 @@ where
     F: FnOnce() -> Result<(), E> + Send + 'static,
     E: core::fmt::Debug,
 {
-    thread::spawn(move || {
-        if let Err(e) = f() {
-            eprintln!("{name} thread crashed with error: {e:?}");
-        }
-    });
+    thread::Builder::new()
+        .name(name.into())
+        .spawn(move || {
+            info!("Spawning worker thread for [{name}] engine...");
+
+            let result = catch_unwind(AssertUnwindSafe(f));
+
+            match result {
+                Ok(Ok(())) => {
+                    info!("worker exited cleanly");
+                }
+                Ok(Err(e)) => {
+                    error!(error = ?e, "worker crashed");
+                }
+                Err(e) => {
+                    error!(panic = ?e, "worker panicked");
+                }
+            }
+        })
+        .unwrap_or_else(|e| {
+            panic!("failed to spawn worker thread '{name}': {e}");
+        });
 }
 
 pub fn calculate_worker_config() -> WorkerConfig {

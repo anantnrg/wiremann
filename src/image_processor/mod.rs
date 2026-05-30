@@ -14,6 +14,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::{error, warn};
 
 pub struct ImageProcessor {
     pub tx: Sender<ImageProcessorEvent>,
@@ -128,7 +129,7 @@ impl ImageProcessor {
                                                 }
                                             }
                                             Err(e) => {
-                                                eprintln!("Error occurred while processing image: {e:#?}");
+                                                error!(error = ?e, "Error occurred while processing image");
                                             }
                                         }
                                     }
@@ -179,7 +180,7 @@ impl ImageProcessor {
                             }
                         }
                     }
-                    Err(err) => eprintln!("Failed album art: {err}"),
+                    Err(err) => warn!(error = ?err, "Failed to read album art"),
                     _ => {}
                 }
             }
@@ -203,11 +204,13 @@ impl ImageProcessor {
                             if let Ok(img) = image::load_from_memory(&image) {
                                 images.push(img);
                             } else {
-                                eprintln!("Invalid album art in {}", path.display());
+                                warn!(path = %path.display(), "Invalid album art");
                             }
                         }
                         Ok(None) => {}
-                        Err(err) => eprintln!("Failed album art for {}: {err}", path.display()),
+                        Err(err) => {
+                            warn!(error = ?err, path = %path.display(), "Failed to read album art")
+                        }
                     }
                 }
 
@@ -221,7 +224,7 @@ impl ImageProcessor {
                             id, hash, thumbnail,
                         ));
                     }
-                    _ => eprintln!("Failed to generate playlist thumbnail"),
+                    _ => warn!("Failed to generate playlist thumbnail"),
                 }
             }
         });

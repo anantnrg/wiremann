@@ -104,7 +104,7 @@ pub fn subscribe_controller_events(
             }
             Event::LyricsEvent(event) => controller.handle_lyrics_event(cx, event, &view),
         } {
-            eprintln!("controller error: {e:?}");
+            tracing::error!(error = ?e, "Controller error occured");
         }
     })
     .detach();
