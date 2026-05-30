@@ -1,5 +1,5 @@
-use crate::library::TrackId;
-use crate::library::playlists::PlaylistId;
+use crate::controller::state::PlaylistId;
+use crate::controller::state::TrackId;
 use gpui::RenderImage;
 use std::sync::Arc;
 use std::time::Duration;

@@ -16,7 +16,6 @@ mod cacher;
 pub mod controller;
 pub mod errors;
 pub mod image_processor;
-pub mod library;
 pub mod lyrics_manager;
 pub mod scanner;
 pub mod system_integration;

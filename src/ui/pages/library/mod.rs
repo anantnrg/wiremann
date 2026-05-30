@@ -1,7 +1,7 @@
 mod helpers;
 
 use crate::controller::Controller;
-use crate::library::TrackId;
+use crate::controller::state::TrackId;
 use crate::ui::components::Page;
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::components::scrollbar::{RightPad, floating_scrollbar};

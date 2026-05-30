@@ -1,7 +1,7 @@
-use crate::library::TrackId;
+use crate::controller::state::TrackId;
+use crate::controller::{Controller, state::Track};
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::theme::Theme;
-use crate::{controller::Controller, library::Track};
 use ahash::AHashMap;
 use gpui::prelude::FluentBuilder;
 use gpui::{

@@ -1,12 +1,11 @@
 pub mod metadata;
 use crate::app::AppPaths;
 use crate::cacher::CachedTrackSource;
-use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{Track, TrackSource};
+use crate::controller::state::{Playlist, PlaylistId, PlaylistSource};
+use crate::controller::state::{Track, TrackSource};
 use crate::{
-    controller::{commands::ScannerCommand, events::ScannerEvent},
+    controller::{commands::ScannerCommand, events::ScannerEvent, state::TrackId},
     errors::ScannerError,
-    library::TrackId,
 };
 use crossbeam_channel::{Receiver, Sender, select, tick};
 use dashmap::DashMap;

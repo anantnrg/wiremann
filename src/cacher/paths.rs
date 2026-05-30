@@ -1,5 +1,5 @@
 use crate::cacher::ImageKind;
-use crate::library::ImageId;
+use crate::controller::state::ImageId;
 use std::path::{Path, PathBuf};
 
 pub struct CachePaths;

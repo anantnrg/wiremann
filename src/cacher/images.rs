@@ -15,9 +15,8 @@ use walkdir::WalkDir;
 
 use crate::{
     cacher::{CacheJob, CachedImage, ImageKind},
-    controller::events::CacherEvent,
+    controller::{events::CacherEvent, state::ImageId},
     errors::CacherError,
-    library::ImageId,
 };
 
 use super::{Cacher, paths::CachePaths};

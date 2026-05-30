@@ -10,8 +10,8 @@ use crate::controller::events::{
     CacherEvent, ImageProcessorEvent, LyricsEvent, SystemIntegrationEvent,
 };
 use crate::controller::state::PlaybackStatus;
-use crate::library::playlists::PlaylistId;
-use crate::library::{Track, TrackId};
+use crate::controller::state::PlaylistId;
+use crate::controller::state::{Track, TrackId};
 use crate::ui::components::lyrics::{LyricsState, LyricsStatus};
 use crate::ui::components::toasts::scanning_status::ScanningStatus;
 use crate::ui::components::toasts::{ToastKind, ToastPhase};

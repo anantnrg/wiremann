@@ -1,6 +1,6 @@
+use crate::controller::state::{ImageId, Track, TrackId, TrackSource};
 use crate::controller::state::{PlaybackState, PlaybackStatus, QueueState};
-use crate::library::playlists::{Playlist, PlaylistId, PlaylistSource};
-use crate::library::{ImageId, Track, TrackId, TrackSource};
+use crate::controller::state::{Playlist, PlaylistId, PlaylistSource};
 use bitcode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
