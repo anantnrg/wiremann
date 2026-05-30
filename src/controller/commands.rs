@@ -1,7 +1,7 @@
 use crate::cacher::ImageKind;
-use crate::controller::state::{LibraryState, PlaybackState, PlaybackStatus, QueueState};
 use crate::controller::state::PlaylistId;
 use crate::controller::state::{ImageId, TrackId};
+use crate::controller::state::{LibraryState, PlaybackState, PlaybackStatus, QueueState};
 use crate::lyrics_manager::Lyrics;
 use std::collections::HashSet;
 use std::path::PathBuf;

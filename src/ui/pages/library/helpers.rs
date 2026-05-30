@@ -1,7 +1,7 @@
 use crate::controller::Controller;
 use crate::controller::state::LibraryState;
-use crate::controller::state::TrackId;
 use crate::controller::state::PlaylistId;
+use crate::controller::state::TrackId;
 use crate::ui::components::Page;
 use crate::ui::components::image_cache::ImageCache;
 use crate::ui::theme::Theme;
